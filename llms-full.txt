@@ -558,4 +558,3 @@ Feel free to join the conversation on GitHub Discussions to connect with other u
 ## Commercial Support
 
 At this time, there is no official commercial support available for GitVersioned. Support is provided on a best-effort basis by the open-source community and maintainers.
-
