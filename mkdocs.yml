@@ -1,0 +1,119 @@
+---
+site_name: "{{project_name}}"
+site_description: "{{project_description}}"
+site_author: "{{org_name}}"
+site_url: "https://{{org_name}}.github.io/{{project_name}}/"
+repo_url: "https://github.com/{{org_name}}/{{project_name}}"
+repo_name: "{{org_name}}/{{project_name}}"
+edit_uri: edit/main/docs/
+# ---------------------------------------------------------------------------
+# Template Variables — Update these when using this template.
+# All {{ variable }} references across the docs site are driven from here.
+# ---------------------------------------------------------------------------
+extra:
+  project_name: "project_name"
+  project_description: "{{project_description}}"
+  org_name: "{{organization}}"
+  org_email: "conduct@{{organization}}.com"
+  docs_url: "https://{{org_name}}.github.io/{{project_name}}"
+  min_python: "3.9"
+  current_major_version: "0"
+  slack_url: "https://slack.{{organization}}.org"
+  blog_url: "https://blog.{{organization}}.org"
+  roadmap_url: "https://github.com/{{organization}}/project_name/milestones"
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.action.edit
+    - content.tooltips
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path:
+        - "."
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+plugins:
+  - search
+  - macros
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+nav:
+  - Home: index.md
+  - Getting Started:
+      - getting-started/index.md
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Workflows: getting-started/workflows.md
+  - Guides: guides/index.md
+  - Examples: examples/index.md
+  - Reference:
+      - reference/index.md
+  - Community:
+      - community/index.md
+      - Contributing: community/contributing.md
+      - Developer Setup: community/developing.md
+      - AI Agent Guide: community/agents.md
+      - Code of Conduct: community/code-of-conduct.md
+      - Security Policy: community/security.md
+      - Support: community/support.md
+extra_css:
+  - stylesheets/extra.css
+extra_javascript:
+  - scripts/extra.js
+# ---------------------------------------------------------------------------
+# LLM & AI Tooling
+# ---------------------------------------------------------------------------
+# llms.txt (root-level file) is served at /llms.txt on the deployed docs site.
+# It follows the llmstxt.org specification and provides a curated, machine-
+# readable index of documentation for LLM consumers and AI coding agents.
+# A companion file, llms-full.txt, contains the concatenated documentation.
+# The root AGENTS.md contains agent-specific coding instructions; it is also
+# surfaced in the docs nav under Community > AI Agent Guide.
+# ---------------------------------------------------------------------------

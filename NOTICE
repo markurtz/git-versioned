@@ -1,0 +1,11 @@
+project_name
+Copyright {{year}} {{organization}}
+
+This product includes software developed by {{organization}}
+(https://github.com/{{organization}}/project_name).
+
+=========================================================================
+Third-Party Attributions
+=========================================================================
+
+[ Add third-party attributions, licenses, and notices here ]

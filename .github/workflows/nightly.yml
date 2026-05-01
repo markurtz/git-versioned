@@ -1,0 +1,74 @@
+---
+# =============================================================================
+# nightly.yml — The Deep Dive
+#
+# Trigger:  Cron 00:00 UTC daily + manual workflow_dispatch
+# Purpose:  Extended regression, security SCA, alpha build, docs & publish
+# =============================================================================
+name: "CI — Nightly Deep Dive"
+on:
+  schedule:
+    - cron: "0 0 * * *"  # 00:00 UTC daily
+  workflow_dispatch:
+permissions:
+  contents: write
+  packages: write
+  security-events: write
+  actions: read
+jobs:
+
+  # ── Stage 1: Security Audit ────────────────────────────────────────────────
+  security:
+    name: "Security Audit"
+    uses: ./.github/workflows/_security.yml
+
+  # ── Stage 2: Extended Test Suite ───────────────────────────────────────────
+  test:
+    name: "Extended Tests"
+    uses: ./.github/workflows/_tests.yml
+    with:
+      test_matrix: >-
+        [
+          {"level": "unit", "types": "smoke, sanity, regression", "coverage": true},
+          {"level": "integration", "types": "smoke, sanity"},
+          {"level": "e2e", "types": "smoke, sanity"}
+        ]
+      python_versions: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+      generate_coverage: false
+      publish_results: true
+      retention_days: 14
+
+  # ── Stage 3: Link Check ────────────────────────────────────────────────────
+  link-check:
+    name: "Link Check"
+    uses: ./.github/workflows/_link-check.yml
+    with:
+      fail_on_error: false
+
+  # ── Stage 4: Alpha Docs ────────────────────────────────────────────────────
+  docs:
+    name: "Nightly Docs"
+    uses: ./.github/workflows/_docs.yml
+    with:
+      build_type: "nightly"
+      alias: "nightly"
+      include_coverage: true
+
+  # ── Stage 5: Alpha Build ───────────────────────────────────────────────────
+  build:
+    name: "Nightly Build"
+    needs:
+      - test
+      - security
+    uses: ./.github/workflows/_build_package.yml
+    with:
+      build_type: "nightly"
+
+  # ── Stage 6: Publish Artifacts ─────────────────────────────────────────────
+  publish:
+    name: "Publish Nightly"
+    needs: build
+    uses: ./.github/workflows/_publish.yml
+    with:
+      build_type: "nightly"
+      build_location: "dist/"

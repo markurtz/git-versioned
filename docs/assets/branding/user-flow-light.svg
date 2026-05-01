@@ -1,0 +1,5 @@
+<svg width="800" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f0f0f0" rx="10"/>
+  <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="32" fill="#333333" text-anchor="middle" dominant-baseline="middle">User Flow Diagram (Light Mode)</text>
+  <text x="50%" y="70%" font-family="Arial, sans-serif" font-size="16" fill="#666666" text-anchor="middle" dominant-baseline="middle">Replace with your actual architecture or flow diagram</text>
+</svg>

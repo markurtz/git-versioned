@@ -1,0 +1,20 @@
+# project_name
+
+> An opinionated, production-ready Apache 2.0 template repository for bootstrapping modern software projects.
+
+`project_name` is designed to eliminate boilerplate and enforce consistency across an organization's repositories.
+For comprehensive context and full documentation, please see [llms-full.txt](llms-full.txt).
+
+## Docs
+- [Home](https://{{organization}}.github.io/project_name/): Documentation site home page
+- [Getting Started](https://{{organization}}.github.io/project_name/getting-started/): Installation, quickstart, and workflow guides
+- [Guides](https://{{organization}}.github.io/project_name/guides/): How-to guides for common tasks
+- [API Reference](https://{{organization}}.github.io/project_name/reference/): Full API reference documentation
+
+## Repository Files
+- [README.md](https://github.com/{{organization}}/project_name/blob/main/README.md): Project overview and quick start
+- [AGENTS.md](https://github.com/{{organization}}/project_name/blob/main/AGENTS.md): AI agent coding instructions
+- [DEVELOPING.md](https://github.com/{{organization}}/project_name/blob/main/DEVELOPING.md): Developer setup guide
+
+## Optional
+- [Full Documentation](https://{{organization}}.github.io/project_name/llms-full.txt): The complete concatenated documentation for project_name

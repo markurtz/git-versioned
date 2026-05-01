@@ -1,0 +1,99 @@
+---
+# =============================================================================
+# dependabot.yml — Automated Dependency Management
+#
+# GitHub Dependabot natively creates PRs for outdated dependencies.
+# All updates are grouped to minimize PR noise (one PR per ecosystem/week).
+#
+# Supported ecosystems:
+#   • github-actions — workflow action version pins
+#   • pip            — Python packages (uncomment if applicable)
+#   • npm            — Node.js packages (uncomment if applicable)
+#   • docker         — Base image tags (uncomment if applicable)
+#
+# After PRs are opened, weekly.yml surfaces them via Slack for human review.
+# =============================================================================
+version: 2
+updates:
+  # ── GitHub Actions ──────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    # Group all action updates into a single PR to reduce noise
+    groups:
+      github-actions-updates:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(actions)"
+    # TODO: Add at least one reviewer here! Without an assigned reviewer,
+    # Dependabot PRs often rot in the queue and are ignored.
+    reviewers: []  # e.g., ["maintainer1", "org/platform-team"]
+    assignees: []  # e.g., ["maintainer1"]
+    open-pull-requests-limit: 5
+
+  # ── Python (pip) ────────────────────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore(deps)"
+    open-pull-requests-limit: 5
+
+  # ── Node.js (npm) ────────────────────────────────────────────────────────────
+  # Uncomment when this repository contains a package.json.
+  # - package-ecosystem: "npm"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #     time: "09:00"
+  #     timezone: "America/New_York"
+  #   groups:
+  #     npm-dependencies:
+  #       update-types:
+  #         - "minor"
+  #         - "patch"
+  #     npm-major-dependencies:
+  #       update-types:
+  #         - "major"
+  #   labels:
+  #     - "dependencies"
+  #     - "javascript"
+  #   commit-message:
+  #     prefix: "chore(deps)"
+  #   open-pull-requests-limit: 5
+
+  # ── Docker ───────────────────────────────────────────────────────────────────
+  # Uncomment to receive PRs for Dockerfile base image updates.
+  # - package-ecosystem: "docker"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #     time: "09:00"
+  #     timezone: "America/New_York"
+  #   labels:
+  #     - "dependencies"
+  #     - "docker"
+  #   commit-message:
+  #     prefix: "chore(docker)"
+  #   open-pull-requests-limit: 3
