@@ -1,6 +1,6 @@
-# `project_name` - Utility Scripts
+# GitVersioned - Utility Scripts
 
-This directory contains utility scripts designed to assist with local development, maintenance, and automation tasks for `project_name`.
+This directory contains utility scripts designed to assist with local development, maintenance, and automation tasks for GitVersioned.
 
 > [!NOTE]
 > These scripts are intended for developer and CI/CD use only and are **not** distributed as part of the final application package.
@@ -15,7 +15,7 @@ Scripts should generally be executed from the root of the repository to ensure r
 
 ```bash
 # Example
-./scripts/setup_dev_env.sh
+./scripts/<script_name>.sh
 ```
 
 Ensure the script has execution permissions before running:
@@ -36,10 +36,7 @@ If you are adding or modifying a script in this directory, please ensure it adhe
 
 ## Available Scripts
 
-| Script             | Description                                                            |
-| :----------------- | :--------------------------------------------------------------------- |
-| `setup_dev_env.sh` | *(Example)* Bootstraps the local development environment.              |
-| `release.sh`       | *(Example)* Automates the version bumping and release tagging process. |
+*Currently, there are no utility scripts in this directory.*
 
 ## Contributing
 

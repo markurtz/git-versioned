@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "project_name"
+name = "gitversioned"
 dynamic = ["version"]
-description = "{{project_description}}"
+description = "Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "{{organization}}" }]
+authors = [{ name = "markurtz" }]
 dependencies = []
 
 [project.optional-dependencies]
@@ -43,22 +43,21 @@ docs = [
 ]
 
 [project.scripts]
-project_name = "project_name.__main__:main"
+gitversioned = "gitversioned.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/{{org_name}}/{{project_name}}"
-Repository = "https://github.com/{{org_name}}/{{project_name}}.git"
-Issues = "https://github.com/{{org_name}}/{{project_name}}/issues"
+Homepage = "https://github.com/markurtz/git-versioned"
+Repository = "https://github.com/markurtz/git-versioned.git"
+Issues = "https://github.com/markurtz/git-versioned/issues"
 
 [tool.hatch.version]
-path = "src/project_name/__init__.py"
+path = "src/gitversioned/__init__.py"
 
 # ==============================================================================
 # Hatch Environment Configurations
 # ==============================================================================
 
 [tool.hatch.envs.default]
-installer = "uv"
 dependencies = [
   "pytest",
   "pytest-cov",
@@ -72,7 +71,6 @@ dependencies = [
 # ------------------------------------------------------------------------------
 [tool.hatch.envs.lint]
 detached = true
-installer = "uv"
 dependencies = [
   "pre-commit",
   "ruff",
@@ -139,7 +137,6 @@ cov-all = "pytest --cov=src --cov-report=term-missing --cov-report=html:docs/cov
 # ------------------------------------------------------------------------------
 [tool.hatch.envs.docs]
 detached = true
-installer = "uv"
 dependencies = [
   "mkdocs>=1.6.0",
   "mkdocs-material>=9.5.0",
@@ -164,12 +161,12 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/project_name"]
+packages = ["src/gitversioned"]
 
 
 # --- Tool Configurations ---
 [tool.mypy]
-files = ["src/project_name", "tests"]
+files = ["src/gitversioned", "tests"]
 python_version = "3.10"
 warn_redundant_casts = true
 warn_unused_ignores = false
@@ -272,7 +269,7 @@ select = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["project_name", "tests"]
+known-first-party = ["gitversioned", "tests"]
 
 [tool.pytest.ini_options]
 addopts = "-s -vvv --cache-clear"

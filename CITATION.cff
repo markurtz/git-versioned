@@ -1,9 +1,9 @@
-# This CITATION.cff file was generated from a template.
+# This CITATION.cff file was generated for GitVersioned.
 # Update the placeholders below with your project's specific details.
 # For more information on the CFF format, see: https://citation-file-format.github.io/
 
 cff-version: 1.2.0
-title: "project_name"
+title: "GitVersioned"
 message: "If you use this software, please cite it as below."
 type: software
 version: "{{version}}"
@@ -13,10 +13,10 @@ license: Apache-2.0
 # You can list individual authors or an organization.
 # This defaults to the organization to match the README's BibTeX.
 authors:
-  - name: "{{organization}}"
+  - name: "markurtz"
 #  - family-names: "{{author_family_name}}"
 #    given-names: "{{author_given_name}}"
 #    orcid: "https://orcid.org/{{orcid}}"
 
-repository-code: "https://github.com/{{organization}}/project_name"
-url: "https://{{organization}}.github.io/project_name"
+repository-code: "https://github.com/markurtz/git-versioned"
+url: "https://markurtz.github.io/git-versioned"

@@ -7,9 +7,8 @@
 #
 # Supported ecosystems:
 #   • github-actions — workflow action version pins
-#   • pip            — Python packages (uncomment if applicable)
-#   • npm            — Node.js packages (uncomment if applicable)
-#   • docker         — Base image tags (uncomment if applicable)
+#   • pip            — Python packages
+#   • docker         — Base image tags
 #
 # After PRs are opened, weekly.yml surfaces them via Slack for human review.
 # =============================================================================
@@ -33,10 +32,10 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "chore(actions)"
-    # TODO: Add at least one reviewer here! Without an assigned reviewer,
-    # Dependabot PRs often rot in the queue and are ignored.
-    reviewers: []  # e.g., ["maintainer1", "org/platform-team"]
-    assignees: []  # e.g., ["maintainer1"]
+    reviewers:
+      - "markurtz"
+    assignees:
+      - "markurtz"
     open-pull-requests-limit: 5
 
   # ── Python (pip) ────────────────────────────────────────────────────────────
@@ -56,44 +55,27 @@ updates:
       - "python"
     commit-message:
       prefix: "chore(deps)"
+    reviewers:
+      - "markurtz"
+    assignees:
+      - "markurtz"
     open-pull-requests-limit: 5
 
-  # ── Node.js (npm) ────────────────────────────────────────────────────────────
-  # Uncomment when this repository contains a package.json.
-  # - package-ecosystem: "npm"
-  #   directory: "/"
-  #   schedule:
-  #     interval: "weekly"
-  #     day: "monday"
-  #     time: "09:00"
-  #     timezone: "America/New_York"
-  #   groups:
-  #     npm-dependencies:
-  #       update-types:
-  #         - "minor"
-  #         - "patch"
-  #     npm-major-dependencies:
-  #       update-types:
-  #         - "major"
-  #   labels:
-  #     - "dependencies"
-  #     - "javascript"
-  #   commit-message:
-  #     prefix: "chore(deps)"
-  #   open-pull-requests-limit: 5
-
   # ── Docker ───────────────────────────────────────────────────────────────────
-  # Uncomment to receive PRs for Dockerfile base image updates.
-  # - package-ecosystem: "docker"
-  #   directory: "/"
-  #   schedule:
-  #     interval: "weekly"
-  #     day: "monday"
-  #     time: "09:00"
-  #     timezone: "America/New_York"
-  #   labels:
-  #     - "dependencies"
-  #     - "docker"
-  #   commit-message:
-  #     prefix: "chore(docker)"
-  #   open-pull-requests-limit: 3
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
+    reviewers:
+      - "markurtz"
+    assignees:
+      - "markurtz"
+    open-pull-requests-limit: 3

@@ -1,6 +1,6 @@
 # Getting Started
 
-Welcome to `{{ project_name }}`! This section walks you through everything you need to go from zero to productive.
+Welcome to `gitversioned`! This section walks you through everything you need to go from zero to productive.
 
 Follow the pages in order for the best experience, or jump directly to the section you need.
 
@@ -12,7 +12,7 @@ Follow the pages in order for the best experience, or jump directly to the secti
 
   ______________________________________________________________________
 
-  Install `{{ project_name }}` via pip, from source, or using Docker.
+  Install `gitversioned` via pip, from source, or using Docker.
   Includes platform-specific notes and verification steps.
 
   [:octicons-arrow-right-24: Installation Guide](installation.md)
@@ -21,7 +21,7 @@ Follow the pages in order for the best experience, or jump directly to the secti
 
   ______________________________________________________________________
 
-  Your first 5 minutes with `{{ project_name }}`. Initialize, run a command,
+  Your first 5 minutes with `gitversioned`. Initialize, run a command,
   and see results — fast.
 
   [:octicons-arrow-right-24: Quick Start](quickstart.md)

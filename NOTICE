@@ -1,8 +1,8 @@
-project_name
-Copyright {{year}} {{organization}}
+GitVersioned
+Copyright 2026 markurtz
 
-This product includes software developed by {{organization}}
-(https://github.com/{{organization}}/project_name).
+This product includes software developed by markurtz
+(https://github.com/markurtz/git-versioned).
 
 =========================================================================
 Third-Party Attributions

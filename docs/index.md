@@ -7,16 +7,14 @@ hide:
 <div class="hero" markdown>
 <div class="hero-content" markdown>
 
-# {{ project_name }}
+# GitVersioned
 
-**{{ project_description }}**
-
-A production-ready Apache 2.0 template that gives you a fully structured, documented, and CI/CD-enabled starting point — so you can focus on building, not scaffolding.
+**Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation.**
 
 <!-- mdformat off -->
 
 [Get Started](getting-started/index.md){ .md-button .md-button--primary }
-\[View on GitHub\](https://github.com/{{ org_name }}/{{ project_name }}){ .md-button }
+\[View on GitHub\](https://github.com/markurtz/git-versioned){ .md-button }
 
 <!-- mdformat on -->
 
@@ -47,7 +45,7 @@ A production-ready Apache 2.0 template that gives you a fully structured, docume
 
   ______________________________________________________________________
 
-  Runnable code examples that demonstrate real-world usage of `{{ project_name }}`.
+  Runnable code examples that demonstrate real-world usage of GitVersioned.
 
   [:octicons-arrow-right-24: See Examples](examples/index.md)
 
@@ -80,7 +78,7 @@ A production-ready Apache 2.0 template that gives you a fully structured, docume
 ## Quick Install
 
 ```bash
-pip install project_name
+pip install gitversioned
 ```
 
 For advanced installation options (from source, Docker, etc.) see the [Installation Guide](getting-started/installation.md).
@@ -89,9 +87,9 @@ For advanced installation options (from source, Docker, etc.) see the [Installat
 
 <!-- mdformat off -->
 
-- :material-github: \[GitHub Repository\](https://github.com/{{ org_name }}/{{ project_name }})
-- :material-map-marker-path: \[Roadmap\]({{ roadmap_url }})
-- :material-post-outline: \[Blog\]({{ blog_url }})
-- :material-slack: \[Slack Community\]({{ slack_url }})
+- :material-github: \[GitHub Repository\](https://github.com/markurtz/git-versioned)
+- :material-map-marker-path: \[Roadmap\](https://github.com/markurtz/git-versioned/milestones)
+- :material-post-outline: \[Blog\](https://blog.markurtz.org)
+- :material-slack: \[Slack Community\](https://slack.markurtz.org)
 
 <!-- mdformat on -->

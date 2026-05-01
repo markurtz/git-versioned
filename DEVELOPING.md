@@ -1,4 +1,4 @@
-# Developing `project_name`
+# Developing GitVersioned
 
 This guide provides instructions for setting up your development environment, navigating the project structure, and adhering to our coding standards.
 
@@ -17,13 +17,13 @@ Ensure your system meets the following requirements before getting started:
 ## Quick Start (Docker)
 
 > [!IMPORTANT]
-> The `Dockerfile` and `docker-compose.yml` files included in this template are **placeholders** that must be filled in for your specific language stack before they are usable. The default `CMD` in both files will exit with an error if run without modification.
+> The `Dockerfile` and `docker-compose.yml` files are provided for convenience.
 >
-> Once implemented, you can spin up the development environment with:
+> You can spin up the development environment with:
 >
 > ```bash
-> git clone https://github.com/{{organization}}/project_name.git
-> cd project_name
+> git clone https://github.com/markurtz/git-versioned.git
+> cd git-versioned
 >
 > # Build and start the development environment in the background
 > docker-compose up -d --build
@@ -37,14 +37,10 @@ docker-compose logs -f
 
 ## Local Setup
 
-If you prefer to develop directly on your host machine, follow the steps for your language stack.
+If you prefer to develop directly on your host machine, this project uses [Hatch](https://hatch.pypa.io/) for environment management, dependency resolution, and building.
 
 > [!NOTE]
 > **A note on shared tooling:** This project uses [MkDocs](https://www.mkdocs.org/) for documentation.
-
-### Python Development with Hatch
-
-This project uses [Hatch](https://hatch.pypa.io/) for environment management, dependency resolution, and building.
 
 ```bash
 # 1. Install hatch globally (if not already installed)
@@ -67,8 +63,6 @@ We maintain strict testing standards. Our tests are located in the `tests/` dire
 | **Unit**        | `tests/unit/`        | Fast, isolated tests for individual functions and classes.         |
 | **Integration** | `tests/integration/` | Slower tests that verify interactions between multiple components. |
 | **End-to-End**  | `tests/e2e/`         | Full-stack tests simulating real user workflows.                   |
-
-Replace the commands below with those appropriate for your language stack:
 
 ```bash
 # Run unit tests

@@ -1,6 +1,6 @@
 # Reference
 
-The Reference section contains the complete technical documentation for `{{ project_name }}` — API classes, CLI commands, and configuration options. This is the section to bookmark when you need to look something up.
+The Reference section contains the complete technical documentation for GitVersioned — API classes, CLI commands, and configuration options. This is the section to bookmark when you need to look something up.
 
 ## In This Section
 
@@ -20,7 +20,7 @@ The Reference section contains the complete technical documentation for `{{ proj
 
   ______________________________________________________________________
 
-  Full documentation for all `{{ project_name }}` command-line interface commands,
+  Full documentation for all `gitversioned` command-line interface commands,
   options, and flags.
 
   <!-- Add link once CLI reference pages are generated -->
@@ -49,7 +49,7 @@ The Reference section contains the complete technical documentation for `{{ proj
 
 ## Generating API Reference Docs
 
-This template is pre-configured to work with [`mkdocstrings`](https://mkdocstrings.github.io/) for auto-generating API documentation from docstrings.
+This project is pre-configured to work with [`mkdocstrings`](https://mkdocstrings.github.io/) for auto-generating API documentation from docstrings.
 
 ### Setup
 
@@ -68,6 +68,3 @@ For CLI documentation, consider using one of the following approaches depending 
 | **Typer**    | [`typer-cli`](https://typer.tiangolo.com/typer-cli/)            | Generates markdown from Typer apps             |
 | **Click**    | [`mkdocs-click`](https://github.com/brunoliveira8/mkdocs-click) | Auto-generates docs from Click decorators      |
 | **Argparse** | Manual                                                          | Document commands in a dedicated `cli.md` page |
-
-!!! tip "Template Reminder"
-Replace this page with actual generated reference documentation as your project matures. The placeholders above are intentional starting points.

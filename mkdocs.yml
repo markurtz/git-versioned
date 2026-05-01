@@ -1,26 +1,31 @@
 ---
-site_name: "{{project_name}}"
-site_description: "{{project_description}}"
-site_author: "{{org_name}}"
-site_url: "https://{{org_name}}.github.io/{{project_name}}/"
-repo_url: "https://github.com/{{org_name}}/{{project_name}}"
-repo_name: "{{org_name}}/{{project_name}}"
+site_name: "GitVersioned"
+site_description: "Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces\
+  \ CI/User authority and generates rich version.py files with deep metadata for auditability.\
+  \ Native Hatch & Setuptools support. Simple, predictable, and foolproof automation."
+site_author: "Mark Kurtz"
+site_url: "https://markurtz.github.io/git-versioned/"
+repo_url: "https://github.com/markurtz/git-versioned"
+repo_name: "markurtz/git-versioned"
 edit_uri: edit/main/docs/
 # ---------------------------------------------------------------------------
-# Template Variables — Update these when using this template.
+# Variables
 # All {{ variable }} references across the docs site are driven from here.
 # ---------------------------------------------------------------------------
 extra:
-  project_name: "project_name"
-  project_description: "{{project_description}}"
-  org_name: "{{organization}}"
-  org_email: "conduct@{{organization}}.com"
-  docs_url: "https://{{org_name}}.github.io/{{project_name}}"
-  min_python: "3.9"
+  gitversioned: "gitversioned"
+  project_description: "Opinionated PEP 440 Python versioning for Git repos and submodules.\
+    \ Enforces CI/User authority and generates rich version.py files with deep metadata for\
+    \ auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof\
+    \ automation."
+  org_name: "markurtz"
+  org_email: "conduct@markurtz.com"
+  docs_url: "https://markurtz.github.io/git-versioned"
+  min_python: "3.10"
   current_major_version: "0"
-  slack_url: "https://slack.{{organization}}.org"
-  blog_url: "https://blog.{{organization}}.org"
-  roadmap_url: "https://github.com/{{organization}}/project_name/milestones"
+  slack_url: "https://slack.markurtz.org"
+  blog_url: "https://blog.markurtz.org"
+  roadmap_url: "https://github.com/markurtz/git-versioned/milestones"
 theme:
   name: material
   features:

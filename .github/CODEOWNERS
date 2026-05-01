@@ -19,46 +19,46 @@
 # Catches all files not matched by a more specific rule below.
 # This team or user is the reviewer of last resort.
 # -----------------------------------------------------------------------------
-*                               @{{maintainer_username}}
+*                               @markurtz
 
 # -----------------------------------------------------------------------------
 # CI/CD & Infrastructure
 # Requires review from a platform/infrastructure team for any workflow changes.
 # -----------------------------------------------------------------------------
-.github/                        @{{maintainer_username}}
-.github/workflows/              @{{maintainer_username}}
+.github/                        @markurtz
+.github/workflows/              @markurtz
 
 # -----------------------------------------------------------------------------
 # Documentation
 # Route docs changes to the team responsible for content quality.
 # -----------------------------------------------------------------------------
-docs/                           @{{maintainer_username}}
-*.md                            @{{maintainer_username}}
-mkdocs.yml                      @{{maintainer_username}}
+docs/                           @markurtz
+*.md                            @markurtz
+mkdocs.yml                      @markurtz
 
 # -----------------------------------------------------------------------------
 # Security-Sensitive Files
 # Any change to security policy, secrets config, or dependencies must be
 # reviewed by the security team.
 # -----------------------------------------------------------------------------
-SECURITY.md                     @{{maintainer_username}}
-.github/dependabot.yml          @{{maintainer_username}}
-.pre-commit-config.yaml         @{{maintainer_username}}
+SECURITY.md                     @markurtz
+.github/dependabot.yml          @markurtz
+.pre-commit-config.yaml         @markurtz
 
 # -----------------------------------------------------------------------------
 # Core Source Code
 # Replace with the path to your primary package directory.
 # -----------------------------------------------------------------------------
-src/                            @{{maintainer_username}}
+src/                            @markurtz
 
 # -----------------------------------------------------------------------------
 # Tests
 # Requires review from someone responsible for test quality and coverage.
 # -----------------------------------------------------------------------------
-tests/                          @{{maintainer_username}}
+tests/                          @markurtz
 
 # -----------------------------------------------------------------------------
 # Container & Deployment
 # -----------------------------------------------------------------------------
-Dockerfile                      @{{maintainer_username}}
-docker-compose.yml              @{{maintainer_username}}
+Dockerfile                      @markurtz
+docker-compose.yml              @markurtz

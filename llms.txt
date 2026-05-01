@@ -1,20 +1,20 @@
-# project_name
+# GitVersioned
 
-> An opinionated, production-ready Apache 2.0 template repository for bootstrapping modern software projects.
+> Opinionated PEP 440 Python versioning for Git repos and submodules.
 
-`project_name` is designed to eliminate boilerplate and enforce consistency across an organization's repositories.
+`gitversioned` enforces CI and user authority over versioning, and generates rich `version.py` files with deep metadata for full auditability.
 For comprehensive context and full documentation, please see [llms-full.txt](llms-full.txt).
 
 ## Docs
-- [Home](https://{{organization}}.github.io/project_name/): Documentation site home page
-- [Getting Started](https://{{organization}}.github.io/project_name/getting-started/): Installation, quickstart, and workflow guides
-- [Guides](https://{{organization}}.github.io/project_name/guides/): How-to guides for common tasks
-- [API Reference](https://{{organization}}.github.io/project_name/reference/): Full API reference documentation
+- [Home](https://markurtz.github.io/git-versioned/): Documentation site home page
+- [Getting Started](https://markurtz.github.io/git-versioned/getting-started/): Installation, quickstart, and workflow guides
+- [Guides](https://markurtz.github.io/git-versioned/guides/): How-to guides for common tasks
+- [API Reference](https://markurtz.github.io/git-versioned/reference/): Full API reference documentation
 
 ## Repository Files
-- [README.md](https://github.com/{{organization}}/project_name/blob/main/README.md): Project overview and quick start
-- [AGENTS.md](https://github.com/{{organization}}/project_name/blob/main/AGENTS.md): AI agent coding instructions
-- [DEVELOPING.md](https://github.com/{{organization}}/project_name/blob/main/DEVELOPING.md): Developer setup guide
+- [README.md](https://github.com/markurtz/git-versioned/blob/main/README.md): Project overview and quick start
+- [AGENTS.md](https://github.com/markurtz/git-versioned/blob/main/AGENTS.md): AI agent coding instructions
+- [DEVELOPING.md](https://github.com/markurtz/git-versioned/blob/main/DEVELOPING.md): Developer setup guide
 
 ## Optional
-- [Full Documentation](https://{{organization}}.github.io/project_name/llms-full.txt): The complete concatenated documentation for project_name
+- [Full Documentation](https://markurtz.github.io/git-versioned/llms-full.txt): The complete concatenated documentation for GitVersioned

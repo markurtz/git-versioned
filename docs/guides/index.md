@@ -1,6 +1,6 @@
 # Guides
 
-This section contains task-oriented how-to guides for `{{ project_name }}`. Unlike the [Getting Started](../getting-started/index.md) section, which is structured as a linear onboarding path, these guides are standalone — jump to whichever one is relevant to your current task.
+This section contains task-oriented how-to guides for `gitversioned`. Unlike the [Getting Started](../getting-started/index.md) section, which is structured as a linear onboarding path, these guides are standalone — jump to whichever one is relevant to your current task.
 
 ## Available Guides
 
@@ -10,7 +10,7 @@ This section contains task-oriented how-to guides for `{{ project_name }}`. Unli
 
   ______________________________________________________________________
 
-  A deep dive into all configuration options, file formats, and environment variables supported by `{{ project_name }}`.
+  A deep dive into all configuration options, file formats, and environment variables supported by `gitversioned`.
 
   <!-- [:octicons-arrow-right-24: Configuration Guide](configuration.md) -->
 
@@ -20,19 +20,9 @@ This section contains task-oriented how-to guides for `{{ project_name }}`. Unli
 
   ______________________________________________________________________
 
-  Step-by-step instructions for integrating `{{ project_name }}` with third-party tools, platforms, and services.
+  Step-by-step instructions for integrating `gitversioned` with third-party tools, platforms, and services.
 
   <!-- [:octicons-arrow-right-24: Integrations](integrations.md) -->
-
-  *Coming soon.*
-
-- :material-shield-half-full: **Authentication & Security**
-
-  ______________________________________________________________________
-
-  How to configure authentication, manage secrets, and follow security best practices when deploying `{{ project_name }}`.
-
-  <!-- [:octicons-arrow-right-24: Authentication Guide](authentication.md) -->
 
   *Coming soon.*
 
@@ -40,7 +30,7 @@ This section contains task-oriented how-to guides for `{{ project_name }}`. Unli
 
   ______________________________________________________________________
 
-  Guides for upgrading between major versions and migrating from other tools to `{{ project_name }}`.
+  Guides for upgrading between major versions and migrating from other tools to `gitversioned`.
 
   <!-- [:octicons-arrow-right-24: Migration Guide](migration.md) -->
 

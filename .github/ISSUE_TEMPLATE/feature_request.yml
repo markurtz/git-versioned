@@ -1,14 +1,14 @@
 ---
 name: Feature Request
-description: Suggest an idea for project_name
+description: Suggest an idea for gitversioned
 labels:
   - "enhancement"
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to suggest a feature for project_name!
-        Before submitting, please ensure you have searched our existing [Issues](https://github.com/{{organization}}/project_name/issues) and [Discussions](https://github.com/{{organization}}/project_name/discussions) to see if this feature has already been requested.
+        Thanks for taking the time to suggest a feature for gitversioned!
+        Before submitting, please ensure you have searched our existing [Issues](https://github.com/markurtz/git-versioned/issues) and [Discussions](https://github.com/markurtz/git-versioned/discussions) to see if this feature has already been requested.
   - type: textarea
     id: problem
     attributes:
