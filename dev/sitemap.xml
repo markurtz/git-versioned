@@ -1,63 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/community/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/community/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/community/agents/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/community/agents/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/community/code-of-conduct/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/community/code-of-conduct/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/community/contributing/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/community/contributing/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/community/developing/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/community/developing/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/community/security/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/community/security/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/community/support/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/community/support/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/examples/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/examples/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/getting-started/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/getting-started/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/getting-started/installation/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/getting-started/installation/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/getting-started/quickstart/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/getting-started/quickstart/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/getting-started/workflows/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/getting-started/workflows/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/guides/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/guides/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
     <url>
-         <loc>https://{{org_name}}.github.io/{{project_name}}/dev/reference/</loc>
+         <loc>https://markurtz.github.io/git-versioned/dev/reference/</loc>
          <lastmod>2026-05-01</lastmod>
     </url>
 </urlset>
