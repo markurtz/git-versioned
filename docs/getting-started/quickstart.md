@@ -17,6 +17,9 @@ pip install gitversioned
 
 ## Step 2 — Verify the Install
 
+> [!NOTE]
+> The CLI is currently under active development. The `init` and `generate` commands are provided as functional placeholders to demonstrate intended workflows.
+
 ```bash
 gitversioned --version
 ```
@@ -29,6 +32,9 @@ gitversioned 0.1.0
 
 ## Step 3 — Run Your First Command
 
+> [!NOTE]
+> The `generate` and `init` commands are currently placeholders and are actively under development. The output below demonstrates the planned behavior.
+
 ```bash
 # Example: Generate version.py
 gitversioned generate
@@ -37,8 +43,8 @@ gitversioned generate
 Expected output:
 
 ```console
-[INFO] Generating version...
-[SUCCESS] version.py created! Version: 0.1.0
+[INFO] Generating version... (Not implemented yet)
+[SUCCESS] version.py created! Version: 0.1.0 (Placeholder)
 ```
 
 > [!TIP]

@@ -4,6 +4,9 @@ This page walks through the most common end-to-end usage patterns for `gitversio
 
 ## Workflow 1 — Basic Usage
 
+> [!NOTE]
+> The `init` and `generate` commands shown below are currently functional placeholders. They demonstrate the planned workflow while the CLI implementation is actively being developed.
+
 **Goal:** Perform the most common, standard operation with `gitversioned`.
 
 ### Steps

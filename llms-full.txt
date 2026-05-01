@@ -97,7 +97,7 @@ For full installation options (from source, Docker, platform-specific notes) and
 
 ## Core Concepts
 
-This project is built using modern Python tooling, ensuring a stable and typed foundation. It utilizes Pydantic for data validation and Ruff/Mypy for code quality.
+This project is built using modern Python tooling, ensuring a stable and typed foundation. It utilizes Ruff and Mypy for code quality.
 
 ### Component Architecture
 
@@ -109,7 +109,7 @@ The project is organized into several key areas:
 
 ## Advanced Usage
 
-Please check the [`docs/examples/`](docs/examples/) directory for advanced examples and configurations.
+Please check the [`examples/`](examples/) directory for advanced examples and configurations.
 
 ## General
 
