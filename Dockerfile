@@ -1,5 +1,5 @@
 # ---------------------------------------------------------
-# project_name Dockerfile
+# GitVersioned Dockerfile
 # Licensed under the Apache License, Version 2.0
 # ---------------------------------------------------------
 # Standardized Multi-stage Dockerfile Template for Python
@@ -23,7 +23,7 @@ RUN pip install uv hatch
 # Copy package manifests and install dependencies
 COPY pyproject.toml README.md ./
 # Create a dummy src directory to satisfy hatch build if needed
-RUN mkdir -p src/project_name && touch src/project_name/__init__.py
+RUN mkdir -p src/gitversioned && touch src/gitversioned/__init__.py
 RUN uv pip install --system --no-cache -e .
 
 # Copy application source code
@@ -40,10 +40,10 @@ RUN hatch build
 FROM python:3.10-slim
 
 # OCI Standard Labels
-LABEL org.opencontainers.image.title="project_name"
+LABEL org.opencontainers.image.title="gitversioned"
 LABEL org.opencontainers.image.description="Production-ready Python application container"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.source="https://github.com/{{organization}}/project_name"
+LABEL org.opencontainers.image.source="https://github.com/markurtz/git-versioned"
 
 # Define environment variables
 ENV APP_ENV=production \
@@ -68,4 +68,4 @@ USER appuser
 EXPOSE 8080
 
 # Define the command to run the application
-CMD ["python", "-m", "project_name"]
+CMD ["python", "-m", "gitversioned"]

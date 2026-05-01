@@ -5,7 +5,7 @@
 
 ## Project Context
 
-**`project_name`** is a production-ready Apache 2.0 template repository for bootstrapping modern software projects.
+**`gitversioned`** is an opinionated PEP 440 Python versioning tool for Git repos and submodules.
 **Primary language:** `Python 3.10+`\
 **Package manager:** `Hatch`
 
@@ -17,7 +17,6 @@
 > 1. **Do not modify `LICENSE` or `NOTICE`.** These are legally binding.
 > 1. **Do not modify workflow trigger conditions** without human review.
 > 1. **All new source files must include the Apache 2.0 copyright header.**
-> 1. **Use `{{double_braces}}` for template placeholders.** Never hard-code them.
 
 ## Repository Layout
 
@@ -54,7 +53,6 @@
 
 - **`docs/`** and **`mkdocs.yml`** control the site. Do not create docs outside the `nav:` tree.
 - `docs/index.md` dynamically includes `README.md` via MkDocs snippets.
-- Use `{{placeholder}}` variables for templated fields (e.g., `project_name`, `{{organization}}`).
 
 ## Agent Notes
 

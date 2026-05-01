@@ -1,9 +1,9 @@
 # Examples
 
-This section contains runnable code examples that demonstrate real-world usage of `{{ project_name }}`. Each example is self-contained and can be copied directly into your own project.
+This section contains runnable code examples that demonstrate real-world usage of GitVersioned. Each example is self-contained and can be copied directly into your own project.
 
 > [!NOTE]
-> All examples assume you have completed [Installation](../getting-started/installation.md). Replace `YOUR_KEY` and other placeholder values with your own credentials before running.
+> All examples assume you have completed [Installation](../getting-started/installation.md).
 
 ## Example Categories
 
@@ -33,7 +33,7 @@ This section contains runnable code examples that demonstrate real-world usage o
 
   ______________________________________________________________________
 
-  Examples using the `{{ project_name }}` command-line interface, including scripting and automation patterns.
+  Examples using the `gitversioned` command-line interface, including scripting and automation patterns.
 
   <!-- [:octicons-arrow-right-24: CLI Examples](cli.md) -->
 

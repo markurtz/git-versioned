@@ -1,6 +1,6 @@
 # Community
 
-`{{ project_name }}` is an open-source project and we welcome participation from everyone. This section contains all the resources you need to get involved, stay informed, and interact with the community.
+`gitversioned` is an open-source project and we welcome participation from everyone. This section contains all the resources you need to get involved, stay informed, and interact with the community.
 
 ## Get Involved
 
@@ -51,9 +51,9 @@
 
 ## Community Channels
 
-| Channel                                                                                  | Purpose                                        |
-| :--------------------------------------------------------------------------------------- | :--------------------------------------------- |
-| \[GitHub Issues\](https://github.com/{{ org_name }}/{{ project_name }}/issues)           | Bug reports and feature requests               |
-| \[GitHub Discussions\](https://github.com/{{ org_name }}/{{ project_name }}/discussions) | Q&A, ideas, and general community conversation |
-| \[Slack\]({{ slack_url }})                                                               | Real-time chat with the team and community     |
-| \[Blog\]({{ blog_url }})                                                                 | Project updates, tutorials, and announcements  |
+| Channel                                                                       | Purpose                                        |
+| :---------------------------------------------------------------------------- | :--------------------------------------------- |
+| \[GitHub Issues\](https://github.com/markurtz/git-versioned/issues)           | Bug reports and feature requests               |
+| \[GitHub Discussions\](https://github.com/markurtz/git-versioned/discussions) | Q&A, ideas, and general community conversation |
+| \[Slack\](https://slack.markurtz.org)                                         | Real-time chat with the team and community     |
+| \[Blog\](https://blog.markurtz.org)                                           | Project updates, tutorials, and announcements  |

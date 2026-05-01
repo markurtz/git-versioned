@@ -1,76 +1,70 @@
 # Workflows
 
-This page walks through the most common end-to-end usage patterns for `{{ project_name }}`. Each workflow is a self-contained user story — pick the one that matches your use case.
-
-> [!NOTE]
-> These are placeholder workflows. Replace each section with the real workflows that users of your project will follow.
+This page walks through the most common end-to-end usage patterns for `gitversioned`. Each workflow is a self-contained user story — pick the one that matches your use case.
 
 ## Workflow 1 — Basic Usage
 
-**Goal:** Perform the most common, standard operation with `{{ project_name }}`.
+> [!NOTE]
+> The `init` and `generate` commands shown below are currently functional placeholders. They demonstrate the planned workflow while the CLI implementation is actively being developed.
+
+**Goal:** Perform the most common, standard operation with `gitversioned`.
 
 ### Steps
 
-1. **Initialize the client**
+1. **Initialize the repository**
 
-```python
-from {{ project_name }} import Client
-client = Client(api_key="YOUR_KEY")
+```bash
+gitversioned init
 ```
 
-2. **Configure your inputs**
+2. **Configure your project**
 
-```python
-config = {"mode": "fast", "retries": 3}
+Update the generated `pyproject.toml` or `gitversioned.toml` configuration as needed.
+
+3. **Generate the version**
+
+```bash
+gitversioned generate
 ```
 
-3. **Execute the action**
+4. **Verify the output**
 
-```python
-result = client.run_action("hello_world", config=config)
-```
-
-4. **Handle the output**
-
-```python
-print(f"Success: {result}")
-```
+Check the generated `version.py` for correctness.
 
 ## Workflow 2 — Docker-Based Execution
 
-**Goal:** Run `{{ project_name }}` in a containerized environment without any local setup.
+**Goal:** Run `gitversioned` in a containerized environment without any local setup.
 
 ### Steps
 
 1. **Pull the image**
 
    ```bash
-   docker pull ghcr.io/{{ org_name }}/{{ project_name }}:latest
+   docker pull ghcr.io/markurtz/git-versioned:latest
    ```
 
 1. **Run with environment variables**
 
    ```bash
    docker run --rm \
-     -e API_KEY="YOUR_KEY" \
-     -v $(pwd)/output:/app/output \
-     ghcr.io/{{ org_name }}/{{ project_name }}:latest \
-     {{ project_name }} run --output /app/output
+     -v $(pwd):/workspace \
+     ghcr.io/markurtz/git-versioned:latest \
+     gitversioned generate
    ```
 
 1. **Inspect the output**
 
    ```bash
-   ls ./output/
+   cat version.py
    ```
 
 ## Workflow 3 — CI/CD Integration
 
-**Goal:** Integrate `{{ project_name }}` into a GitHub Actions pipeline.
+**Goal:** Integrate `gitversioned` into a GitHub Actions pipeline.
 
 ```yaml
 # .github/workflows/run.yml
-name: Run {{ project_name }}
+name: Run gitversioned
 
 on: [push]
 
@@ -85,14 +79,13 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install {{ project_name }}
+      - name: Install gitversioned
         run: |
-          pip install .
+          pip install gitversioned
 
-      - name: Run action
-        env:
-          API_KEY: ${{ "{{" }} secrets.API_KEY {{ "}}" }}
-        run: {{ project_name }} run --config config.yaml
+      - name: Generate version metadata
+        run: gitversioned generate
+
 ```
 
 **Need more?** See the [Guides](../guides/index.md) section for in-depth task-specific documentation or browse the [Examples](../examples/index.md) for runnable code.

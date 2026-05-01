@@ -7,52 +7,52 @@ This guide gets you from a fresh installation to running your first command in u
 
 ## Step 1 — Initialize Your Environment
 
-If you haven't already, set up your project and install `{{ project_name }}`:
+If you haven't already, set up your project and install `gitversioned`:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install project_name
+pip install gitversioned
 ```
 
 ## Step 2 — Verify the Install
 
+> [!NOTE]
+> The CLI is currently under active development. The `init` and `generate` commands are provided as functional placeholders to demonstrate intended workflows.
+
 ```bash
-{{ project_name }} --version
+gitversioned --version
 ```
 
 Expected output:
 
 ```console
-{{ project_name }} 0.1.0
+gitversioned 0.1.0
 ```
 
 ## Step 3 — Run Your First Command
 
-```python
-from project_name import Client
+> [!NOTE]
+> The `generate` and `init` commands are currently placeholders and are actively under development. The output below demonstrates the planned behavior.
 
-# Initialize the client
-client = Client(api_key="YOUR_KEY")
-
-# Run a core action
-result = client.run_action("hello_world")
-print(result)
+```bash
+# Example: Generate version.py
+gitversioned generate
 ```
 
 Expected output:
 
 ```console
-[INFO] Initializing {{ project_name }} client...
-[SUCCESS] Action completed! Result: Hello, World from {{ project_name }}!
+[INFO] Generating version... (Not implemented yet)
+[SUCCESS] version.py created! Version: 0.1.0 (Placeholder)
 ```
 
 > [!TIP]
-> Replace `"YOUR_KEY"` with your actual API key or credentials. See the [Reference](../reference/index.md) for all available client configuration options.
+> You can also configure GitVersioned directly within your `pyproject.toml`. See the [Reference](../reference/index.md) for all available configuration options.
 
 ## Step 4 — Explore Further
 
-Now that your first command works, explore what `{{ project_name }}` can do:
+Now that your first command works, explore what `gitversioned` can do:
 
 - **[Workflows](workflows.md)** — Common end-to-end usage patterns
 - **[Guides](../guides/index.md)** — Task-specific deep dives

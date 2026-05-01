@@ -2,43 +2,43 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/branding/logo-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/branding/logo-light.svg">
-    <img alt="project_name Logo" src="docs/assets/branding/logo-light.svg" width="400">
+    <img alt="GitVersioned Logo" src="docs/assets/branding/logo-light.svg" width="400">
   </picture>
 </p>
 
 <p align="center">
-  <em>An opinionated, production-ready Apache 2.0 template repository for bootstrapping modern software projects.</em>
+  <em>Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation.</em>
 </p>
 
 <p align="center">
   <!-- Package & Release Status -->
-  <a href="https://github.com/{{organization}}/project_name/releases">
-    <img src="https://img.shields.io/github/v/release/{{organization}}/project_name?label=Release" alt="GitHub Release">
+  <a href="https://github.com/markurtz/git-versioned/releases">
+    <img src="https://img.shields.io/github/v/release/markurtz/git-versioned?label=Release" alt="GitHub Release">
   </a>
-  <a href="https://pypi.org/project/project_name/">
-    <img src="https://img.shields.io/pypi/v/project_name?label=PyPI" alt="PyPI Release">
+  <a href="https://pypi.org/project/gitversioned/">
+    <img src="https://img.shields.io/pypi/v/gitversioned?label=PyPI" alt="PyPI Release">
   </a>
-  <a href="https://pypi.org/project/project_name/">
-    <img src="https://img.shields.io/pypi/pyversions/project_name?label=Python" alt="Supported Python Versions">
+  <a href="https://pypi.org/project/gitversioned/">
+    <img src="https://img.shields.io/pypi/pyversions/gitversioned?label=Python" alt="Supported Python Versions">
   </a>
   <br/>
   <!-- CI/CD & Build Status -->
-  <a href="https://github.com/{{organization}}/project_name/actions/workflows/main.yml">
-    <img src="https://github.com/{{organization}}/project_name/actions/workflows/main.yml/badge.svg" alt="CI Status">
+  <a href="https://github.com/markurtz/git-versioned/actions/workflows/main.yml">
+    <img src="https://github.com/markurtz/git-versioned/actions/workflows/main.yml/badge.svg" alt="CI Status">
   </a>
   <!-- Uncomment to display code coverage:
-  <a href="https://codecov.io/gh/{{organization}}/project_name">
-    <img src="https://codecov.io/gh/{{organization}}/project_name/branch/main/graph/badge.svg" alt="Coverage">
+  <a href="https://codecov.io/gh/markurtz/git-versioned">
+    <img src="https://codecov.io/gh/markurtz/git-versioned/branch/main/graph/badge.svg" alt="Coverage">
   </a>
   -->
   <br/>
   <!-- Issues & Support -->
-  <a href="https://github.com/{{organization}}/project_name/issues?q=is%3Aissue+is%3Aclosed">
-    <img src="https://img.shields.io/github/issues-closed/{{organization}}/project_name?label=Issues%20Closed" alt="Closed Issues">
+  <a href="https://github.com/markurtz/git-versioned/issues?q=is%3Aissue+is%3Aclosed">
+    <img src="https://img.shields.io/github/issues-closed/markurtz/git-versioned?label=Issues%20Closed" alt="Closed Issues">
   </a>
   <!-- Uncomment to display open issues:
-  <a href="https://github.com/{{organization}}/project_name/issues?q=is%3Aissue+is%3Aopen">
-    <img src="https://img.shields.io/github/issues/{{organization}}/project_name?label=Issues%20Open" alt="Open Issues">
+  <a href="https://github.com/markurtz/git-versioned/issues?q=is%3Aissue+is%3Aopen">
+    <img src="https://img.shields.io/github/issues/markurtz/git-versioned?label=Issues%20Open" alt="Open Issues">
   </a>
   -->
   <a href="https://opensource.org/licenses/Apache-2.0">
@@ -47,11 +47,10 @@
 </p>
 
 <p align="center">
-  <a href="https://{{organization}}.github.io/project_name">Documentation</a> |
-  <a href="https://blog.{{organization}}.org">Blog</a> |
-  <a href="https://github.com/{{organization}}/project_name/milestones">Roadmap</a> |
-  <a href="https://slack.{{organization}}.org">Slack</a> |
-  <a href="https://calendar.{{organization}}.org">Weekly Syncs</a>
+  <a href="https://markurtz.github.io/git-versioned">Documentation</a> |
+  <a href="https://github.com/markurtz/git-versioned/milestones">Roadmap</a> |
+  <a href="https://github.com/markurtz/git-versioned/issues">Issues</a> |
+  <a href="https://github.com/markurtz/git-versioned/discussions">Discussions</a>
 </p>
 
 ______________________________________________________________________
@@ -66,58 +65,45 @@ ______________________________________________________________________
   </picture>
 </p>
 
-Welcome to the project_name template repository! This template provides a robust foundation for building high-quality, scalable software projects. It includes standard directories, issue templates, CI/CD workflows, and comprehensive placeholder documentation.
+Welcome to GitVersioned!
 
-To use this template, simply find and replace all instances of `project_name` and `{{organization}}` with your actual project details, update the placeholder SVG images in `docs/assets/branding/`, and you are ready to start coding.
+GitVersioned is a tool that provides an opinionated, PEP 440-compliant Python versioning strategy for Git repositories and submodules. It enforces CI and user authority over versioning, and generates rich `version.py` files with deep metadata for full auditability.
 
-### Why Use project_name?
+### Why Use GitVersioned?
 
-- **Consistency:** Enforces a standardized layout and structure across your organization's repositories.
-- **Speed:** Bootstraps your project with pre-configured Actions, badges, and templates so you don't start from scratch.
-- **Best Practices:** Baked-in guides for contributing, security, and developer setup.
-
-### Comparisons
-
-When evaluating project_name against other templates, consider the following differences:
-
-| Feature            | project_name Template            | Standard GitHub Init | Cookiecutter / Copier      |
-| :----------------- | :------------------------------- | :------------------- | :------------------------- |
-| **Setup Speed**    | Very Fast                        | Fast                 | Slower (requires CLI tool) |
-| **Visual Assets**  | Pre-configured Light/Dark assets | None                 | Varies                     |
-| **CI/CD Built-in** | Yes (GitHub Actions)             | No                   | Optional                   |
-| **Complexity**     | Low (Find and Replace)           | None                 | Medium (Jinja templates)   |
+- **Auditability:** Deep metadata ensures every build is traceable back to its exact state.
+- **Predictability:** Simple, foolproof automation for generating versions.
+- **Native Support:** First-class support for modern build systems like Hatch and Setuptools.
 
 ## What's New
 
-**Welcome to the project_name Launch!**
+**Welcome to GitVersioned!**
 
-This project has just been instantiated from the template repository. Keep an eye on this section for future release highlights, new features, and community announcements!
-
-<!-- Once your project is active, replace the launch message above with links to your latest release notes or top 3 new features here. -->
+GitVersioned is currently under active development. Keep an eye on this section for future release highlights and new features once the initial implementation is complete.
 
 ## Quick Start
 
 ```bash
-pip install project_name
+pip install gitversioned
 ```
 
-For full installation options (from source, Docker, platform-specific notes) and step-by-step onboarding, see the **[Getting Started guide](https://%7B%7Borganization%7D%7D.github.io/%7B%7Bproject_name%7D%7D/getting-started/)**.
+For full installation options (from source, Docker, platform-specific notes) and step-by-step onboarding, see the **[Getting Started guide](https://markurtz.github.io/git-versioned/getting-started/)**.
 
 ## Core Concepts
 
-This project is built using modern Python tooling, ensuring a stable and typed foundation. It utilizes Pydantic for data validation and Ruff/Mypy for code quality.
+This project is built using modern Python tooling, ensuring a stable and typed foundation. It utilizes Ruff and Mypy for code quality.
 
 ### Component Architecture
 
-The template is organized into several key areas:
+The project is organized into several key areas:
 
-- `docs/`: Stores your documentation and branding assets.
-- `src/` (or your primary package directory): The core application logic.
-- `tests/`: Automated tests to ensure code quality.
+- `docs/`: Project documentation and guides.
+- `src/gitversioned`: The core application logic and versioning handlers.
+- `tests/`: Automated test suite ensuring correctness and reliability.
 
 ## Advanced Usage
 
-Please check the [`docs/examples/`](docs/examples/) directory for advanced examples and configurations.
+Please check the [`examples/`](examples/) directory for advanced examples and configurations.
 
 ## General
 
@@ -144,15 +130,13 @@ This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE
 
 ### Citations
 
-If you use this template or the resulting software in your research, please cite it using the following BibTeX entry:
+If you use this software in your research, please cite it using the following BibTeX entry:
 
 ```bibtex
-@software{project_name,
-  author = {{{organization}}},
-  title = {project_name},
-  version = {{{version}}},
-  month = {{{month}}},
+@software{gitversioned,
+  author = {Mark Kurtz},
+  title = {gitversioned},
   year = {2026},
-  url = {https://github.com/{{organization}}/project_name}
+  url = {https://github.com/markurtz/git-versioned}
 }
 ```

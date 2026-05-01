@@ -1,6 +1,6 @@
 # Installation
 
-This page covers all supported installation methods for `{{ project_name }}`.
+This page covers all supported installation methods for `gitversioned`.
 
 ## Requirements
 
@@ -15,10 +15,10 @@ Before installing, ensure your system meets the following prerequisites:
 
 ## Standard Installation
 
-The recommended way to install `{{ project_name }}` for most users:
+The recommended way to install `gitversioned` for most users:
 
 ```bash
-pip install project_name
+pip install gitversioned
 ```
 
 ### Verify the Installation
@@ -26,13 +26,13 @@ pip install project_name
 After installation, confirm it is working correctly:
 
 ```bash
-{{ project_name }} --version
+gitversioned --version
 ```
 
 You should see output similar to:
 
 ```console
-{{ project_name }} 0.1.0
+gitversioned 0.1.0
 ```
 
 ## Install from Source
@@ -40,8 +40,8 @@ You should see output similar to:
 To install the latest unreleased code directly from the repository:
 
 ```bash
-git clone https://github.com/{{ org_name }}/{{ project_name }}.git
-cd {{ project_name }}
+git clone https://github.com/markurtz/git-versioned.git
+cd git-versioned
 
 # Install dependencies for development
 # If you are using hatch (recommended):
@@ -61,10 +61,10 @@ A pre-built Docker image is available for containerized environments:
 
 ```bash
 # Pull the latest image
-docker pull ghcr.io/{{ org_name }}/{{ project_name }}:latest
+docker pull ghcr.io/markurtz/git-versioned:latest
 
 # Run a one-off command
-docker run --rm ghcr.io/{{ org_name }}/{{ project_name }}:latest {{ project_name }} --version
+docker run --rm ghcr.io/markurtz/git-versioned:latest gitversioned --version
 ```
 
 For a persistent, volume-mounted setup using Docker Compose, see the `docker-compose.yml` in the root of the repository.
@@ -94,22 +94,22 @@ Ensure Python is added to your PATH during the Windows installer setup.
 To upgrade an existing installation to the latest release:
 
 ```bash
-pip install --upgrade project_name
+pip install --upgrade gitversioned
 ```
 
 ## Uninstalling
 
 ```bash
-pip uninstall project_name
+pip uninstall gitversioned
 ```
 
 ## Troubleshooting
 
-| Problem                                 | Solution                                                          |
-| :-------------------------------------- | :---------------------------------------------------------------- |
-| `command not found: {{ project_name }}` | Ensure the binaries directory is on your `$PATH`.                 |
-| Import errors after install             | Ensure you have the latest version installed.                     |
-| Version conflicts                       | Isolate your dependencies using your language's recommended tool. |
+| Problem                           | Solution                                                          |
+| :-------------------------------- | :---------------------------------------------------------------- |
+| `command not found: gitversioned` | Ensure the binaries directory is on your `$PATH`.                 |
+| Import errors after install       | Ensure you have the latest version installed.                     |
+| Version conflicts                 | Isolate your dependencies using your language's recommended tool. |
 
 If you continue to experience issues, please visit our [Support page](../community/support.md).
 

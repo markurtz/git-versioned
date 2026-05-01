@@ -1,6 +1,6 @@
 ---
 name: 🐛 Bug Report
-description: Create a report to help us improve project_name
+description: Create a report to help us improve gitversioned
 labels:
   - "bug"
   - "triage"
@@ -8,10 +8,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug to `project_name`!
+        Thanks for taking the time to report a bug to `gitversioned`!
         > [!IMPORTANT]
         > If you have found a **security vulnerability**, please refer to our [Security Policy](../SECURITY.md) and do not open a public issue.
-        For general help and Q&A, please use [GitHub Discussions](https://github.com/{{organization}}/project_name/discussions) instead.
+        For general help and Q&A, please use [GitHub Discussions](https://github.com/markurtz/git-versioned/discussions) instead.
   - type: checkboxes
     id: checks
     attributes:
@@ -19,10 +19,10 @@ body:
       description: Please confirm that you have checked the following before submitting your
         bug report.
       options:
-        - label: I have searched the [existing issues](https://github.com/{{organization}}/project_name/issues)
+        - label: I have searched the [existing issues](https://github.com/markurtz/git-versioned/issues)
             and could not find a similar bug.
           required: true
-        - label: I have read the [Official Documentation](https://{{organization}}.github.io/project_name).
+        - label: I have read the [Official Documentation](https://markurtz.github.io/git-versioned).
           required: true
   - type: textarea
     id: description
@@ -60,7 +60,7 @@ body:
       value: |
         - OS (e.g., Linux, macOS, Windows):
         - Language Version (e.g., Python 3.10):
-        - `project_name` Version:
+        - `gitversioned` Version:
         - Other relevant dependency versions:
     validations:
       required: true

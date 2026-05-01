@@ -1,6 +1,6 @@
 ---
 # ---------------------------------------------------------
-# project_name Docker Compose
+# GitVersioned Docker Compose
 # Licensed under the Apache License, Version 2.0
 # ---------------------------------------------------------
 services:
@@ -19,7 +19,7 @@ services:
     command:
       - "python"
       - "-m"
-      - "project_name"
+      - "gitversioned"
 
   # Standard Database Profile
   # Use `docker-compose --profile db up` to start this service
@@ -32,7 +32,7 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER:-admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
-      POSTGRES_DB: ${DB_NAME:-project_name_dev}
+      POSTGRES_DB: ${DB_NAME:-gitversioned_dev}
     volumes:
       - db_data:/var/lib/postgresql/data
 volumes:
