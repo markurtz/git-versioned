@@ -27,10 +27,12 @@ except ImportError:
         DistutilsSetupError = Exception  # type: ignore
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from packaging.utils import canonicalize_name
-from setuptools import Distribution
+
+if TYPE_CHECKING:
+    from setuptools import Distribution
 
 from gitversioned.logging import configure_logger, logger
 from gitversioned.settings import Settings
