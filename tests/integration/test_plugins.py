@@ -32,6 +32,7 @@ class MockSetuptoolsDistribution:
         return self._mock_name if self._mock_name is not None else "test_pkg"
 
 
+@pytest.mark.smoke
 @pytest.mark.sanity
 class TestGitVersionedVersionSource:
     @pytest.mark.parametrize(
@@ -75,6 +76,7 @@ class TestGitVersionedVersionSource:
         assert version_data["version"].startswith(expected_version_prefix)
 
 
+@pytest.mark.smoke
 @pytest.mark.sanity
 class TestFinalizeDistributionOptions:
     @pytest.mark.parametrize(
@@ -153,6 +155,7 @@ class TestFinalizeDistributionOptions:
         assert dist.metadata.version.startswith("2.0")
 
 
+@pytest.mark.smoke
 @pytest.mark.sanity
 class TestSetupKeywords:
     def test_invocation(self) -> None:

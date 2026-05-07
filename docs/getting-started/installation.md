@@ -43,8 +43,6 @@ dynamic = ["version"]
 ```
 ````
 
-
-
 ## Standard Installation
 
 To install the core GitVersioned package, use `pip` or `uv`:

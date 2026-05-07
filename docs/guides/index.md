@@ -46,8 +46,6 @@ This section contains task-oriented how-to guides for `gitversioned`. Unlike the
 
   [:octicons-arrow-right-24: Concepts Guide](concepts.md)
 
-
-
 </div>
 
 !!! tip "Contributing a Guide"

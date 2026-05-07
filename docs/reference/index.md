@@ -1,4 +1,5 @@
 # Reference
+
 The Reference section contains the complete technical documentation for GitVersioned — API classes and configuration options. This is the section to bookmark when you need to look something up.
 
 ## In This Section
@@ -59,5 +60,3 @@ This project is pre-configured to work with [`mkdocstrings`](https://mkdocstring
 
 1. The plugin and its Python handler are already managed by Hatch in the `docs` environment (`mkdocstrings[python]`).
 1. Configure `mkdocs.yml` according to your language handler and create your reference pages.
-
-

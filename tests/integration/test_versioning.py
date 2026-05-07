@@ -8,6 +8,7 @@ from gitversioned.versioning import resolve_version
 from tests.integration.conftest import GitRepoHelper
 
 
+@pytest.mark.smoke
 @pytest.mark.sanity
 class TestResolveVersion:
     @pytest.mark.parametrize(

@@ -2,8 +2,6 @@
 
 This page walks through the most common end-to-end usage patterns for `gitversioned`. Each workflow is a self-contained user story — pick the one that matches your use case.
 
-
-
 ## Workflow 1 — CI/CD Integration
 
 **Goal:** Integrate `gitversioned` into a GitHub Actions pipeline.
