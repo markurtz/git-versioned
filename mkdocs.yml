@@ -82,32 +82,22 @@ markdown_extensions:
   - toc:
       permalink: true
 plugins:
-  - search
   - macros
+  - mike
+  - minify:
+      minify_html: true
+  - mkdocs-nav-weight
   - mkdocstrings:
       handlers:
         python:
           paths:
             - src
-nav:
-  - Home: index.md
-  - Getting Started:
-      - getting-started/index.md
-      - Installation: getting-started/installation.md
-      - Quick Start: getting-started/quickstart.md
-      - Workflows: getting-started/workflows.md
-  - Guides: guides/index.md
-  - Examples: examples/index.md
-  - Reference:
-      - reference/index.md
-  - Community:
-      - community/index.md
-      - Contributing: community/contributing.md
-      - Developer Setup: community/developing.md
-      - AI Agent Guide: community/agents.md
-      - Code of Conduct: community/code-of-conduct.md
-      - Security Policy: community/security.md
-      - Support: community/support.md
+          options:
+            docstring_style: sphinx
+  - search
+  - section-index
+  - social
+  - tags
 extra_css:
   - stylesheets/extra.css
 extra_javascript:

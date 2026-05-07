@@ -77,8 +77,31 @@ hide:
 
 ## Quick Install
 
+### 1. Build Configuration (Core Workflow)
+
+GitVersioned is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "gitversioned"
+```
+
+*(See the [Installation Guide](getting-started/installation.md) for Setuptools and `setup.py` alternatives).*
+
+### 2. Installation
+
+To install the standalone CLI for local generation, use `pip` (or `uv`):
+
 ```bash
+# Standard installation
 pip install gitversioned
+
+# Alternative using uv
+uv pip install gitversioned
 ```
 
 For advanced installation options (from source, Docker, etc.) see the [Installation Guide](getting-started/installation.md).

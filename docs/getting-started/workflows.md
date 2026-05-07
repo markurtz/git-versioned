@@ -81,6 +81,7 @@ jobs:
 
       - name: Install gitversioned
         run: |
+          # Or optionally using uv: uv pip install gitversioned
           pip install gitversioned
 
       - name: Generate version metadata

@@ -26,22 +26,13 @@
   <a href="https://github.com/markurtz/git-versioned/actions/workflows/main.yml">
     <img src="https://github.com/markurtz/git-versioned/actions/workflows/main.yml/badge.svg" alt="CI Status">
   </a>
-  <!-- Uncomment to display code coverage:
-  <a href="https://codecov.io/gh/markurtz/git-versioned">
-    <img src="https://codecov.io/gh/markurtz/git-versioned/branch/main/graph/badge.svg" alt="Coverage">
-  </a>
-  -->
   <br/>
   <!-- Issues & Support -->
-  <a href="https://github.com/markurtz/git-versioned/issues?q=is%3Aissue+is%3Aclosed">
-    <img src="https://img.shields.io/github/issues-closed/markurtz/git-versioned?label=Issues%20Closed" alt="Closed Issues">
-  </a>
-  <!-- Uncomment to display open issues:
   <a href="https://github.com/markurtz/git-versioned/issues?q=is%3Aissue+is%3Aopen">
     <img src="https://img.shields.io/github/issues/markurtz/git-versioned?label=Issues%20Open" alt="Open Issues">
   </a>
-  -->
-  <a href="https://opensource.org/licenses/Apache-2.0">
+
+<a href="https://opensource.org/licenses/Apache-2.0">
     <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License">
   </a>
 </p>
@@ -83,8 +74,31 @@ GitVersioned is currently under active development. Keep an eye on this section 
 
 ## Quick Start
 
+### 1. Build Configuration (Core Workflow)
+
+GitVersioned is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "gitversioned"
+```
+
+*(See the [Installation Guide](https://markurtz.github.io/git-versioned/getting-started/installation/) for Setuptools and `setup.py` alternatives).*
+
+### 2. Installation
+
+To install the standalone CLI for local generation, use `pip` (or `uv`):
+
 ```bash
+# Standard installation
 pip install gitversioned
+
+# Alternative using uv
+uv pip install gitversioned
 ```
 
 For full installation options (from source, Docker, platform-specific notes) and step-by-step onboarding, see the **[Getting Started guide](https://markurtz.github.io/git-versioned/getting-started/)**.

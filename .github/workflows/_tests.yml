@@ -92,13 +92,13 @@ jobs:
           fi
           if [[ -z "$TYPES" ]] || [[ "$TYPES" == *"smoke"* && "$TYPES" == *"sanity"* && "$TYPES" == *"regression"* ]]; then
             if [ "$GENERATE_COVERAGE" == "true" ]; then
-              hatch run test:cov-${{ matrix.test-config.level }} --cov-report=xml:coverage/coverage.xml --cov-report=html:coverage/htmlcov --junitxml=reports/test-report.xml
+              hatch run test:${{ matrix.test-config.level }}-cov --cov-report=xml:coverage/coverage.xml --cov-report=html:coverage/htmlcov --junitxml=reports/test-report.xml
             else
               hatch run test:${{ matrix.test-config.level }} --junitxml=reports/test-report.xml
             fi
           else
             if [ "$GENERATE_COVERAGE" == "true" ]; then
-              hatch run test:cov-${{ matrix.test-config.level }} -m "$MARKERS" --cov-report=xml:coverage/coverage.xml --cov-report=html:coverage/htmlcov --junitxml=reports/test-report.xml
+              hatch run test:${{ matrix.test-config.level }}-cov -m "$MARKERS" --cov-report=xml:coverage/coverage.xml --cov-report=html:coverage/htmlcov --junitxml=reports/test-report.xml
             else
               hatch run test:${{ matrix.test-config.level }} -m "$MARKERS" --junitxml=reports/test-report.xml
             fi

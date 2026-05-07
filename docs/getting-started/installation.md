@@ -6,20 +6,84 @@ This page covers all supported installation methods for `gitversioned`.
 
 Before installing, ensure your system meets the following prerequisites:
 
-| Requirement         | Minimum Version | Notes                                 |
-| :------------------ | :-------------- | :------------------------------------ |
-| **Python**          | 3.10+           | Required for all installation methods |
-| **Package Manager** | pip or Hatch    | Required for dependencies             |
-| **Git**             | 2.x             | Required for source installs          |
-| **Docker**          | 24.x            | Optional — for containerized installs |
+| Requirement         | Minimum Version   | Notes                                 |
+| :------------------ | :---------------- | :------------------------------------ |
+| **Python**          | 3.10+             | Required for all installation methods |
+| **Package Manager** | pip, uv, or Hatch | Required for dependencies             |
+| **Git**             | 2.x               | Required for source installs          |
+| **Docker**          | 24.x              | Optional — for containerized installs |
+
+## Build Setup (Core Workflow)
+
+`gitversioned` is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml` utilizing Hatchling or Setuptools.
+
+=== "Hatchling (Preferred)"
+
+````
+```toml
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "gitversioned"
+```
+````
+
+=== "Setuptools (pyproject.toml)"
+
+````
+```toml
+[build-system]
+requires = ["setuptools>=61.0", "gitversioned"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+```
+````
+
+=== "Setuptools (setup.py)"
+
+````
+```python
+from setuptools import setup
+
+setup(
+    setup_requires=["gitversioned"],
+    # ...
+)
+```
+````
+
+=== "Setuptools (setup.cfg)"
+
+````
+```ini
+[options]
+setup_requires = gitversioned
+```
+````
 
 ## Standard Installation
 
-The recommended way to install `gitversioned` for most users:
+To install the standalone CLI for local generation, use `pip` or `uv`:
 
+=== "pip (Standard)"
+
+````
 ```bash
 pip install gitversioned
 ```
+````
+
+=== "uv (Alternative)"
+
+````
+```bash
+uv pip install gitversioned
+```
+````
 
 ### Verify the Installation
 
@@ -37,19 +101,17 @@ gitversioned 0.1.0
 
 ## Install from Source
 
-To install the latest unreleased code directly from the repository:
+To install the latest unreleased code directly from the repository and set up a local development environment:
 
 ```bash
 git clone https://github.com/markurtz/git-versioned.git
 cd git-versioned
 
-# Install dependencies for development
-# If you are using hatch (recommended):
-pipx install hatch
-hatch shell
+# Sync the development environment (installs all groups and extras)
+uv sync --all-groups --all-extras
 
-# Or using pip directly:
-pip install -e .
+# Or, optionally install specific groups/extras:
+uv sync --group dev --extra some_extra
 ```
 
 > [!TIP]
@@ -74,7 +136,7 @@ For a persistent, volume-mounted setup using Docker Compose, see the `docker-com
 === "macOS"
 
 ```
-Python and `pip` or `hatch` work seamlessly on macOS. We recommend using `brew install python` if you need a base Python environment.
+Python, `pip`, and `uv` work seamlessly on macOS. We recommend using `brew install uv` to get started.
 ```
 
 === "Linux"
@@ -93,15 +155,39 @@ Ensure Python is added to your PATH during the Windows installer setup.
 
 To upgrade an existing installation to the latest release:
 
+=== "pip"
+
+````
 ```bash
 pip install --upgrade gitversioned
 ```
+````
+
+=== "uv"
+
+````
+```bash
+uv pip install --upgrade gitversioned
+```
+````
 
 ## Uninstalling
 
+=== "pip"
+
+````
 ```bash
 pip uninstall gitversioned
 ```
+````
+
+=== "uv"
+
+````
+```bash
+uv pip uninstall gitversioned
+```
+````
 
 ## Troubleshooting
 

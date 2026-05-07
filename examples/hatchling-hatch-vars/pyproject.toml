@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling", "gitversioned @ file:///Users/markkurtz/code/github/markurtz/git-versioned"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hatchling_hatch_vars"
+dynamic = ["version"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hatchling_hatch_vars"]
+
+[tool.hatch.version]
+source = "gitversioned"
+version_source = "tags"
+build_metadata_enabled = true

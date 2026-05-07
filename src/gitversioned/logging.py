@@ -1,0 +1,203 @@
+"""
+Loguru-based logging configuration and environment settings for GitVersioned.
+
+This module provides a unified interface for configuring application-level logging
+using loguru and Pydantic settings. It handles dynamic OpenTelemetry formatting,
+sink resolution, and configurable log levels to ensure consistent telemetry
+across the codebase and build environments.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from collections.abc import Callable
+from typing import Any, ClassVar, Literal
+
+from loguru import logger
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from gitversioned.compat import opentelemetry_trace
+
+__all__ = ["LoggingSettings", "configure_logger", "logger"]
+
+
+class LoggingSettings(BaseSettings):
+    """
+    Settings model for configuring the loguru logging infrastructure.
+
+    This Pydantic model loads configuration from environment variables prefixed
+    with ``GITVERSIONED__LOGGING__`` and provides typed fields for controlling
+    log output, formatting, and OpenTelemetry integration.
+
+    Example:
+        .. code-block:: python
+
+            from gitversioned.logging import LoggingSettings, configure_logger
+
+            settings = LoggingSettings(enabled=True, level="DEBUG")
+            configure_logger(settings)
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "Whether to enable GitVersioned loguru logging across the application."
+        ),
+    )
+    clear_loggers: bool = Field(
+        default=False,
+        description=(
+            "If true, removes all existing loguru handlers before configuring new ones."
+        ),
+    )
+    sink: str | Any = Field(
+        default=sys.stdout,
+        description=(
+            "The output sink for log messages. Can be an object or string "
+            "alias ('stdout')."
+        ),
+    )
+    level: str = Field(
+        default="INFO",
+        description="The minimum severity level for emitted log messages.",
+    )
+    otel_formatting: Literal["auto", "enable", "disable"] = Field(
+        default="auto",
+        description=(
+            "Controls OpenTelemetry JSON formatting. 'auto' enables it if "
+            "otel is installed."
+        ),
+    )
+    format: str | Callable[..., Any] | None = Field(
+        default="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>\n",
+        description=(
+            "The log format string or function to use when otel formatting is disabled."
+        ),
+    )
+    filter: Any = Field(
+        default=True,
+        description=(
+            "Filters log records. Defaults to True to filter by the "
+            "'gitversioned' prefix."
+        ),
+    )
+    enqueue: bool = Field(
+        default=True,
+        description="Whether to enable thread-safe asynchronous logging.",
+    )
+    kwargs: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Additional keyword arguments to pass directly to loguru's add() method."
+        ),
+    )
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_prefix="GITVERSIONED__LOGGING__",
+        env_nested_delimiter="__",
+    )
+    """Pydantic configuration dict dictating environment variable prefixes."""
+
+    @field_validator("sink", mode="before")
+    @classmethod
+    def _parse_sink(cls, value: Any) -> Any:
+        """Convert string aliases for stdout/stderr to actual objects."""
+        if isinstance(value, str):
+            mapping = {
+                "stdout": sys.stdout,
+                "sys.stdout": sys.stdout,
+                "stderr": sys.stderr,
+                "sys.stderr": sys.stderr,
+            }
+            return mapping.get(value.lower(), value)
+        return value
+
+
+def _otel_formatter(record: dict[str, Any]) -> str:
+    """Format the log record as an OpenTelemetry compliant JSON string."""
+    trace_id = span_id = None
+
+    if opentelemetry_trace:
+        span = opentelemetry_trace.get_current_span()
+        context = span.get_span_context()
+        if context.is_valid:
+            trace_id = format(context.trace_id, "032x")
+            span_id = format(context.span_id, "016x")
+
+    log_record = {
+        "timestamp": record["time"].isoformat(),
+        "severity_text": record["level"].name,
+        "body": record["message"],
+        "resource": {"service.name": "gitversioned"},
+        "attributes": {
+            "module": record["name"],
+            "function": record["function"],
+            "line": record["line"],
+            **record["extra"],
+        },
+    }
+
+    if trace_id:
+        log_record.update({"trace_id": trace_id, "span_id": span_id})
+
+    return json.dumps(log_record) + "\n"
+
+
+def configure_logger(settings: LoggingSettings | None = None) -> None:
+    """
+    Initializes the loguru logger with the provided settings or from the environment.
+
+    This function configures the global loguru logger instance based on the provided
+    ``LoggingSettings``. It handles enabling/disabling the logger, managing sinks,
+    and injecting the appropriate formatter (including OpenTelemetry).
+
+    Example:
+        .. code-block:: python
+
+            from gitversioned.logging import configure_logger, LoggingSettings
+
+            configure_logger(LoggingSettings(level="DEBUG"))
+
+    :param settings: An optional instance of ``LoggingSettings``. If not provided,
+                     settings are automatically loaded from the environment.
+    :return: None
+    :raises ImportError: If OpenTelemetry formatting is explicitly enabled but the
+                         package is not installed.
+    """
+    settings = settings or LoggingSettings()
+
+    if not settings.enabled:
+        logger.disable("gitversioned")
+        return
+
+    logger.enable("gitversioned")
+
+    if settings.clear_loggers:
+        logger.remove()
+
+    use_otel = settings.otel_formatting == "enable" or (
+        settings.otel_formatting == "auto" and opentelemetry_trace is not None
+    )
+    if settings.otel_formatting == "enable" and opentelemetry_trace is None:
+        raise ImportError(
+            "OpenTelemetry is not installed but 'otel_formatting' was set to 'enable'."
+        )
+
+    log_format = _otel_formatter if use_otel else settings.format
+    filter_key = "gitversioned" if settings.filter is True else settings.filter
+
+    logger.add(
+        settings.sink,  # type: ignore[arg-type]
+        level=settings.level,
+        filter=(
+            None
+            if not filter_key
+            else lambda rec: bool(rec["name"] and rec["name"].startswith(filter_key))
+        ),
+        format=log_format,  # type: ignore[arg-type]
+        enqueue=settings.enqueue,
+        **settings.kwargs,
+    )

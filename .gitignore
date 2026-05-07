@@ -51,10 +51,10 @@ cmake-build-*/
 
 # VS Code / Cursor
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
 *.code-workspace
 .history/
 .cursor/

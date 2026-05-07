@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0", "gitversioned @ file:///Users/markkurtz/code/github/markurtz/git-versioned"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "setuptools_version_commits"
+dynamic = ["version"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.gitversioned]
+version_source = "commits"

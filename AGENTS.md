@@ -29,7 +29,7 @@
 
 - **Linting:** `hatch run lint:check` (Ruff & mdformat) and `hatch run types:check` (Mypy)
 - **Pre-commit:** `pre-commit run --all-files` (Runs formatting and quality checks)
-- **Testing:** `hatch run test:all` (Pytest) and `hatch run test:cov-all` (Coverage)
+- **Testing:** `hatch run test:all` (Pytest) and `hatch run test:all-cov` (Coverage)
 - **Docs:** `hatch run docs:serve` / `hatch run docs:build`
 - **Build:** `hatch build`
 

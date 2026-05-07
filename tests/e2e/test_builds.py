@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import ast
+import datetime
+import os
 import subprocess
-import sys
+import tarfile
 import zipfile
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 import pytest
@@ -11,149 +13,319 @@ import pytest
 from tests.integration.conftest import GitRepoHelper
 
 
-def _write_hatch_config(repo: GitRepoHelper) -> None:
-    pkg_dir = repo.path / "src" / "test_pkg"
-    pkg_dir.mkdir(parents=True, exist_ok=True)
-    (pkg_dir / "__init__.py").touch()
-    (repo.path / "version.txt").write_text("0.1.0")
-    pyproject_path = repo.path / "pyproject.toml"
-    
-    # Get the project root of gitversioned
-    project_root = Path(__file__).resolve().parent.parent.parent
-    
-    pyproject_path.write_text(
-        f"""[build-system]
-requires = ["hatchling", "gitversioned @ file://{project_root}"]
+def get_version_function() -> str:
+    return "1.4.5"
+
+
+class BuildTestHelper(ABC):
+    @classmethod
+    def setup_base_repo(
+        cls,
+        repo: GitRepoHelper,
+        pyproject_content: str,
+        package_name: str = "test_pkg",
+        package_version: str = "1.2.3",
+        source_dirs: list[str] | None = None,
+        include_version_txt: bool = False,
+        commit: str | None = None,
+        tag: str | None = None,
+        branch: str | None = None,
+        dirty: bool = False,
+    ) -> Path:
+        # Create pyproject.toml
+        pyproject_content = pyproject_content.format(
+            PACKAGE=package_name,
+            VERSION=package_version,
+            ROOT=Path(__file__).resolve().parent.parent.parent,
+        )
+        (repo.path / "pyproject.toml").write_text(pyproject_content, encoding="utf-8")
+        repo.add("pyproject.toml")
+
+        # Create package directory structure
+        if source_dirs is None:
+            source_dirs = ["src", "{PACKAGE}"]
+        package_path: Path = repo.path
+        for src_dir in source_dirs:
+            package_path = package_path / src_dir.format(PACKAGE=package_name)
+        package_path.mkdir(parents=True, exist_ok=True)
+
+        # Create .gitignore
+        (repo.path / ".gitignore").write_text("dist/*\n")
+        repo.add(".gitignore")
+
+        # Create package source files
+        (package_path / "__init__.py").write_text("from .version import __version__\n")
+        repo.add(str(package_path / "__init__.py"))
+
+        if include_version_txt:
+            (package_path / "version.txt").write_text(f"version={package_version}")
+            repo.add(str(package_path / "version.txt"))
+
+        # Setup git repo
+        repo.commit("Initial commit")
+        if branch:
+            repo.branch(branch.format(PACKAGE=package_name, VERSION=package_version))
+        if commit:
+            (package_path / "extra.py").write_text("extra=True")
+            repo.add(str(package_path / "extra.py"))
+            repo.commit(commit.format(PACKAGE=package_name, VERSION=package_version))
+        if tag:
+            repo.tag(tag.format(PACKAGE=package_name, VERSION=package_version))
+        if dirty:
+            repo.dirty()
+
+        return package_path
+
+    @classmethod
+    def get_version_from_artifacts(
+        cls, repo_path: Path, package_name: str = "test_pkg"
+    ):
+        dist_dir = repo_path / "dist"
+        wheels = list(dist_dir.glob("*.whl"))
+        sdists = list(dist_dir.glob("*.tar.gz"))
+
+        assert len(wheels) == 1, f"Expected 1 wheel, found {len(wheels)}"
+        assert len(sdists) == 1, f"Expected 1 sdist, found {len(sdists)}"
+
+        wheel_name = wheels[0].name
+        sdist_name = sdists[0].name
+
+        # Filename example: test_pkg-1.2.3-py2.py3-none-any.whl
+        wheel_version = wheel_name.split("-")[1]
+        assert wheel_version in sdist_name, (
+            f"Version mismatch: wheel={wheel_version}, sdist={sdist_name}"
+        )
+
+        with zipfile.ZipFile(wheels[0]) as zf:
+            version_file = f"{package_name}/version.py"
+            assert version_file in zf.namelist(), f"Expected {version_file} in wheel"
+            content = zf.read(version_file).decode("utf-8")
+            assert wheel_version in content, (
+                f"Expected {wheel_version} in wheel {version_file}"
+            )
+
+        with tarfile.open(sdists[0]) as tf:
+            sdist_pkg_dir = sdist_name.replace(".tar.gz", "")
+            version_file = f"{sdist_pkg_dir}/src/{package_name}/version.py"
+            names = tf.getnames()
+            if version_file not in names:
+                version_file = f"{sdist_pkg_dir}/{package_name}/version.py"
+            assert version_file in names, f"Expected {version_file} in sdist"
+            f = tf.extractfile(version_file)
+            assert f is not None
+            content = f.read().decode("utf-8")
+            assert wheel_version in content, (
+                f"Expected {wheel_version} in sdist {version_file}"
+            )
+
+        return wheel_version
+
+    @pytest.mark.smoke
+    def test_smoke_build(self, e2e_git_repo: GitRepoHelper) -> None:
+        """Smoke test for building a wheel with hatchling."""
+        pyproject_content = self.pyproject_content()
+        self.setup_base_repo(
+            e2e_git_repo, pyproject_content=pyproject_content, tag="{VERSION}"
+        )
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == "1.2.3"
+
+    @pytest.mark.sanity
+    def test_version_source_file(self, e2e_git_repo: GitRepoHelper) -> None:
+        pyproject_content = self.pyproject_content() + 'source_type = "file"'
+        self.setup_base_repo(
+            e2e_git_repo,
+            pyproject_content=pyproject_content,
+            package_version="4.5.6",
+            include_version_txt=True,
+        )
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == "4.5.6"
+
+    @pytest.mark.sanity
+    def test_version_source_tag(self, e2e_git_repo: GitRepoHelper) -> None:
+        pyproject_content = self.pyproject_content() + 'source_type = "tag"'
+        self.setup_base_repo(
+            e2e_git_repo,
+            pyproject_content=pyproject_content,
+            tag="v7.8.9",
+        )
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == "7.8.9"
+
+    @pytest.mark.sanity
+    def test_version_source_branch(self, e2e_git_repo: GitRepoHelper) -> None:
+        pyproject_content = self.pyproject_content() + 'source_type = "branch"'
+        self.setup_base_repo(
+            e2e_git_repo,
+            pyproject_content=pyproject_content,
+            branch="v2.1.0",
+        )
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == "2.1.0"
+
+    @pytest.mark.sanity
+    def test_version_source_commit(self, e2e_git_repo: GitRepoHelper) -> None:
+        pyproject_content = self.pyproject_content() + 'source_type = "commit"'
+        self.setup_base_repo(
+            e2e_git_repo,
+            pyproject_content=pyproject_content,
+            commit="Release v3.0.0",
+        )
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == "3.0.0"
+
+    @pytest.mark.regression
+    def test_config_version(self, e2e_git_repo: GitRepoHelper) -> None:
+        pyproject_content = self.pyproject_content() + 'version = "6.6.6"'
+        self.setup_base_repo(e2e_git_repo, pyproject_content=pyproject_content)
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == "6.6.6"
+
+    @pytest.mark.regression
+    def test_tool_table_config(self, e2e_git_repo: GitRepoHelper) -> None:
+        pyproject_content = (
+            self.pyproject_content() + "[tool.gitversioned]\n" + 'version = "5.5.5"'
+        )
+        self.setup_base_repo(e2e_git_repo, pyproject_content=pyproject_content)
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == "5.5.5"
+
+    @pytest.mark.parametrize(
+        ("version_type", "expected_suffix", "extra_commit"),
+        [
+            ("auto", "", False),
+            (
+                "auto",
+                f".dev{datetime.date.today().strftime('%Y%m%d')}+" + "{SHORT_SHA}",
+                True,
+            ),
+            ("release", "", True),
+            ("release", "", False),
+            (
+                "dev",
+                f".dev{datetime.date.today().strftime('%Y%m%d')}+" + "{SHORT_SHA}",
+                True,
+            ),
+            (
+                "dev",
+                f".dev{datetime.date.today().strftime('%Y%m%d')}+" + "{SHORT_SHA}",
+                False,
+            ),
+            ("pre", f"a{datetime.date.today().strftime('%Y%m%d')}", True),
+            ("alpha", f"a{datetime.date.today().strftime('%Y%m%d')}", True),
+            ("nightly", f"a{datetime.date.today().strftime('%Y%m%d')}", True),
+            ("post", ".post0", False),
+            ("post", ".post1", True),
+        ],
+    )
+    @pytest.mark.regression
+    def test_settings_formats_and_types(
+        self,
+        e2e_git_repo: GitRepoHelper,
+        version_type: str,
+        expected_suffix: str,
+        extra_commit: bool,
+    ):
+        pyproject_content = (
+            self.pyproject_content() + f'version_type = "{version_type}"\n'
+        )
+        package_path = self.setup_base_repo(
+            e2e_git_repo,
+            pyproject_content=pyproject_content,
+            tag="v1.2.3",
+            commit="fix: something",
+        )
+        expected_suffix = expected_suffix.format(SHORT_SHA=e2e_git_repo.short_sha)
+
+        if extra_commit:
+            (package_path / "dummy_file.txt").write_text("content")
+            e2e_git_repo.add(str(package_path / "dummy_file.txt"))
+            e2e_git_repo.commit("add dummy_file.txt")
+
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == f"1.2.3{expected_suffix}"
+
+    @classmethod
+    @abstractmethod
+    def run_build(cls, repo: GitRepoHelper):
+        pass
+
+    @classmethod
+    @abstractmethod
+    def pyproject_content(cls) -> str:
+        pass
+
+
+class TestHatchlingBuilds(BuildTestHelper):
+    @classmethod
+    def run_build(cls, repo: GitRepoHelper):
+        env = os.environ.copy()
+        # Remove Hatch's tracking variables to avoid "Unknown environment" errors
+        env.pop("HATCH_ENV", None)
+        env.pop("HATCH_ENV_ACTIVE", None)
+        result = subprocess.run(
+            ["hatch", "build"],
+            cwd=str(repo.path),
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+        assert result.returncode == 0, f"Build failed: {result.stdout}\n{result.stderr}"
+
+    @classmethod
+    def pyproject_content(cls) -> str:
+        return """[build-system]
+requires = ["hatchling", "gitversioned @ file://{ROOT}"]
 build-backend = "hatchling.build"
 
 [project]
-name = "test_pkg"
+name = "{PACKAGE}"
 dynamic = ["version"]
 
 [tool.hatch.version]
 source = "gitversioned"
-""",
-        encoding="utf-8",
-    )
+"""
 
 
-def _write_setuptools_config(repo: GitRepoHelper) -> None:
-    pkg_dir = repo.path / "src" / "test_pkg"
-    pkg_dir.mkdir(parents=True, exist_ok=True)
-    (pkg_dir / "__init__.py").touch()
-    (repo.path / "version.txt").write_text("0.1.0")
-    pyproject_path = repo.path / "pyproject.toml"
-    
-    # Get the project root of gitversioned
-    project_root = Path(__file__).resolve().parent.parent.parent
-    
-    pyproject_path.write_text(
-        f"""[build-system]
-requires = ["setuptools>=61.0.0", "wheel", "gitversioned @ file://{project_root}"]
+class TestSetuptoolsBuilds(BuildTestHelper):
+    @classmethod
+    def run_build(cls, repo: GitRepoHelper):
+        env = os.environ.copy()
+        # Remove Hatch's tracking variables to avoid "Unknown environment" errors
+        env.pop("HATCH_ENV", None)
+        env.pop("HATCH_ENV_ACTIVE", None)
+        result = subprocess.run(
+            ["python", "-m", "build"],
+            cwd=str(repo.path),
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+        assert result.returncode == 0, f"Build failed: {result.stdout}\n{result.stderr}"
+
+    @classmethod
+    def pyproject_content(cls) -> str:
+        return """[build-system]
+requires = ["setuptools>=61.0", "wheel", "gitversioned @ file://{ROOT}"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "test_pkg"
+name = "{PACKAGE}"
 dynamic = ["version"]
-""",
-        encoding="utf-8",
-    )
 
+[tool.setuptools.packages.find]
+where = ["src"]
 
-@pytest.mark.regression
-class TestBuilds:
-    """E2E Tests for GitVersioned build processes."""
-
-    @pytest.mark.parametrize(
-        ("repo_state", "expected_version_prefix"),
-        [
-            ("clean", "0.1.0"),
-            ("tagged", "1.0.0"),
-            ("dirty", "0.1.0"),
-            ("detached", "1.0.0"),
-            ("shallow", "1.0.0"),
-        ],
-    )
-    @pytest.mark.parametrize("builder", ["hatchling", "setuptools"])
-    def test_build_version_generation(
-        self,
-        e2e_git_repo: GitRepoHelper,
-        repo_state: str,
-        expected_version_prefix: str,
-        builder: str,
-    ) -> None:
-        """Test the end-to-end build process generates the correct version in the wheel."""
-        # Setup builder specific config
-        if builder == "hatchling":
-            _write_hatch_config(e2e_git_repo)
-        else:
-            _write_setuptools_config(e2e_git_repo)
-
-        # Setup git state
-        if repo_state != "clean":
-            e2e_git_repo.commit("First commit")
-        if repo_state in {"tagged", "detached", "shallow"}:
-            e2e_git_repo.tag("v1.0.0")
-        if repo_state == "dirty":
-            e2e_git_repo.dirty()
-        if repo_state == "detached":
-            e2e_git_repo.checkout_detached()
-        if repo_state == "shallow":
-            clone_path = e2e_git_repo.path.with_name(
-                e2e_git_repo.path.name + "_shallow"
-            )
-            e2e_git_repo = e2e_git_repo.shallow_clone(clone_path)
-            if builder == "hatchling":
-                _write_hatch_config(e2e_git_repo)
-            else:
-                _write_setuptools_config(e2e_git_repo)
-
-        # Ensure git identity is available to gitversioned if needed
-        # (Though GitRepoHelper already sets it during init)
-
-        # Run the build process
-        # We use python -m build --wheel
-        # The build environment will be isolated and will install gitversioned from the source tree
-        result = subprocess.run(
-            [sys.executable, "-m", "build", "--wheel"],
-            cwd=str(e2e_git_repo.path),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-        assert result.returncode == 0, f"Build failed: {result.stdout}\n{result.stderr}"
-
-        # Find the generated wheel
-        dist_dir = e2e_git_repo.path / "dist"
-        wheels = list(dist_dir.glob("*.whl"))
-        assert len(wheels) == 1, f"Expected 1 wheel, found {len(wheels)}.\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
-        wheel_path = wheels[0]
-
-        # The wheel filename contains the version: test_pkg-VERSION-py3-none-any.whl
-        wheel_name = wheel_path.name
-        version_part = wheel_name.split("-")[1]
-        
-        assert version_part.startswith(expected_version_prefix), f"Expected version {expected_version_prefix}, got {version_part}.\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
-
-        # Verify the version file was created and contains correct data if we expect it to
-        # By default gitversioned creates src/test_pkg/version.py
-        version_file = e2e_git_repo.path / "src" / "test_pkg" / "version.py"
-        assert version_file.exists(), f"Version file not found at {version_file}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
-
-        # Introspect the version file safely
-        tree = ast.parse(version_file.read_text(encoding="utf-8"))
-        version_dict = {}
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Assign) and len(node.targets) == 1:
-                target = node.targets[0]
-                if isinstance(target, ast.Name):
-                    if isinstance(node.value, ast.Constant):
-                        version_dict[target.id] = node.value.value
-                    elif isinstance(node.value, ast.Tuple):
-                        version_dict[target.id] = tuple(
-                            elt.value for elt in node.value.elts if isinstance(elt, ast.Constant)
-                        )
-
-        assert "__version__" in version_dict, f"__version__ not found in version_dict: {version_dict}"
-        assert version_dict["__version__"].startswith(expected_version_prefix), f"Expected __version__ to start with {expected_version_prefix}, got {version_dict['__version__']}"
+[tool.gitversioned]
+"""
