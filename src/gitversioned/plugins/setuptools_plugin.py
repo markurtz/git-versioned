@@ -217,7 +217,7 @@ def _probe_filesystem_context(project_root: Path) -> tuple[Path, str] | None:
             if item.is_dir() and (item / "__init__.py").exists()
         ]
         if valid_packages:
-            return search_path, valid_packages[0]
+            return search_path / valid_packages[0], valid_packages[0]
     return None
 
 
