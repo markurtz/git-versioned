@@ -75,7 +75,7 @@ Sometimes you want local builds (with dirty files) to look different from CI bui
 
 **Goal:** Ensure local dirty builds always append a `+dirty` metadata tag, while clean pre-releases do not.
 
-This is handled seamlessly by default! When `gitversioned` detects uncommitted changes, it automatically resolves the `version_type` to `dev`, evaluating the `format_dev` string (which defaults to `.dev{env.build_date:%Y%m%d}+{ref.short_sha}.d{env.build_date:%Y%m%d}` showing dirty state).
+This is handled seamlessly by default! When `gitversioned` detects uncommitted changes, it automatically resolves the `version_type` to `dev`, evaluating the `format_dev` string (which defaults to `dev{ref.timestamp:%Y%m%d}+{ref.short_sha}` showing dirty state).
 
 ### Fallback to Static Files
 

@@ -20,14 +20,12 @@ from typing import Annotated
 from .logging import configure_logger
 from .settings import Settings
 from .versioning import (
-    DirtyRepositoryError,
     generate_version_py,
     resolve_and_generate_version,
     resolve_version,
 )
 
 __all__ = [
-    "DirtyRepositoryError",
     "Settings",
     "__version__",
     "generate_version_py",

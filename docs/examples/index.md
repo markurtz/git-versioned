@@ -38,26 +38,6 @@ This section contains runnable code examples that demonstrate real-world usage o
   - [:octicons-arrow-right-24: Hatchling Configuration via Git Branch](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-branch/)
   - [:octicons-arrow-right-24: Hatchling Configuration via Git Commits](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-commits/)
 
-- :material-console: **CLI Examples**
-
-  ______________________________________________________________________
-
-  Examples using the `gitversioned` command-line interface, including scripting and automation patterns.
-
-  <!-- [:octicons-arrow-right-24: CLI Examples](cli.md) -->
-
-  *Coming soon.*
-
-- :material-docker: **Docker Examples**
-
-  ______________________________________________________________________
-
-  Containerised usage examples, including Docker Compose configurations for common deployment scenarios.
-
-  <!-- [:octicons-arrow-right-24: Docker Examples](docker.md) -->
-
-  *Coming soon.*
-
 </div>
 
 !!! tip "Contributing an Example"

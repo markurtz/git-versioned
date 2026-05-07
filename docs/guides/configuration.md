@@ -12,9 +12,8 @@ ______________________________________________________________________
 
 1. **`setup.cfg`**: Under the `[tool:gitversioned]` section.
 1. **`pyproject.toml`**: Under the `[tool.gitversioned]` table.
-1. **`.env` files**: Variables prefixed with `GITVERSIONED__`.
-1. **Environment Variables**: Variables prefixed with `GITVERSIONED__`.
-1. **CLI Arguments**: (e.g., `--gitversioned-output-file=src/version.py`).
+1. **`.env` files**: Variables prefixed with `GITVERSIONED__` (e.g., `GITVERSIONED__FORMAT_DEV="dev{ref.short_sha}"`).
+1. **Environment Variables**: Variables prefixed with `GITVERSIONED__` (e.g., `export GITVERSIONED__AUTO_INCREMENT='{"dev": "patch"}'`).
 
 Most users will define their configuration in `pyproject.toml`.
 
@@ -176,4 +175,18 @@ source_type = ["tag"]
 regex_tag = [
     '^pkgA-v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$'
 ]
+```
+
+### Scenario 4: Auto-Incrementing Releases
+
+By default, the `release` version type is strictly bound to a clean, exact Git match (e.g., a tagged commit). However, if your project resolves the version type to `release` while still being ahead of the base source (e.g., forced via `version_type = "release"` or through custom resolution), you can auto-increment the release segment.
+
+```toml
+[tool.gitversioned]
+source_type = ["tag"]
+version_type = "release"  # Force all builds to be parsed as releases
+
+[tool.gitversioned.auto_increment]
+# If we are 3 commits ahead of v1.5.0, this will generate 1.6.0
+release = "minor"
 ```

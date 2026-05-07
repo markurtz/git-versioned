@@ -53,7 +53,7 @@ hide:
 
   ______________________________________________________________________
 
-  Full API reference, CLI documentation, and configuration schema.
+  Full API reference and configuration schema.
 
   [:octicons-arrow-right-24: View Reference](reference/index.md)
 
@@ -94,7 +94,7 @@ source = "gitversioned"
 
 ### 2. Installation
 
-To install the standalone CLI for local generation, use `pip` (or `uv`):
+To install the core GitVersioned package, use `pip` (or `uv`):
 
 ```bash
 # Standard installation

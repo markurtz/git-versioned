@@ -46,15 +46,7 @@ This section contains task-oriented how-to guides for `gitversioned`. Unlike the
 
   [:octicons-arrow-right-24: Concepts Guide](concepts.md)
 
-- :material-swap-horizontal: **Migration**
 
-  ______________________________________________________________________
-
-  Guides for upgrading between major versions and migrating from other tools to `gitversioned`.
-
-  <!-- [:octicons-arrow-right-24: Migration Guide](migration.md) -->
-
-  *Coming soon.*
 
 </div>
 

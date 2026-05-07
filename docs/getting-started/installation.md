@@ -43,31 +43,11 @@ dynamic = ["version"]
 ```
 ````
 
-=== "Setuptools (setup.py)"
 
-````
-```python
-from setuptools import setup
-
-setup(
-    setup_requires=["gitversioned"],
-    # ...
-)
-```
-````
-
-=== "Setuptools (setup.cfg)"
-
-````
-```ini
-[options]
-setup_requires = gitversioned
-```
-````
 
 ## Standard Installation
 
-To install the standalone CLI for local generation, use `pip` or `uv`:
+To install the core GitVersioned package, use `pip` or `uv`:
 
 === "pip (Standard)"
 

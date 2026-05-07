@@ -120,10 +120,10 @@ class TestFinalizeDistributionOptions:
 
         assert dist.metadata.version.startswith(expected_version_prefix)
 
-    def test_unknown_package_name(self) -> None:
+    def test_unknown_package_name(self, temp_git_repo: GitRepoHelper) -> None:
         """Test error when package name cannot be determined."""
 
-        dist = MockSetuptoolsDistribution(root=".")
+        dist = MockSetuptoolsDistribution(root=str(temp_git_repo.path))
         dist.metadata.name = "UNKNOWN"
         dist._mock_name = "UNKNOWN"
         with pytest.raises(

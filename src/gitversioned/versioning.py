@@ -25,24 +25,10 @@ from gitversioned.settings import Settings
 from gitversioned.utils import Branch, BuildEnvironment, Commit, GitRepository, Tag
 
 __all__ = [
-    "DirtyRepositoryError",
     "generate_version_py",
     "resolve_and_generate_version",
     "resolve_version",
 ]
-
-
-class DirtyRepositoryError(Exception):
-    """
-    Raised when the repository has uncommitted changes.
-
-    This exception is utilized to halt the build process when strict versioning
-    rules enforce that no uncommitted changes are present in the working directory.
-
-    Example:
-        >>> if repository.is_dirty:
-        ...     raise DirtyRepositoryError("Working directory is dirty")
-    """
 
 
 def _extract_version_from_match(match: re.Match[str]) -> Version:

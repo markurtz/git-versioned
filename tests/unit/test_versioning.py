@@ -13,7 +13,6 @@ from packaging.version import Version
 from gitversioned.settings import Settings
 from gitversioned.utils import Branch, BuildEnvironment, Commit, GitRepository, Tag
 from gitversioned.versioning import (
-    DirtyRepositoryError,
     generate_version_py,
     resolve_and_generate_version,
     resolve_version,
@@ -31,15 +30,6 @@ def async_timeout(delay: float):
         return new_func
 
     return decorator
-
-
-class TestDirtyRepositoryError:
-    """Test suite for the DirtyRepositoryError class."""
-
-    @pytest.mark.smoke
-    def test_class_signatures(self) -> None:
-        """Test DirtyRepositoryError signature."""
-        assert issubclass(DirtyRepositoryError, Exception)
 
 
 class TestResolveVersion:

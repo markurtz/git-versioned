@@ -72,3 +72,5 @@ jobs:
     with:
       build_type: "nightly"
       build_location: "dist/"
+    secrets:
+      pypi_token: ${{ secrets.PYPI_API_TOKEN }}

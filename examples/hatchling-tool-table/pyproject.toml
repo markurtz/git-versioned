@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling", "gitversioned @ file:///Users/markkurtz/code/github/markurtz/git-versioned"]
+requires = ["hatchling", "gitversioned"]
 build-backend = "hatchling.build"
 
 [project]

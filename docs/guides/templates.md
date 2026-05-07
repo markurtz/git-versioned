@@ -18,7 +18,7 @@ You can override these formats in your `pyproject.toml` or `setup.cfg`.
 | ------------- | ------------------------------------------------- | ------------------------------------------------- |
 | `format_main` | `{version.major}.{version.minor}.{version.micro}` | The primary semantic version string.              |
 | `format_dev`  | `{ref.timestamp:%Y%m%d}+{ref.short_sha}`          | The suffix appended during development builds.    |
-| `format_pre`  | `{ref.timestamp:%Y%m%d}`                          | The suffix used for pre-release and alpha builds. |
+| `format_pre`  | `a{ref.timestamp:%Y%m%d}`                         | The suffix used for pre-release and alpha builds. |
 | `format_post` | `{ref.distance_from_head}`                        | The suffix used for post-release builds.          |
 
 **Example configuration in `pyproject.toml`:**

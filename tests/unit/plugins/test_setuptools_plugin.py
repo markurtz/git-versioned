@@ -252,5 +252,5 @@ class TestFinalizeDistributionOptions:
             return_value=(version_already_set, MagicMock()),
         ) as mock_resolve:
             finalize_distribution_options(mock_distribution)
-            mock_resolve.assert_called_once()
+            mock_resolve.assert_not_called()
             assert mock_distribution.version == version_already_set

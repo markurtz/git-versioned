@@ -50,7 +50,7 @@ class BuildTestHelper(ABC):
         package_path.mkdir(parents=True, exist_ok=True)
 
         # Create .gitignore
-        (repo.path / ".gitignore").write_text("dist/*\n")
+        (repo.path / ".gitignore").write_text("dist/*\n*.egg-info/\n*.egg-info\n")
         repo.add(".gitignore")
 
         # Create package source files
@@ -190,9 +190,13 @@ class BuildTestHelper(ABC):
 
     @pytest.mark.regression
     def test_tool_table_config(self, e2e_git_repo: GitRepoHelper) -> None:
-        pyproject_content = (
-            self.pyproject_content() + "[tool.gitversioned]\n" + 'version = "5.5.5"'
-        )
+        base_content = self.pyproject_content()
+        if "[tool.gitversioned]" in base_content:
+            pyproject_content = base_content + '\nversion = "5.5.5"'
+        else:
+            pyproject_content = (
+                base_content + "\n[tool.gitversioned]\n" + 'version = "5.5.5"'
+            )
         self.setup_base_repo(e2e_git_repo, pyproject_content=pyproject_content)
         self.run_build(e2e_git_repo)
         version = self.get_version_from_artifacts(e2e_git_repo.path)
@@ -304,8 +308,13 @@ class TestSetuptoolsBuilds(BuildTestHelper):
         # Remove Hatch's tracking variables to avoid "Unknown environment" errors
         env.pop("HATCH_ENV", None)
         env.pop("HATCH_ENV_ACTIVE", None)
+
+        # FORCE PIP TO IGNORE CACHE AND REBUILD LOCAL PATHS
+        env["PIP_NO_CACHE_DIR"] = "1"
+        env["PIP_BREAK_SYSTEM_PACKAGES"] = "1"
+
         result = subprocess.run(
-            ["python", "-m", "build"],
+            ["python", "-m", "build", "--no-isolation"],
             cwd=str(repo.path),
             capture_output=True,
             text=True,
