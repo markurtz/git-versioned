@@ -13,20 +13,15 @@ from distutils.errors import DistutilsSetupError
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
 from packaging.utils import canonicalize_name
 from setuptools import Distribution
 
-from gitversioned.logging import LoggingSettings, configure_logger
+from gitversioned.logging import configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
 from gitversioned.versioning import resolve_and_generate_version
 
 __all__ = ["finalize_distribution_options", "setup_keywords"]
-
-import sys
-
-print("*************** init setuptools_plugin.py ... ", sys.stderr)
 
 
 def setup_keywords(distribution: Distribution, attribute: str, value: Any) -> None:
@@ -68,17 +63,13 @@ def finalize_distribution_options(distribution: Distribution) -> None:
     :raises DistutilsSetupError: If version resolution fails or the package name
         cannot be determined.
     """
-    print("*************** init finalize_distribution_options ... ", sys.stderr)
-
-    configure_logger(
-        LoggingSettings(
-            enabled=True,
-            level="DEBUG",
-        )
-    )
+    configure_logger()
     logger.debug("finalize_distribution_options called for setuptools plugin")
 
     project_root, source_root, package_name = _resolve_project_context(distribution)
+    logger.debug(f"Project root: {project_root}")
+    logger.debug(f"Source root: {source_root}")
+    logger.debug(f"Package name: {package_name}")
 
     if not package_name or package_name == "UNKNOWN":
         raise DistutilsSetupError("Could not determine package name.")
@@ -90,22 +81,13 @@ def finalize_distribution_options(distribution: Distribution) -> None:
         "build_is_editable": getattr(distribution, "editable", False),
     }
 
-    current_version = distribution.get_version()
+    current_version = getattr(distribution, "version", None)
     if isinstance(current_version, str) and current_version not in (None, "0.0.0"):
-        resolution_kwargs["version"] = current_version
+        logger.info(f"Version already set to: {current_version}")
+        return
 
-    pkg_info = project_root / "PKG-INFO"
-    print(f"*************** checking for PKG-INFO at {pkg_info} ... ", sys.stderr)
-    print(f"*************** project root contents: {list(project_root.iterdir())}", sys.stderr)
-    if pkg_info.exists():
-        from email import message_from_string
-        msg = message_from_string(pkg_info.read_text(encoding="utf-8"))
-        pkg_version = msg.get("Version")
-        if pkg_version and pkg_version != "0.0.0":
-            resolution_kwargs["version"] = pkg_version
-            resolution_kwargs["version_type"] = "release"
-            
     resolution_kwargs.update(getattr(distribution, "gitversioned_config", {}))
+    logger.debug(f"Resolution kwargs: {resolution_kwargs}")
 
     try:
         settings = Settings(**resolution_kwargs)
@@ -150,7 +132,7 @@ def _resolve_project_context(
     source_root = _get_source_root(project_root, distribution, package_name)
 
     # If metadata resolution fails, attempt filesystem discovery
-    if not package_name or package_name == "UNKNOWN":
+    if not package_name:
         probe = _probe_filesystem_context(project_root)
         if probe:
             source_root, package_name = probe
@@ -193,13 +175,6 @@ def _get_source_root(
             if key in package_dir:
                 rel_src = package_dir[key]
                 break
-        
-        # If rel_src is just the src dir (e.g. "src" or ""), append the package_name
-        # to ensure src_root points to the actual package directory.
-        pkg_path = project_root / rel_src / package_name
-        print(f"*************** _get_source_root: package_dir={package_dir}, rel_src={rel_src}, pkg_path={pkg_path}, pkg_path.exists()={pkg_path.exists()}", file=sys.stderr)
-        if pkg_path.exists() and pkg_path.is_dir():
-            return pkg_path
 
     return project_root / rel_src
 
@@ -217,7 +192,7 @@ def _probe_filesystem_context(project_root: Path) -> tuple[Path, str] | None:
             if item.is_dir() and (item / "__init__.py").exists()
         ]
         if valid_packages:
-            return search_path / valid_packages[0], valid_packages[0]
+            return search_path, valid_packages[0]
     return None
 
 
@@ -231,11 +206,7 @@ def _inject_output_into_distribution(
     Registers the generated version file into the distribution metadata.
     """
     # Attempt 1: File is inside the specific package directory
-    if source_root.name == package_name:
-        package_folder = source_root
-    else:
-        package_folder = source_root / package_name
-
+    package_folder = source_root / package_name
     try:
         relative_output = str(output_path.relative_to(package_folder))
 
