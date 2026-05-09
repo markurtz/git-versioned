@@ -76,10 +76,12 @@ dev = "patch"
 ### CI/CD Version Resolution
 
 By default, the `version_type` is set to `auto`. GitVersioned will intelligently determine what to build:
+
 - If your source code perfectly matches the last version tag (e.g., you are building locally immediately after a release, or CI is building a tag), it builds a **release**.
 - If there are new commits since the last tag, it builds a **dev** build.
 
 In your CI/CD workflows, you can override this behavior using the `GITVERSIONED__VERSION_TYPE` environment variable to force specific release types based on the trigger:
+
 - **On Tag:** Leave as `auto` (or force `release`), and it will build a release.
 - **On Nightly:** Set `GITVERSIONED__VERSION_TYPE=nightly` to build a pre-release for the next minor version.
 - **On User Invocation:** Set `GITVERSIONED__VERSION_TYPE=post` to build a post-release.
