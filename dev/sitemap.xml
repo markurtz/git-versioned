@@ -2,62 +2,86 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/community/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/community/agents/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/community/code-of-conduct/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/community/contributing/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/community/developing/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/community/security/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/community/support/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/examples/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/getting-started/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/getting-started/installation/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/getting-started/quickstart/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/getting-started/workflows/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/guides/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/dev/guides/concepts/</loc>
+         <lastmod>2026-05-09</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/dev/guides/configuration/</loc>
+         <lastmod>2026-05-09</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/dev/guides/hatchling/</loc>
+         <lastmod>2026-05-09</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/dev/guides/setuptools/</loc>
+         <lastmod>2026-05-09</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/dev/guides/templates/</loc>
+         <lastmod>2026-05-09</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/dev/reference/</loc>
-         <lastmod>2026-05-01</lastmod>
+         <lastmod>2026-05-09</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/dev/reference/api/</loc>
+         <lastmod>2026-05-09</lastmod>
     </url>
 </urlset>
