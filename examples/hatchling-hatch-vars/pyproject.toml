@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hatchling_hatch_vars"
+dynamic = ["version"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hatchling_hatch_vars"]
+
+[tool.hatch.version]
+source = "gitversioned"
+source_type = ["tag"]
+output_file = "version.py"

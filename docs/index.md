@@ -53,7 +53,7 @@ hide:
 
   ______________________________________________________________________
 
-  Full API reference, CLI documentation, and configuration schema.
+  Full API reference and configuration schema.
 
   [:octicons-arrow-right-24: View Reference](reference/index.md)
 
@@ -77,11 +77,20 @@ hide:
 
 ## Quick Install
 
-```bash
-pip install gitversioned
+### Build Configuration
+
+GitVersioned is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "gitversioned"
 ```
 
-For advanced installation options (from source, Docker, etc.) see the [Installation Guide](getting-started/installation.md).
+For advanced installation options, Setuptools alternatives, and step-by-step onboarding, see the [Installation Guide](getting-started/installation.md).
 
 ## Links
 

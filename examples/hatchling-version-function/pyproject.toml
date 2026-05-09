@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hatchling_version_function"
+dynamic = ["version"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hatchling_version_function"]
+
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.gitversioned]
+source_type = ["function"]
+version_source_function = "hatchling_version_function.main:get_version"
+format_main = "{version.major}.{version.minor}.{version.micro}"

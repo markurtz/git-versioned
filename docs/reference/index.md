@@ -1,6 +1,6 @@
 # Reference
 
-The Reference section contains the complete technical documentation for GitVersioned — API classes, CLI commands, and configuration options. This is the section to bookmark when you need to look something up.
+The Reference section contains the complete technical documentation for GitVersioned — API classes and configuration options. This is the section to bookmark when you need to look something up.
 
 ## In This Section
 
@@ -12,20 +12,7 @@ The Reference section contains the complete technical documentation for GitVersi
 
   Auto-generated documentation for all public classes, methods, and modules.
 
-  <!-- Add link once API reference pages are generated -->
-
-  *Coming soon — see [Contributing](../community/contributing.md) to help.*
-
-- :material-console: **CLI Reference**
-
-  ______________________________________________________________________
-
-  Full documentation for all `gitversioned` command-line interface commands,
-  options, and flags.
-
-  <!-- Add link once CLI reference pages are generated -->
-
-  *Coming soon.*
+  [:octicons-arrow-right-24: Python API Reference](api.md)
 
 - :material-tune-variant: **Configuration Schema**
 
@@ -33,9 +20,7 @@ The Reference section contains the complete technical documentation for GitVersi
 
   All supported configuration file options, types, defaults, and examples.
 
-  <!-- Add link once configuration reference pages are generated -->
-
-  *Coming soon.*
+  [:octicons-arrow-right-24: Configuration Guide](../guides/configuration.md)
 
 - :material-test-tube: **Test Coverage**
 
@@ -43,11 +28,32 @@ The Reference section contains the complete technical documentation for GitVersi
 
   Coverage reports are generated during CI/CD or locally.
 
-  Run `hatch run test:cov-all` to generate HTML reports in `docs/coverage/`.
+  Run `hatch run test:all-cov` to generate HTML reports in `docs/coverage/`.
 
 </div>
 
-## Generating API Reference Docs
+## Python API Usage
+
+While `gitversioned` is primarily used as a build plugin, it can also be used programmatically in your own Python scripts:
+
+```python
+from gitversioned import Settings, resolve_version
+from gitversioned.utils import BuildEnvironment, GitRepository
+
+# Resolve the version using default settings
+version, ref = resolve_version(
+    Settings(), GitRepository(), BuildEnvironment()
+)
+print(f"Resolved version: {version}")
+
+# Or pass custom settings
+custom_settings = Settings(package_name="my_pkg", source_type=["commit"])
+version, ref = resolve_version(
+    custom_settings, GitRepository(), BuildEnvironment()
+)
+```
+
+## Generating Reference Docs
 
 This project is pre-configured to work with [`mkdocstrings`](https://mkdocstrings.github.io/) for auto-generating API documentation from docstrings.
 
@@ -58,13 +64,3 @@ This project is pre-configured to work with [`mkdocstrings`](https://mkdocstring
 
 1. The plugin and its Python handler are already managed by Hatch in the `docs` environment (`mkdocstrings[python]`).
 1. Configure `mkdocs.yml` according to your language handler and create your reference pages.
-
-## Generating CLI Reference Docs
-
-For CLI documentation, consider using one of the following approaches depending on your CLI framework:
-
-| Framework    | Plugin                                                          | Notes                                          |
-| :----------- | :-------------------------------------------------------------- | :--------------------------------------------- |
-| **Typer**    | [`typer-cli`](https://typer.tiangolo.com/typer-cli/)            | Generates markdown from Typer apps             |
-| **Click**    | [`mkdocs-click`](https://github.com/brunoliveira8/mkdocs-click) | Auto-generates docs from Click decorators      |
-| **Argparse** | Manual                                                          | Document commands in a dedicated `cli.md` page |

@@ -55,7 +55,6 @@ Before you start coding, please refer to our [Development Guide](DEVELOPING.md) 
 
 - Write clear, concise commit messages.
 - We recommend using [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat: add submodule support`, `fix: correct PEP 440 pre-release sorting`).
-- If you are adding a new file, please include the appropriate Apache 2.0 copyright and license header at the top.
 
 ### 5. Submitting a Pull Request
 

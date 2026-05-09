@@ -16,9 +16,23 @@ Before running the examples, ensure you have set up your environment correctly:
 
 Below is a curated list of available examples, categorized by complexity:
 
-| Example                              | Complexity                    | Description                                                          |
-| :----------------------------------- | :---------------------------- | :------------------------------------------------------------------- |
-| **`[example_name/](example_name/)`** | ⭐ Beginner / ⭐⭐⭐ Advanced | Briefly describe the example and what core concepts it demonstrates. |
+| Example                                                            | Complexity  | Description                                                           |
+| :----------------------------------------------------------------- | :---------- | :-------------------------------------------------------------------- |
+| **`[setuptools-version-file/](setuptools-version-file/)`**         | ⭐ Beginner | Setuptools configuration using a version file source.                 |
+| **`[setuptools-version-function/](setuptools-version-function/)`** | ⭐ Beginner | Setuptools configuration using a version function source.             |
+| **`[setuptools-tool-table/](setuptools-tool-table/)`**             | ⭐ Beginner | Setuptools configuration using `[tool.gitversioned]` table.           |
+| **`[setuptools-version-tags/](setuptools-version-tags/)`**         | ⭐ Beginner | Setuptools configuration using Git tags as the version source.        |
+| **`[setuptools-version-branch/](setuptools-version-branch/)`**     | ⭐ Beginner | Setuptools configuration using Git branch as the version source.      |
+| **`[setuptools-version-commits/](setuptools-version-commits/)`**   | ⭐ Beginner | Setuptools configuration using Git commits as the version source.     |
+| **`[setuptools-setup-py/](setuptools-setup-py/)`**                 | ⭐ Beginner | Setuptools configuration using a traditional `setup.py` file.         |
+| **`[setuptools-setup-cfg/](setuptools-setup-cfg/)`**               | ⭐ Beginner | Setuptools configuration using a `setup.cfg` file.                    |
+| **`[hatchling-version-file/](hatchling-version-file/)`**           | ⭐ Beginner | Hatchling configuration using a version file source.                  |
+| **`[hatchling-version-function/](hatchling-version-function/)`**   | ⭐ Beginner | Hatchling configuration using a version function source.              |
+| **`[hatchling-hatch-vars/](hatchling-hatch-vars/)`**               | ⭐ Beginner | Hatchling configuration using `[tool.hatch.version]` table variables. |
+| **`[hatchling-tool-table/](hatchling-tool-table/)`**               | ⭐ Beginner | Hatchling configuration using `[tool.gitversioned]` table.            |
+| **`[hatchling-version-tags/](hatchling-version-tags/)`**           | ⭐ Beginner | Hatchling configuration using Git tags as the version source.         |
+| **`[hatchling-version-branch/](hatchling-version-branch/)`**       | ⭐ Beginner | Hatchling configuration using Git branch as the version source.       |
+| **`[hatchling-version-commits/](hatchling-version-commits/)`**     | ⭐ Beginner | Hatchling configuration using Git commits as the version source.      |
 
 <!-- Add new examples to the table above as they are created. -->
 

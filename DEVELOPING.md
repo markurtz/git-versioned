@@ -37,21 +37,45 @@ docker-compose logs -f
 
 ## Local Setup
 
-If you prefer to develop directly on your host machine, this project uses [Hatch](https://hatch.pypa.io/) for environment management, dependency resolution, and building.
+If you prefer to develop directly on your host machine, this project uses [uv](https://docs.astral.sh/uv/) for environment management and dependency resolution, alongside [Hatch](https://hatch.pypa.io/) as our command orchestrator.
 
 > [!NOTE]
 > **A note on shared tooling:** This project uses [MkDocs](https://www.mkdocs.org/) for documentation.
 
 ```bash
-# 1. Install hatch globally (if not already installed)
-pipx install hatch # or pip install hatch
+# 1. Install uv and hatch globally (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install hatch
 
-# 2. Enter the default development environment
-hatch shell
+# 2. Optionally, set up a Python virtual environment
+uv venv
+source .venv/bin/activate
 
-# Or run commands directly in the environment without entering it:
+# 3. Sync the development environment (installs all dependency groups and extras)
+uv sync --all-groups --all-extras
+
+# 4. Run hatch commands directly
 hatch run test:all
 hatch run lint:check
+```
+
+### Managing Dependencies
+
+Use `uv` to add or update dependencies efficiently:
+
+```bash
+# Add a general dependency
+uv add <package>
+
+# Add a development dependency
+uv add --group dev <package>
+
+# Add to a specific extra
+uv add <package> --optional <extra_name>
+
+# Sync targeted groups or extras
+uv sync --group dev
+uv sync --extra <extra_name>
 ```
 
 ## Running Tests
@@ -72,7 +96,7 @@ hatch run test:unit
 hatch run test:integration
 
 # Run all tests with coverage
-hatch run test:cov-all
+hatch run test:all-cov
 ```
 
 ## Code Quality and Formatting
@@ -101,7 +125,7 @@ We use [pre-commit](https://pre-commit.com/) to ensure code quality standards ar
 1. Install pre-commit globally or in your local virtual environment:
 
    ```bash
-   pip install pre-commit
+   uv pip install pre-commit
    ```
 
 1. Install the git hook scripts:

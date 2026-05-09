@@ -6,35 +6,45 @@ This section contains task-oriented how-to guides for `gitversioned`. Unlike the
 
 <div class="grid cards" markdown>
 
+- :material-file-code-outline: **Templates & Formatting**
+
+  ______________________________________________________________________
+
+  A deep dive into formatting strings, output file generation, and the rich build context available for template evaluation.
+
+  [:octicons-arrow-right-24: Templates Guide](templates.md)
+
 - :material-cog-outline: **Configuration**
 
   ______________________________________________________________________
 
   A deep dive into all configuration options, file formats, and environment variables supported by `gitversioned`.
 
-  <!-- [:octicons-arrow-right-24: Configuration Guide](configuration.md) -->
+  [:octicons-arrow-right-24: Configuration Guide](configuration.md)
 
-  *Coming soon.*
-
-- :material-puzzle-outline: **Integrations**
+- :material-puzzle-outline: **Hatchling Integration**
 
   ______________________________________________________________________
 
-  Step-by-step instructions for integrating `gitversioned` with third-party tools, platforms, and services.
+  Step-by-step instructions for integrating `gitversioned` natively with the Hatchling build backend.
 
-  <!-- [:octicons-arrow-right-24: Integrations](integrations.md) -->
+  [:octicons-arrow-right-24: Hatchling Guide](hatchling.md)
 
-  *Coming soon.*
-
-- :material-swap-horizontal: **Migration**
+- :material-puzzle-outline: **Setuptools Integration**
 
   ______________________________________________________________________
 
-  Guides for upgrading between major versions and migrating from other tools to `gitversioned`.
+  Step-by-step instructions for integrating `gitversioned` natively with the Setuptools build backend.
 
-  <!-- [:octicons-arrow-right-24: Migration Guide](migration.md) -->
+  [:octicons-arrow-right-24: Setuptools Guide](setuptools.md)
 
-  *Coming soon.*
+- :material-brain: **Concepts & Resolution**
+
+  ______________________________________________________________________
+
+  A deep dive into how `gitversioned` resolves sources, determines environments, and calculates auto-increments.
+
+  [:octicons-arrow-right-24: Concepts Guide](concepts.md)
 
 </div>
 

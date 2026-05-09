@@ -16,7 +16,6 @@
 > 1. **Never commit secrets.** Do not add API keys, tokens, or credentials anywhere.
 > 1. **Do not modify `LICENSE` or `NOTICE`.** These are legally binding.
 > 1. **Do not modify workflow trigger conditions** without human review.
-> 1. **All new source files must include the Apache 2.0 copyright header.**
 
 ## Repository Layout
 
@@ -29,7 +28,7 @@
 
 - **Linting:** `hatch run lint:check` (Ruff & mdformat) and `hatch run types:check` (Mypy)
 - **Pre-commit:** `pre-commit run --all-files` (Runs formatting and quality checks)
-- **Testing:** `hatch run test:all` (Pytest) and `hatch run test:cov-all` (Coverage)
+- **Testing:** `hatch run test:all` (Pytest) and `hatch run test:all-cov` (Coverage)
 - **Docs:** `hatch run docs:serve` / `hatch run docs:build`
 - **Build:** `hatch build`
 
