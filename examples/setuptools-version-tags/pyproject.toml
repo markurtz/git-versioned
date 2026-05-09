@@ -10,4 +10,4 @@ dynamic = ["version"]
 where = ["src"]
 
 [tool.gitversioned]
-version_source = "tags"
+source_type = "tags"

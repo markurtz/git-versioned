@@ -30,7 +30,7 @@ from pydantic_settings import (
 
 from gitversioned.utils import EnsureList, EnsurePath
 
-__all__ = ["Settings"]
+__all__ = ["Settings", "SetupCfgSettingsSource"]
 
 
 class SetupCfgSettingsSource(PydanticBaseSettingsSource):  # type: ignore[misc, abstract]
@@ -51,13 +51,29 @@ class SetupCfgSettingsSource(PydanticBaseSettingsSource):  # type: ignore[misc, 
 
         config_parser = configparser.ConfigParser()
         config_parser.read(path)
-        section = "tool:gitversioned"
+        base_section = "tool:gitversioned"
 
-        return dict(config_parser.items(section)) if section in config_parser else {}
+        result: dict[str, Any] = {}
+        if base_section in config_parser:
+            result.update(config_parser.items(base_section))
+
+        prefix = f"{base_section}:"
+        for section in config_parser.sections():
+            if section.startswith(prefix):
+                key = section[len(prefix) :]
+                if key not in result:
+                    result[key] = {}
+                elif not isinstance(result[key], dict):
+                    result[key] = {"_": result[key]}  # type: ignore[dict-item]
+
+                result[key].update(config_parser.items(section))  # type: ignore[union-attr]
+
+        return result
 
 
 class Settings(BaseSettings):
-    """Configuration for GitVersioned, handling formatting, strictness, and outputs.
+    """
+    Configuration for GitVersioned, handling formatting, strictness, and outputs.
 
     This class aggregates and prioritizes configuration from multiple sources,
     providing a unified state for version resolution across the tool. It is built

@@ -136,7 +136,12 @@ class GitVersionedVersionSource(VersionSourceInterface):
             "src_root": src_root,
             "build_is_editable": False,
         }
-        kwargs.update(self.config)
+
+        plugin_config = self.config.copy()
+        plugin_config.pop("project_root", None)
+        plugin_config.pop("src_root", None)
+
+        kwargs.update(plugin_config)
 
         return kwargs
 
@@ -185,8 +190,8 @@ class GitVersionedVersionSource(VersionSourceInterface):
         """
         root = self.get_project_root()
 
-        if "project_root" in self.config:
-            return Path(root) / str(self.config["project_root"])
+        if "src_root" in self.config:
+            return Path(root) / str(self.config["src_root"])
 
         metadata: Any = ProjectMetadata(str(root), None)
         hatch_config = (

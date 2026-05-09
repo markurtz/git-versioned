@@ -13,4 +13,4 @@ packages = ["src/hatchling_version_tags"]
 source = "gitversioned"
 
 [tool.gitversioned]
-version_source = "tags"
+source_type = ["tag"]

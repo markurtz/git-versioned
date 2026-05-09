@@ -11,12 +11,12 @@ Example:
         from gitversioned.utils import BuildEnvironment, GitRepository
 
         repo = GitRepository(".")
-        env = BuildEnvironment.collect()
+        env = BuildEnvironment()
 """
 
 from __future__ import annotations
 
-from .environment import BuildEnvironment
+from .environment import BuildEnvironment, get_ci_info, get_user
 from .git import Branch, Commit, GitRepository, NotAGitRepositoryError, Tag
 from .pydantic import (
     EnsureBool,

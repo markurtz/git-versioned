@@ -10,4 +10,5 @@ dynamic = ["version"]
 where = ["src"]
 
 [tool.gitversioned]
-version_source = "commits"
+source_type = ["commit"]
+regex_commit = ['(?i)^v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)']

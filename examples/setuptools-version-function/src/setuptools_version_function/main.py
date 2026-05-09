@@ -4,7 +4,12 @@ except ImportError:
     __version__ = "not available yet"
 
 
-def main():
+def get_version() -> str:
+    """Return the package version for gitversioned."""
+    return "0.1.0"
+
+
+def main() -> None:
     print(f"Hello from setuptools_version_function! (version {__version__})")
 
 

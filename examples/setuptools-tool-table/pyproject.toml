@@ -10,5 +10,5 @@ dynamic = ["version"]
 where = ["src"]
 
 [tool.gitversioned]
-version_source = "tags"
-build_metadata_enabled = true
+source_type = ["tags"]
+output_file = "version.py"

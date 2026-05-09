@@ -192,7 +192,7 @@ class TestGitVersionedVersionSource:
     @pytest.mark.parametrize(
         ("config_kwargs", "hatch_build_targets", "dir_to_create", "expected_rel_path"),
         [
-            ({"project_root": "explicit_src"}, {}, None, "explicit_src"),
+            ({"src_root": "explicit_src"}, {}, None, "explicit_src"),
             ({}, {"packages": ["pkg_from_hatch"]}, None, "pkg_from_hatch"),
             ({}, {"sources": {"src_from_hatch": "xyz"}}, None, "src_from_hatch"),
             ({}, {}, "src/my_pkg", "src/my_pkg"),

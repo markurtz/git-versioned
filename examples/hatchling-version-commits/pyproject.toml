@@ -13,4 +13,4 @@ packages = ["src/hatchling_version_commits"]
 source = "gitversioned"
 
 [tool.gitversioned]
-version_source = "commits"
+source_type = ["commit"]

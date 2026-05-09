@@ -10,5 +10,5 @@ dynamic = ["version"]
 where = ["src"]
 
 [tool.gitversioned]
-version_source = "tags"
-version_file = "src/setuptools_version_file/_version.py"
+source_type = "tags"
+output_file = "src/setuptools_version_file/_version.py"

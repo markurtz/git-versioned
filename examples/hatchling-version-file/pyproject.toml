@@ -13,5 +13,5 @@ packages = ["src/hatchling_version_file"]
 source = "gitversioned"
 
 [tool.gitversioned]
-version_source = "tags"
-version_file = "src/hatchling_version_file/_version.py"
+source_type = ["tag"]
+output_file = "src/hatchling_version_file/_version.py"

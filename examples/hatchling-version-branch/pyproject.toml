@@ -13,4 +13,4 @@ packages = ["src/hatchling_version_branch"]
 source = "gitversioned"
 
 [tool.gitversioned]
-version_source = "branch"
+source_type = ["branch"]

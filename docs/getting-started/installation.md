@@ -45,7 +45,7 @@ dynamic = ["version"]
 
 ## Standard Installation
 
-To install the core GitVersioned package, use `pip` or `uv`:
+If you need to install the package directly into an environment (e.g., for local development or testing without a build system), use `pip` or `uv`:
 
 === "pip (Standard)"
 
@@ -65,16 +65,16 @@ uv pip install gitversioned
 
 ### Verify the Installation
 
-After installation, confirm it is working correctly:
+After installation, you can confirm it is available in your Python environment by running:
 
 ```bash
-gitversioned --version
+python -c "import gitversioned; print(gitversioned.__version__)"
 ```
 
 You should see output similar to:
 
 ```console
-gitversioned 0.1.0
+0.1.0
 ```
 
 ## Install from Source
@@ -104,7 +104,7 @@ A pre-built Docker image is available for containerized environments:
 docker pull ghcr.io/markurtz/git-versioned:latest
 
 # Run a one-off command
-docker run --rm ghcr.io/markurtz/git-versioned:latest gitversioned --version
+docker run --rm ghcr.io/markurtz/git-versioned:latest python -c "import gitversioned; print(gitversioned.__version__)"
 ```
 
 For a persistent, volume-mounted setup using Docker Compose, see the `docker-compose.yml` in the root of the repository.
@@ -169,11 +169,10 @@ uv pip uninstall gitversioned
 
 ## Troubleshooting
 
-| Problem                           | Solution                                                          |
-| :-------------------------------- | :---------------------------------------------------------------- |
-| `command not found: gitversioned` | Ensure the binaries directory is on your `$PATH`.                 |
-| Import errors after install       | Ensure you have the latest version installed.                     |
-| Version conflicts                 | Isolate your dependencies using your language's recommended tool. |
+| Problem                     | Solution                                                          |
+| :-------------------------- | :---------------------------------------------------------------- |
+| Import errors after install | Ensure you have the latest version installed.                     |
+| Version conflicts           | Isolate your dependencies using your language's recommended tool. |
 
 If you continue to experience issues, please visit our [Support page](../community/support.md).
 

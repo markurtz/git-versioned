@@ -9,6 +9,7 @@ across the codebase and build environments.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 from collections.abc import Callable
@@ -21,6 +22,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from gitversioned.compat import opentelemetry_trace
 
 __all__ = ["LoggingSettings", "configure_logger", "logger"]
+
+_GITVERSIONED_HANDLER_ID: int | None = None
 
 
 class LoggingSettings(BaseSettings):
@@ -167,6 +170,8 @@ def configure_logger(settings: LoggingSettings | None = None) -> None:
     :raises ImportError: If OpenTelemetry formatting is explicitly enabled but the
                          package is not installed.
     """
+    global _GITVERSIONED_HANDLER_ID  # noqa: PLW0603
+
     settings = settings or LoggingSettings()
 
     if not settings.enabled:
@@ -177,6 +182,11 @@ def configure_logger(settings: LoggingSettings | None = None) -> None:
 
     if settings.clear_loggers:
         logger.remove()
+        _GITVERSIONED_HANDLER_ID = None
+    elif isinstance(_GITVERSIONED_HANDLER_ID, int):
+        with contextlib.suppress(ValueError):
+            logger.remove(_GITVERSIONED_HANDLER_ID)
+        _GITVERSIONED_HANDLER_ID = None
 
     use_otel = settings.otel_formatting == "enable" or (
         settings.otel_formatting == "auto" and opentelemetry_trace is not None
@@ -189,7 +199,7 @@ def configure_logger(settings: LoggingSettings | None = None) -> None:
     log_format = _otel_formatter if use_otel else settings.format
     filter_key = "gitversioned" if settings.filter is True else settings.filter
 
-    logger.add(
+    _GITVERSIONED_HANDLER_ID = logger.add(
         settings.sink,  # type: ignore[arg-type]
         level=settings.level,
         filter=(

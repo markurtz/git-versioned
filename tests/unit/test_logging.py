@@ -66,10 +66,19 @@ class TestLoggingSettings:
                 LoggingSettings(**invalid_instance)
 
     @pytest.mark.regression
-    def test_invalid_initialization_missing(self) -> None:
-        """Test initializing LoggingSettings with missing required values."""
-        # All fields have defaults, so no missing required values expected
-        # Adding a dummy test to satisfy the prompt requirement
+    def test_initialization_defaults(self) -> None:
+        """Test initializing LoggingSettings assigns the correct default values."""
+        settings = LoggingSettings()
+        assert settings.enabled is False
+        assert settings.clear_loggers is False
+        assert settings.sink is sys.stdout
+        assert settings.level == "INFO"
+        assert settings.otel_formatting == "auto"
+        assert settings.filter is True
+        assert settings.enqueue is True
+        assert settings.kwargs == {}
+        assert isinstance(settings.format, str)
+        assert "{message}" in settings.format
 
     @pytest.mark.sanity
     def test_marshalling(self, valid_instances: list[dict[str, Any]]) -> None:
@@ -112,6 +121,7 @@ class TestConfigureLogger:
         settings = LoggingSettings(**settings_data)
 
         with patch("gitversioned.logging.logger") as mock_logger:
+            mock_logger.add.return_value = 1
             if mock_opentelemetry:
                 mock_trace = MagicMock()
                 mock_span = MagicMock()

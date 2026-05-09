@@ -11,5 +11,5 @@ packages = ["src/hatchling_hatch_vars"]
 
 [tool.hatch.version]
 source = "gitversioned"
-version_source = "tags"
-build_metadata_enabled = true
+source_type = ["tag"]
+output_file = "version.py"

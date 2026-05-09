@@ -10,5 +10,6 @@ dynamic = ["version"]
 where = ["src"]
 
 [tool.gitversioned]
-version_source = "tags"
-version_format = "{ver}"
+source_type = ["function"]
+version_source_function = "setuptools_version_function.main:get_version"
+format_main = "{version.major}.{version.minor}.{version.micro}"

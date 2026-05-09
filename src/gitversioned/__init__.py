@@ -7,9 +7,12 @@ deep metadata for auditability, integrating natively with Hatch and Setuptools.
 
 Example:
 ::
-    from gitversioned import resolve_version, Settings
+    from gitversioned import Settings, resolve_version
+    from gitversioned.utils import BuildEnvironment, GitRepository
 
-    version = resolve_version(Settings())
+    version, ref = resolve_version(
+        Settings(), GitRepository(), BuildEnvironment()
+    )
     print(f"Current version: {version}")
 """
 

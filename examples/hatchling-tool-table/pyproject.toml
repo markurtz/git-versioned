@@ -13,5 +13,5 @@ packages = ["src/hatchling_tool_table"]
 source = "gitversioned"
 
 [tool.gitversioned]
-version_source = "tags"
-build_metadata_enabled = true
+source_type = ["tag"]
+output_file = "version.py"

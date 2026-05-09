@@ -37,16 +37,20 @@ The Reference section contains the complete technical documentation for GitVersi
 While `gitversioned` is primarily used as a build plugin, it can also be used programmatically in your own Python scripts:
 
 ```python
-from gitversioned import resolve_version
-from gitversioned.settings import Settings
+from gitversioned import Settings, resolve_version
+from gitversioned.utils import BuildEnvironment, GitRepository
 
 # Resolve the version using default settings
-version = resolve_version()
+version, ref = resolve_version(
+    Settings(), GitRepository(), BuildEnvironment()
+)
 print(f"Resolved version: {version}")
 
 # Or pass custom settings
 custom_settings = Settings(package_name="my_pkg", source_type=["commit"])
-version = resolve_version(custom_settings)
+version, ref = resolve_version(
+    custom_settings, GitRepository(), BuildEnvironment()
+)
 ```
 
 ## Generating Reference Docs

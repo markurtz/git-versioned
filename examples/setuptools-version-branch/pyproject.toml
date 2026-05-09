@@ -10,4 +10,7 @@ dynamic = ["version"]
 where = ["src"]
 
 [tool.gitversioned]
-version_source = "branch"
+source_type = ["branch"]
+regex_branch = [
+    "^release/(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)$",
+]

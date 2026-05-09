@@ -22,22 +22,38 @@ class TestSetupCfgSettingsSource:
 
     @pytest.fixture(
         params=[
-            ("test_package", {"version": "1.0.0"}),
-            ("other_package", {}),
-            ("missing_file", None),
+            ("test_package", {"version": "1.0.0"}, None),
+            ("other_package", {}, None),
+            ("missing_file", None, None),
+            (
+                "nested_package",
+                {"version": "1.0.0"},
+                {"auto_increment": {"dev": "minor"}},
+            ),
         ],
-        ids=["with_config", "empty_config", "no_file"],
+        ids=["with_config", "empty_config", "no_file", "nested_config"],
     )
     def valid_instances(
         self, request: pytest.FixtureRequest, tmp_path: Path
-    ) -> tuple[SetupCfgSettingsSource, dict[str, str] | None]:
+    ) -> tuple[SetupCfgSettingsSource, dict[str, Any] | None]:
         """Fixture providing test data for SetupCfgSettingsSource."""
-        package_name, config_dict = request.param
+        package_name, original_config_dict, nested_config = request.param
+        config_dict = (
+            dict(original_config_dict) if original_config_dict is not None else None
+        )
+
         if config_dict is not None:
             config = configparser.ConfigParser()
             config["tool:gitversioned"] = config_dict
+            if nested_config:
+                for k, v in nested_config.items():
+                    config[f"tool:gitversioned:{k}"] = v
             with (tmp_path / "setup.cfg").open("w", encoding="utf-8") as file:
                 config.write(file)
+
+            if nested_config:
+                config_dict.update(nested_config)
+
         return SetupCfgSettingsSource(Settings, tmp_path), config_dict
 
     @pytest.mark.smoke
@@ -53,7 +69,7 @@ class TestSetupCfgSettingsSource:
     @pytest.mark.smoke
     def test_initialization(
         self,
-        valid_instances: tuple[SetupCfgSettingsSource, dict[str, str] | None],
+        valid_instances: tuple[SetupCfgSettingsSource, dict[str, Any] | None],
         tmp_path: Path,
     ) -> None:
         """Test SetupCfgSettingsSource initialization."""
@@ -75,7 +91,7 @@ class TestSetupCfgSettingsSource:
 
     @pytest.mark.smoke
     def test_get_field_value(
-        self, valid_instances: tuple[SetupCfgSettingsSource, dict[str, str] | None]
+        self, valid_instances: tuple[SetupCfgSettingsSource, dict[str, Any] | None]
     ) -> None:
         """Test get_field_value retrieves correct configurations."""
         instance, config = valid_instances
@@ -90,7 +106,7 @@ class TestSetupCfgSettingsSource:
 
     @pytest.mark.sanity
     def test_get_field_value_invalid(
-        self, valid_instances: tuple[SetupCfgSettingsSource, dict[str, str] | None]
+        self, valid_instances: tuple[SetupCfgSettingsSource, dict[str, Any] | None]
     ) -> None:
         """Test get_field_value handles invalid arguments properly."""
         instance, _ = valid_instances
@@ -99,7 +115,7 @@ class TestSetupCfgSettingsSource:
 
     @pytest.mark.smoke
     def test_call(
-        self, valid_instances: tuple[SetupCfgSettingsSource, dict[str, str] | None]
+        self, valid_instances: tuple[SetupCfgSettingsSource, dict[str, Any] | None]
     ) -> None:
         """Test __call__ reads the configuration correctly."""
         instance, config = valid_instances
@@ -111,7 +127,7 @@ class TestSetupCfgSettingsSource:
 
     @pytest.mark.sanity
     def test_call_invalid(
-        self, valid_instances: tuple[SetupCfgSettingsSource, dict[str, str] | None]
+        self, valid_instances: tuple[SetupCfgSettingsSource, dict[str, Any] | None]
     ) -> None:
         """Test __call__ handles unexpected arguments properly."""
         instance, _ = valid_instances

@@ -74,7 +74,7 @@ GitVersioned is currently under active development. Keep an eye on this section 
 
 ## Quick Start
 
-### 1. Build Configuration (Core Workflow)
+### Installation & Configuration
 
 GitVersioned is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml`:
 
@@ -87,21 +87,7 @@ build-backend = "hatchling.build"
 source = "gitversioned"
 ```
 
-*(See the [Installation Guide](https://markurtz.github.io/git-versioned/getting-started/installation/) for Setuptools and `setup.py` alternatives).*
-
-### 2. Installation
-
-To install the standalone CLI for local generation, use `pip` (or `uv`):
-
-```bash
-# Standard installation
-pip install gitversioned
-
-# Alternative using uv
-uv pip install gitversioned
-```
-
-For full installation options (from source, Docker, platform-specific notes) and step-by-step onboarding, see the **[Getting Started guide](https://markurtz.github.io/git-versioned/getting-started/)**.
+For full installation options, Setuptools alternatives, and step-by-step onboarding, see the **[Getting Started guide](https://markurtz.github.io/git-versioned/getting-started/)**.
 
 ## Core Concepts
 
