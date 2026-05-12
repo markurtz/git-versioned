@@ -56,7 +56,7 @@ The file to inspect when the `file` source type is evaluated.
 
 ### `version_source_function`
 
-A Python module and function to execute when the `function` source type is evaluated. Must return a version string.
+A Python module and function to execute when the `function` source type is evaluated. The function must accept `**kwargs` (including `settings`, `repo`, and `env`) and return a tuple containing a `Version` object and an optional `GitReference` object.
 
 - **Type:** String (Format: `module.path:function_name`)
 - **Default:** `None`

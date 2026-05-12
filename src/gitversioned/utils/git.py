@@ -16,14 +16,13 @@ efficiently retrieve and represent Git metadata such as commits, tags, and branc
 
 from __future__ import annotations
 
-import re
 import shlex
 import subprocess
 import sys
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -58,10 +57,6 @@ class GitReference(BaseModel):
         def print_metadata(metadata: GitReference):
             print(f"SHA: {metadata.short_sha}, HEAD: {metadata.is_head_commit}")
     """
-
-    VERSION_PATTERN: ClassVar[str] = (
-        r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
-    )
 
     commit_sha: str = Field(
         description="The full, un-abbreviated SHA hash of the commit.",
@@ -127,9 +122,15 @@ class GitReference(BaseModel):
         Extracts branch and tag metadata from the 'refs' input string.
 
         Logic identifies the current branch via 'HEAD ->' and extracts
-        the most recent semantic version tag using VERSION_PATTERN.
+        the most recent tags.
         """
-        if not isinstance(data, dict) or not data.get("refs"):
+        if not isinstance(data, dict):
+            return data
+
+        if "ref_names" in data:
+            data["refs"] = data["ref_names"]
+
+        if "refs" not in data:
             return data
 
         reference_string = data["refs"]
@@ -142,12 +143,10 @@ class GitReference(BaseModel):
                 data["branch_name"] = part.replace("HEAD ->", "").strip()
                 data["is_current_branch"] = True
 
-            # Detect tags and validate against version regex
+            # Detect tags
             elif "tag:" in part:
                 tag_content = part.replace("tag:", "").strip()
-                # finditer used to ensure matching against the provided pattern
-                if any(re.finditer(cls.VERSION_PATTERN, tag_content)):
-                    found_tags.append(tag_content)
+                found_tags.append(tag_content)
 
             # Fallback for plain branch names if HEAD was not explicitly indicated
             elif not data.get("branch_name") and not part.startswith("tag:"):

@@ -242,7 +242,7 @@ class Settings(BaseSettings):
     )
     version_source_function: str | None = Field(
         default=None,
-        description="Module and function to invoke for version string.",
+        description="Module and function to resolve version and git reference.",
     )
     source_type: EnsureList[str] = Field(
         default_factory=lambda: ["auto"],  # type: ignore[arg-type]
