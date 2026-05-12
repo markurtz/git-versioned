@@ -7,6 +7,12 @@ hide:
 <div class="hero" markdown>
 <div class="hero-content" markdown>
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/branding/logo-light.svg">
+  <img alt="GitVersioned Logo" src="assets/branding/logo-light.svg" width="400">
+</picture>
+
 # GitVersioned
 
 **Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation.**
@@ -20,6 +26,16 @@ hide:
 
 </div>
 </div>
+
+## Overview
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/user-flow-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/branding/user-flow-light.svg">
+    <img alt="User Flow Diagram" src="assets/branding/user-flow-light.svg" width="800">
+  </picture>
+</p>
 
 ## What's Included
 

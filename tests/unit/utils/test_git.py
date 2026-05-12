@@ -9,14 +9,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 from pydantic import ValidationError
 
-from gitversioned.utils.git import (
-    Branch,
-    Commit,
-    GitMetadataBase,
-    GitRepository,
-    NotAGitRepositoryError,
-    Tag,
-)
+from gitversioned.utils.git import GitReference, GitRepository, NotAGitRepositoryError
 
 
 class TestNotAGitRepositoryError:
@@ -27,7 +20,7 @@ class TestNotAGitRepositoryError:
         assert str(error_instance) == "test message"
 
 
-class TestGitMetadataBase:
+class TestGitReference:
     @pytest.fixture(
         params=[
             {
@@ -36,6 +29,7 @@ class TestGitMetadataBase:
                 "timestamp": datetime.now(timezone.utc),
                 "distance_from_head": 5,
                 "is_head_commit": False,
+                "total_commits": 100,
             },
             {
                 "commit_sha": "0987654321098765432109876543210987654321",
@@ -43,6 +37,7 @@ class TestGitMetadataBase:
                 "timestamp": datetime.now(timezone.utc),
                 "distance_from_head": 0,
                 "is_head_commit": True,
+                "total_commits": 1,
             },
         ]
     )
@@ -51,7 +46,7 @@ class TestGitMetadataBase:
 
     @pytest.mark.smoke
     def test_initialization(self, valid_instances: dict[str, Any]) -> None:
-        model_instance = GitMetadataBase(**valid_instances)
+        model_instance = GitReference(**valid_instances)
         assert model_instance.commit_sha == valid_instances["commit_sha"]
         assert model_instance.short_sha == valid_instances["short_sha"]
         assert model_instance.timestamp == valid_instances["timestamp"]
@@ -59,16 +54,7 @@ class TestGitMetadataBase:
             model_instance.distance_from_head == valid_instances["distance_from_head"]
         )
         assert model_instance.is_head_commit == valid_instances["is_head_commit"]
-
-    @pytest.mark.sanity
-    @pytest.mark.parametrize("missing_field", ["commit_sha", "timestamp"])
-    def test_invalid_initialization_missing(
-        self, valid_instances: dict[str, Any], missing_field: str
-    ) -> None:
-        invalid_data = valid_instances.copy()
-        invalid_data.pop(missing_field)
-        with pytest.raises(ValidationError):
-            GitMetadataBase(**invalid_data)
+        assert model_instance.total_commits == valid_instances["total_commits"]
 
     @pytest.mark.sanity
     @pytest.mark.parametrize(
@@ -81,133 +67,14 @@ class TestGitMetadataBase:
         invalid_data = valid_instances.copy()
         invalid_data[invalid_field] = invalid_value
         with pytest.raises(ValidationError):
-            GitMetadataBase(**invalid_data)
+            GitReference(**invalid_data)
 
     @pytest.mark.regression
     def test_marshalling(self, valid_instances: dict[str, Any]) -> None:
-        model_instance = GitMetadataBase(**valid_instances)
+        model_instance = GitReference(**valid_instances)
         dumped_data = model_instance.model_dump()
         assert dumped_data["commit_sha"] == valid_instances["commit_sha"]
-        validated_instance = GitMetadataBase.model_validate(dumped_data)
-        assert validated_instance == model_instance
-
-
-class TestCommit:
-    @pytest.fixture(
-        params=[
-            {
-                "commit_sha": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
-                "short_sha": "a1b2c3d",
-                "timestamp": datetime.now(timezone.utc),
-                "distance_from_head": 5,
-                "is_head_commit": False,
-                "author_name": "Test Author",
-                "author_email": "test@example.com",
-                "commit_message": "Test commit message",
-            },
-        ]
-    )
-    def valid_instances(self, request: pytest.FixtureRequest) -> dict[str, Any]:
-        return request.param
-
-    @pytest.mark.smoke
-    def test_initialization(self, valid_instances: dict[str, Any]) -> None:
-        model_instance = Commit(**valid_instances)
-        assert model_instance.author_name == valid_instances["author_name"]
-        assert model_instance.commit_message == valid_instances["commit_message"]
-
-    @pytest.mark.sanity
-    def test_invalid_initialization_missing(
-        self, valid_instances: dict[str, Any]
-    ) -> None:
-        invalid_data = valid_instances.copy()
-        invalid_data.pop("author_name")
-        with pytest.raises(ValidationError):
-            Commit(**invalid_data)
-
-    @pytest.mark.regression
-    def test_marshalling(self, valid_instances: dict[str, Any]) -> None:
-        model_instance = Commit(**valid_instances)
-        dumped_data = model_instance.model_dump()
-        validated_instance = Commit.model_validate(dumped_data)
-        assert validated_instance == model_instance
-
-
-class TestTag:
-    @pytest.fixture(
-        params=[
-            {
-                "commit_sha": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
-                "short_sha": "a1b2c3d",
-                "timestamp": datetime.now(timezone.utc),
-                "distance_from_head": 5,
-                "is_head_commit": False,
-                "tag_name": "v1.0.0",
-            },
-        ]
-    )
-    def valid_instances(self, request: pytest.FixtureRequest) -> dict[str, Any]:
-        return request.param
-
-    @pytest.mark.smoke
-    def test_initialization(self, valid_instances: dict[str, Any]) -> None:
-        model_instance = Tag(**valid_instances)
-        assert model_instance.tag_name == valid_instances["tag_name"]
-
-    @pytest.mark.sanity
-    def test_invalid_initialization_missing(
-        self, valid_instances: dict[str, Any]
-    ) -> None:
-        invalid_data = valid_instances.copy()
-        invalid_data.pop("tag_name")
-        with pytest.raises(ValidationError):
-            Tag(**invalid_data)
-
-    @pytest.mark.regression
-    def test_marshalling(self, valid_instances: dict[str, Any]) -> None:
-        model_instance = Tag(**valid_instances)
-        dumped_data = model_instance.model_dump()
-        validated_instance = Tag.model_validate(dumped_data)
-        assert validated_instance == model_instance
-
-
-class TestBranch:
-    @pytest.fixture(
-        params=[
-            {
-                "commit_sha": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
-                "short_sha": "a1b2c3d",
-                "timestamp": datetime.now(timezone.utc),
-                "distance_from_head": 5,
-                "is_head_commit": False,
-                "branch_name": "main",
-                "is_current_branch": True,
-            },
-        ]
-    )
-    def valid_instances(self, request: pytest.FixtureRequest) -> dict[str, Any]:
-        return request.param
-
-    @pytest.mark.smoke
-    def test_initialization(self, valid_instances: dict[str, Any]) -> None:
-        model_instance = Branch(**valid_instances)
-        assert model_instance.branch_name == valid_instances["branch_name"]
-        assert model_instance.is_current_branch == valid_instances["is_current_branch"]
-
-    @pytest.mark.sanity
-    def test_invalid_initialization_missing(
-        self, valid_instances: dict[str, Any]
-    ) -> None:
-        invalid_data = valid_instances.copy()
-        invalid_data.pop("branch_name")
-        with pytest.raises(ValidationError):
-            Branch(**invalid_data)
-
-    @pytest.mark.regression
-    def test_marshalling(self, valid_instances: dict[str, Any]) -> None:
-        model_instance = Branch(**valid_instances)
-        dumped_data = model_instance.model_dump()
-        validated_instance = Branch.model_validate(dumped_data)
+        validated_instance = GitReference.model_validate(dumped_data)
         assert validated_instance == model_instance
 
 
@@ -290,12 +157,35 @@ class TestGitRepository:
     @pytest.mark.smoke
     def test_commit_count(self) -> None:
         repo_instance = GitRepository()
-        with patch.object(
-            GitRepository, "commits", new_callable=PropertyMock
-        ) as mock_get:
-            mock_get.return_value = iter([MagicMock(), MagicMock()])
+        with (
+            patch.object(
+                GitRepository,
+                "is_available",
+                new_callable=PropertyMock,
+                return_value=True,
+            ),
+            patch.object(
+                repo_instance, "_execute_command", return_value="2"
+            ) as mock_exec,
+        ):
             assert repo_instance.commit_count == 2
-            mock_get.assert_called_once()
+            mock_exec.assert_called_once_with(["rev-list", "--count", "HEAD"])
+
+        with (
+            patch.object(
+                GitRepository,
+                "is_available",
+                new_callable=PropertyMock,
+                return_value=True,
+            ),
+            patch.object(repo_instance, "_execute_command", return_value=""),
+        ):
+            assert repo_instance.commit_count == 0
+
+        with patch.object(
+            GitRepository, "is_available", new_callable=PropertyMock, return_value=False
+        ):
+            assert repo_instance.commit_count == 0
 
     @pytest.mark.smoke
     def test_is_dirty(self) -> None:
@@ -395,9 +285,9 @@ class TestGitRepository:
         repo_instance = GitRepository()
         mock_log_output = [
             "a1b2|a1b|2023-01-01T12:00:00Z|"
-            "Author One|author1@test.com|feat: message one",
+            "Author One|author1@test.com|feat: message one|HEAD -> main, tag: v1.0.0",
             "c3d4|c3d|2023-01-02T12:00:00Z|"
-            "Author Two|author2@test.com|fix: message two",
+            "Author Two|author2@test.com|fix: message two|",
         ]
         with (
             patch.object(repo_instance, "_ensure_valid_repository"),

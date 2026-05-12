@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import os
+import shutil
 import subprocess
 import tarfile
 import zipfile
@@ -9,6 +10,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 from tests.integration.conftest import GitRepoHelper
 
@@ -256,7 +258,40 @@ class BuildTestHelper(ABC):
 
         self.run_build(e2e_git_repo)
         version = self.get_version_from_artifacts(e2e_git_repo.path)
-        assert version == f"1.2.3{expected_suffix}"
+        assert version == str(Version(f"1.2.3{expected_suffix}"))
+
+    @pytest.mark.sanity
+    def test_archive_build(self, e2e_git_repo: GitRepoHelper) -> None:
+        """Test building from a repository zip archive without .git folder."""
+        pyproject_content = self.pyproject_content()
+        self.setup_base_repo(
+            e2e_git_repo,
+            pyproject_content=pyproject_content,
+        )
+
+        # Simulate archive creation by writing .git_archival.txt and removing .git
+        archive_content = (
+            "commit_sha: abc1234\n"
+            "short_sha: abc\n"
+            "timestamp: 2023-01-01T00:00:00Z\n"
+            "author_name: test\n"
+            "author_email: test@test.com\n"
+            "ref_names: HEAD -> main, tag: v9.9.9\n"
+            "distance_from_head: 0\n"
+            "is_head_commit: true\n"
+            "total_commits: 10\n"
+            "is_current_branch: true\n"
+            "commit_message:\n"
+            "Release 9.9.9\n"
+        )
+        (e2e_git_repo.path / ".git_archival.txt").write_text(
+            archive_content, encoding="utf-8"
+        )
+        shutil.rmtree(e2e_git_repo.path / ".git")
+
+        self.run_build(e2e_git_repo)
+        version = self.get_version_from_artifacts(e2e_git_repo.path)
+        assert version == "9.9.9"
 
     @classmethod
     @abstractmethod

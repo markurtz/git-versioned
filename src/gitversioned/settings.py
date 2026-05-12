@@ -179,6 +179,12 @@ class Settings(BaseSettings):
     )
 
     # Sourcing properties
+    regex_version: EnsureList[str] = Field(
+        default_factory=lambda: [  # type: ignore[arg-type]
+            r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
+        ],
+        description="Regex used to extract version from explicit version strings.",
+    )
     regex_tag: EnsureList[str] = Field(
         default_factory=lambda: [  # type: ignore[arg-type]
             r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
@@ -206,9 +212,33 @@ class Settings(BaseSettings):
         ],
         description="Regex used to extract version from a file.",
     )
+    regex_archive: EnsureList[str] = Field(
+        default_factory=lambda: [  # type: ignore[arg-type]
+            r"(?sm)"
+            r"(?=.*^commit_sha:\s*(?P<commit_sha>[^\n]*))"
+            r"(?=.*^short_sha:\s*(?P<short_sha>[^\n]*))"
+            r"(?=.*^timestamp:\s*(?P<timestamp>[^\n]*))"
+            r"(?=.*^author_name:\s*(?P<author_name>[^\n]*))"
+            r"(?=.*^author_email:\s*(?P<author_email>[^\n]*))"
+            r"(?=.*^ref_names:\s*(?P<ref_names>[^\n]*))"
+            r"(?=.*^ref_names:.*?(?:v)?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+))"
+            r"(?=.*^distance_from_head:\s*(?P<distance_from_head>[^\n]*))"
+            r"(?=.*^is_head_commit:\s*(?P<is_head_commit>[^\n]*))"
+            r"(?=.*^total_commits:\s*(?P<total_commits>[^\n]*))"
+            r"(?=.*^is_current_branch:\s*(?P<is_current_branch>[^\n]*))"
+            r"(?=.*^commit_message:\n(?P<commit_message>.*))"
+        ],
+        description=(
+            "Regex patterns used to extract versions/metadata from an archive export."
+        ),
+    )
     version_source_file: str | None = Field(
         default="version.txt",
         description="File to pull version from if searching local sources.",
+    )
+    version_source_archive: str | None = Field(
+        default=".git_archival.txt",
+        description="File to pull version from if executed from a git archive.",
     )
     version_source_function: str | None = Field(
         default=None,
@@ -217,6 +247,12 @@ class Settings(BaseSettings):
     source_type: EnsureList[str] = Field(
         default_factory=lambda: ["auto"],  # type: ignore[arg-type]
         description="Priority order of source types to extract the version from.",
+    )
+    dirty_ignore: EnsureList[str] = Field(
+        default_factory=list,  # type: ignore[arg-type]
+        description=(
+            "List of file paths to ignore when checking if the repository is dirty."
+        ),
     )
 
     # Creation & output properties
@@ -262,7 +298,8 @@ class Settings(BaseSettings):
             f"Settings(package_name={self.package_name!r}, version={self.version!r}, "
             f"version_type={self.version_type!r}, project_root={self.project_root!r}, "
             f"src_root={self.src_root!r}, source_type={self.source_type!r}, "
-            f"auto_increment={self.auto_increment!r}, output_file={self.output_file!r})"
+            f"auto_increment={self.auto_increment!r}, output_file={self.output_file!r},"
+            f" dirty_ignore={self.dirty_ignore!r})"
         )
 
     def __repr__(self) -> str:
@@ -278,7 +315,7 @@ class Settings(BaseSettings):
             f"regex_commit={self.regex_commit!r}, regex_file={self.regex_file!r}, "
             f"version_source_file={self.version_source_file!r}, "
             f"version_source_function={self.version_source_function!r}, "
-            f"source_type={self.source_type!r}, "
+            f"source_type={self.source_type!r}, dirty_ignore={self.dirty_ignore!r}, "
             f"auto_increment={self.auto_increment!r}, "
             f"version_type={self.version_type!r}, output_file={self.output_file!r}, "
             f"template_release={self.template_release!r}, "

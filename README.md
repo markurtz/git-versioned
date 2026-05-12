@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <em>Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation.</em>
+  <em>Simple, predictable, and opinionated versioning for Python projects.</em>
 </p>
 
 <p align="center">
@@ -56,21 +56,28 @@ ______________________________________________________________________
   </picture>
 </p>
 
-Welcome to GitVersioned!
+GitVersioned is a PEP 440-compliant Python versioning tool for Git repositories. It leverages Git history and CI environments as the ultimate source of truth to provide predictable, automated release versioning with zero runtime dependencies.
 
-GitVersioned is a tool that provides an opinionated, PEP 440-compliant Python versioning strategy for Git repositories and submodules. It enforces CI and user authority over versioning, and generates rich `version.py` files with deep metadata for full auditability.
+### Why GitVersioned?
 
-### Why Use GitVersioned?
+GitVersioned combines strict PEP 440 compliance with extreme customizability, designed to drop cleanly into modern Python build systems.
 
-- **Auditability:** Deep metadata ensures every build is traceable back to its exact state.
-- **Predictability:** Simple, foolproof automation for generating versions.
-- **Native Support:** First-class support for modern build systems like Hatch and Setuptools.
+- **Ironclad Auditability & Metadata:** Generates rich `version.py` files packed with Git hashes, branch names, and build context to ensure every artifact is fully traceable.
+- **Predictability & Authority:** Enforces CI-driven and user-defined authority. Supports dynamic version resolution from tags, branches, commits, local files, archives (e.g., GitHub ZIP downloads), or custom Python hooks.
+- **Native Integrations & CI/CD Ready:** Offers out-of-the-box support for **Hatch** and **Setuptools** and plugs effortlessly into modern CI pipelines (e.g., GitHub Actions) without tangled configurations.
+- **Deep Customizability:** Features 25+ configuration settings via `pyproject.toml`, `setup.cfg`, or environment variables. Provides advanced ExStr templates and custom format strings for full control over metadata generation and release formatting.
+- **Archive Fallback:** Seamlessly resolves version data from GitHub ZIP downloads or source archives when the `.git` directory is missing.
+- **Submodule Awareness:** Intelligently handles versioning across complex Git submodule structures.
 
-## What's New
+### Ecosystem Comparison
 
-**Welcome to GitVersioned!**
-
-GitVersioned is currently under active development. Keep an eye on this section for future release highlights and new features once the initial implementation is complete.
+| Tool               | Versioning Logic & PEP 440                                                                               | Sourcing & Configuration                                                                           | Auditability & Metadata                                                                             | Integrations & DX                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **`GitVersioned`** | **Predictable & Robust.** Enforces strict PEP 440 compliance with flow-based auto-incrementing logic.    | **Omni-Source.** Dynamically resolves from Git, archives, env vars, files, or custom Python hooks. | **Unmatched.** Generates rich `version.py` files packed with Git, build, and host environment data. | **Superior.** 2-line setup, zero runtime deps, and native Hatch/Setuptools support.        |
+| `setuptools-scm`   | Heuristic. Relies on "guess-next-version" logic which can lead to unpredictable bumps.                   | VCS-First. Primarily Git/Hg tags; environment overrides are manual and difficult to manage.        | Minimal. Outputs a simple version string with basic stdout build logging.                           | Standard. Industry default but requires build-time dependencies and is tied to Setuptools. |
+| `versioneer`       | Rigid. Uses basic tag-plus-distance logic with little room for customization.                            | VCS-Only. Hardcoded to read from repository tags and hashes.                                       | None. Injects a hardcoded Python module; executes silently with no tracing.                         | Legacy. Requires vendoring ~2,000 lines of code directly into your repository.             |
+| `versioningit`     | Manual. Highly configurable but places the burden of PEP 440 compliance on complex user regex/templates. | Modular. Supports many sources but requires extensive individual manual configuration.             | Moderate. Customizable output via templates but lacks a unified, structured metadata model.         | Complex. Steep learning curve and plugin-heavy architecture.                               |
+| `hatch-vcs`        | Basic. Inherits the standard "guess" logic from the broader SCM ecosystem.                               | Optimized. Tied tightly to Hatchling profiles and its specific environment.                        | Internal. Logging and metadata are strictly restricted to the Hatch ecosystem.                      | Niche. High ease of use for Hatch users, but inapplicable for other build backends.        |
 
 ## Quick Start
 
@@ -87,19 +94,40 @@ build-backend = "hatchling.build"
 source = "gitversioned"
 ```
 
+To ensure `gitversioned` can resolve the version when users download your repository as a ZIP file (e.g., from GitHub) where the `.git` directory is missing, configure **Archive Support**:
+
+1. Create a `.git_archival.txt` file in your repository root with the following format variables:
+   ```text
+   commit_sha: $Format:%H$
+   short_sha: $Format:%h$
+   timestamp: $Format:%aI$
+   author_name: $Format:%an$
+   author_email: $Format:%ae$
+   ref_names: $Format:%D$
+   commit_message:
+   $Format:%B$
+   ```
+1. Enable variable substitution during archive creation by adding the following to your `.gitattributes` file:
+   ```text
+   .git_archival.txt export-subst
+   ```
+
 For full installation options, Setuptools alternatives, and step-by-step onboarding, see the **[Getting Started guide](https://markurtz.github.io/git-versioned/getting-started/)**.
 
 ## Core Concepts
 
-This project is built using modern Python tooling, ensuring a stable and typed foundation. It utilizes Ruff and Mypy for code quality.
+GitVersioned is built using modern Python tooling, enforcing strict code quality standards with Ruff and Mypy, and providing a robust Pydantic-driven settings architecture for configuration resolution.
 
 ### Component Architecture
 
-The project is organized into several key areas:
+The repository is structured to separate documentation, application logic, and testing cleanly:
 
-- `docs/`: Project documentation and guides.
-- `src/gitversioned`: The core application logic and versioning handlers.
-- `tests/`: Automated test suite ensuring correctness and reliability.
+- `src/gitversioned/`: The primary application source code. Contains core logic for Git interaction, version resolution, and template generation.
+  - `plugins/`: Native integrations for build backends like Hatchling (`hatchling_plugin.py`) and Setuptools (`setuptools_plugin.py`).
+- `tests/`: Comprehensive test suite ensuring reliability, organized into `unit/`, `integration/`, and `e2e/`.
+- `docs/`: Source code for the MkDocs Material documentation site, including step-by-step guides, references, and getting started tutorials.
+- `examples/`: Runnable reference projects demonstrating real-world configurations across various build systems and workflows.
+- `.github/workflows/`: Advanced CI/CD pipelines governing the project lifecycle, built around reusable workflow templates.
 
 ## Advanced Usage
 
