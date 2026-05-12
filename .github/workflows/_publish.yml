@@ -35,26 +35,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - name: Download build artifact
         if: ${{ inputs.build_location != '' }}
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16  # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v4
         with:
           name: build-artifact-${{ inputs.build_type }}-${{ github.run_id }}
           path: ${{ inputs.build_location }}
       - name: Generate artifact attestations
         if: ${{ inputs.build_location != '' }}
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2  # v1.5.1
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v1.5.1
         with:
           subject-path: ${{ inputs.build_location }}/*
       - name: Publish to PyPI
         if: ${{ inputs.build_location != '' }}
-        uses: pypa/gh-action-pypi-publish@81e9d935c883d0b210363ab89cf05f3894778450  # v1.8.14
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
         with:
           packages-dir: ${{ inputs.build_location }}
       - name: Create GitHub Release
         if: ${{ github.ref_type == 'tag' }}
-        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191  # v2.0.8
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           files: ${{ inputs.build_location }}/*
           generate_release_notes: true
