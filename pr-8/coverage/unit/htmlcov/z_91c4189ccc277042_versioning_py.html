@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="index.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.0">coverage.py v7.14.0</a>,
-            created at 2026-05-12 16:55 +0000
+            created at 2026-05-12 17:13 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -314,14 +314,14 @@
     <p class="run"><span class="n"><a id="t232" href="#t232">232</a></span><span class="t">    <span class="key">for</span> <span class="nam">source</span> <span class="key">in</span> <span class="nam">sources</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t233" href="#t233">233</a></span><span class="t">        <span class="key">try</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t234" href="#t234">234</a></span><span class="t">            <span class="key">if</span> <span class="nam">source</span> <span class="op">==</span> <span class="str">"tag"</span> <span class="key">and</span> <span class="nam">ref</span><span class="op">.</span><span class="nam">tag_name</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t235" href="#t235">235</a></span><span class="t">                <span class="nam">versions</span> <span class="op">=</span> <span class="nam">_extract_versions</span><span class="op">(</span><span class="nam">settings</span><span class="op">.</span><span class="nam">regex_tag</span><span class="op">,</span> <span class="nam">ref</span><span class="op">.</span><span class="nam">tag_name</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t236" href="#t236">236</a></span><span class="t">                <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t235" href="#t235">235</a></span><span class="t">                <span class="nam">versions</span> <span class="op">=</span> <span class="nam">_extract_versions</span><span class="op">(</span><span class="nam">settings</span><span class="op">.</span><span class="nam">regex_tag</span><span class="op">,</span> <span class="nam">ref</span><span class="op">.</span><span class="nam">tag_name</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t236" href="#t236">236</a></span><span class="t">                <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t237" href="#t237">237</a></span><span class="t">            <span class="key">if</span> <span class="nam">source</span> <span class="op">==</span> <span class="str">"branch"</span> <span class="key">and</span> <span class="nam">ref</span><span class="op">.</span><span class="nam">branch_name</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t238" href="#t238">238</a></span><span class="t">                <span class="nam">versions</span> <span class="op">=</span> <span class="nam">_extract_versions</span><span class="op">(</span><span class="nam">settings</span><span class="op">.</span><span class="nam">regex_branch</span><span class="op">,</span> <span class="nam">ref</span><span class="op">.</span><span class="nam">branch_name</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t239" href="#t239">239</a></span><span class="t">                <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t240" href="#t240">240</a></span><span class="t">            <span class="key">if</span> <span class="nam">source</span> <span class="op">==</span> <span class="str">"commit"</span> <span class="key">and</span> <span class="nam">ref</span><span class="op">.</span><span class="nam">commit_message</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t241" href="#t241">241</a></span><span class="t">                <span class="nam">versions</span> <span class="op">=</span> <span class="nam">_extract_versions</span><span class="op">(</span><span class="nam">settings</span><span class="op">.</span><span class="nam">regex_commit</span><span class="op">,</span> <span class="nam">ref</span><span class="op">.</span><span class="nam">commit_message</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t242" href="#t242">242</a></span><span class="t">                <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t241" href="#t241">241</a></span><span class="t">                <span class="nam">versions</span> <span class="op">=</span> <span class="nam">_extract_versions</span><span class="op">(</span><span class="nam">settings</span><span class="op">.</span><span class="nam">regex_commit</span><span class="op">,</span> <span class="nam">ref</span><span class="op">.</span><span class="nam">commit_message</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t242" href="#t242">242</a></span><span class="t">                <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t243" href="#t243">243</a></span><span class="t">        <span class="key">except</span> <span class="nam">ValueError</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t244" href="#t244">244</a></span><span class="t">            <span class="nam">logger</span><span class="op">.</span><span class="nam">warning</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis mis2 show_mis"><span class="n"><a id="t245" href="#t245">245</a></span><span class="t">                <span class="fst">f"</span><span class="fst">Could not extract version from archive for </span><span class="op">{</span><span class="nam">source</span><span class="op">}</span><span class="fst">: </span><span class="op">{</span><span class="nam">ref</span><span class="op">}</span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
@@ -692,7 +692,7 @@
             <a class="nav" href="index.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.0">coverage.py v7.14.0</a>,
-            created at 2026-05-12 16:55 +0000
+            created at 2026-05-12 17:13 +0000
         </p>
     </div>
 </footer>
