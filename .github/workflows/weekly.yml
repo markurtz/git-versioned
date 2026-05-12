@@ -1,11 +1,11 @@
 ---
 # =============================================================================
-# weekly.yml — The Janitor
+# weekly.yml
 #
 # Trigger:  Cron 00:00 UTC every Sunday + manual workflow_dispatch
 # Purpose:  Dependency hygiene, full test suite regression.
 # =============================================================================
-name: "CI — Weekly Housekeeping"
+name: "CI — Weekly"
 on:
   schedule:
     - cron: "0 0 * * 0"  # 00:00 UTC every Sunday

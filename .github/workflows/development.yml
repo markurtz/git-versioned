@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# development.yml — PR CI
+# development.yml
 #
 # Triggers:
 #   pull_request → main

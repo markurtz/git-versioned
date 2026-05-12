@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# development_cleanup.yml — PR Documentation Cleanup
+# development_cleanup.yml
 #
 # Triggers:
 #   pull_request → closed (merged or abandoned)

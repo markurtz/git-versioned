@@ -1,11 +1,11 @@
 ---
 # =============================================================================
-# release.yml — The Gold Master
+# release.yml
 #
 # Trigger:  Push of a version tag matching v*.*.*
 # Purpose:  Final verification, immutable build, versioned docs, release publish
 # =============================================================================
-name: "CI — Release Gold Master"
+name: "CI — Release"
 on:
   push:
     tags:
@@ -69,7 +69,27 @@ jobs:
   publish:
     name: "Publish Release"
     needs: build
-    uses: ./.github/workflows/_publish.yml
-    with:
-      build_type: "release"
-      build_location: "dist/"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Download build artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16  # v4
+        with:
+          name: build-artifact-release-${{ github.run_id }}
+          path: dist/
+      - name: Generate artifact attestations
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2  # v1.5.1
+        with:
+          subject-path: dist/*
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14
+        with:
+          packages-dir: dist/
+      - name: Create GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191  # v2.0.8
+        with:
+          files: dist/*
+          generate_release_notes: true
+          prerelease: false
