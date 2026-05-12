@@ -49,7 +49,7 @@ jobs:
           subject-path: ${{ inputs.build_location }}/*
       - name: Publish to PyPI
         if: ${{ inputs.build_location != '' }}
-        uses: pypa/gh-action-pypi-publish@81e9d935c883d0b210363ab89cf05f3894778450  # v1.8.14
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14
         with:
           packages-dir: ${{ inputs.build_location }}
       - name: Create GitHub Release
