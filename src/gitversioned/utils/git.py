@@ -18,20 +18,20 @@ from __future__ import annotations
 
 import shlex
 import subprocess
+import sys
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field, model_validator
 
 from gitversioned.logging import logger
 
 __all__ = [
-    "Branch",
-    "Commit",
+    "GitReference",
     "GitRepository",
     "NotAGitRepositoryError",
-    "Tag",
 ]
 
 
@@ -44,117 +44,119 @@ class NotAGitRepositoryError(Exception):
     """
 
 
-class GitMetadataBase(BaseModel):
+class GitReference(BaseModel):
     """
-    Shared metadata for Git objects.
+    Pydantic model representing a Git reference (commit, tag, or branch).
 
-    Provides the foundational metadata fields for all Git objects such as commits,
-    branches, and tags, ensuring a consistent interface for Git information across
-    the application.
+    Provides the foundational metadata fields for Git objects and includes
+    optional fields for specific types like author information for commits,
+    or names for tags and branches.
 
     .. code-block:: python
 
-        def print_metadata(metadata: GitMetadataBase):
+        def print_metadata(metadata: GitReference):
             print(f"SHA: {metadata.short_sha}, HEAD: {metadata.is_head_commit}")
     """
 
-    model_config = ConfigDict(frozen=True)
-
     commit_sha: str = Field(
-        description="The full, un-abbreviated SHA hash of the commit."
+        description="The full, un-abbreviated SHA hash of the commit.",
+        default="",
     )
     short_sha: str = Field(
-        description="The abbreviated SHA hash of the commit for display purposes."
+        description="The abbreviated SHA hash of the commit for display purposes.",
+        default="",
     )
     timestamp: datetime = Field(
-        description="The creation or commit timestamp of the Git object."
+        description="The creation or commit timestamp of the Git object.",
+        default=datetime.min,
     )
     distance_from_head: int = Field(
-        description="The number of commits between this object and the current HEAD."
+        description="The number of commits between this object and the current HEAD.",
+        default=sys.maxsize,
     )
     is_head_commit: bool = Field(
-        description="Indicates whether this object represents the current HEAD commit."
+        description="Indicates whether this object represents the current HEAD commit.",
+        default=False,
     )
-
-    def __str__(self) -> str:
-        return f"{self.short_sha} ({self.timestamp.isoformat()})"
-
-
-class Commit(GitMetadataBase):
-    """
-    Pydantic model representing a Git commit.
-
-    Extends the base Git metadata to include specific details about a commit,
-    such as the author's name, email, and the commit message.
-
-    .. code-block:: python
-
-        commit = repo.current_commit
-        if commit:
-            print(f"Author: {commit.author_name}, Message: {commit.commit_message}")
-    """
-
+    total_commits: int = Field(
+        description="Total number of commits in the repository.",
+        default=0,
+    )
     author_name: str = Field(
-        description="The name of the author who created the commit."
+        description="The name of the author who created the commit.", default=""
     )
     author_email: str = Field(
-        description="The email address of the author who created the commit."
+        description="The email address of the author who created the commit.",
+        default="",
     )
     commit_message: str = Field(
-        description="The full message associated with the commit."
+        description="The full message associated with the commit.", default=""
     )
-
-    def __str__(self) -> str:
-        return (
-            f"{self.short_sha} {self.commit_message} - {self.author_name} "
-            f"({self.timestamp.isoformat()})"
-        )
-
-
-class Tag(GitMetadataBase):
-    """
-    Pydantic model representing a Git tag.
-
-    Extends the base Git metadata to include the specific tag name.
-
-    .. code-block:: python
-
-        tag = repo.last_tag
-        if tag:
-            print(f"Latest tag: {tag.tag_name}")
-    """
-
-    tag_name: str = Field(description="The name of the Git tag.")
-
-    def __str__(self) -> str:
-        return f"{self.tag_name} -> {self.short_sha} ({self.timestamp.isoformat()})"
-
-
-class Branch(GitMetadataBase):
-    """
-    Pydantic model representing a Git branch.
-
-    Extends the base Git metadata to include the branch name and whether it is the
-    currently checked-out branch.
-
-    .. code-block:: python
-
-        branch = repo.current_branch
-        if branch:
-            print(f"Current branch: {branch.branch_name}")
-    """
-
-    branch_name: str = Field(description="The name of the Git branch.")
+    tag_name: str = Field(description="The name of the Git tag.", default="")
+    branch_name: str = Field(description="The name of the Git branch.", default="")
     is_current_branch: bool = Field(
-        description="Indicates whether this branch is currently checked out."
+        description="Indicates whether this branch is currently checked out.",
+        default=False,
     )
 
     def __str__(self) -> str:
-        marker = "*" if self.is_current_branch else " "
-        return (
-            f"{marker} {self.branch_name} -> {self.short_sha} "
-            f"({self.timestamp.isoformat()})"
-        )
+        if self.tag_name:
+            return f"{self.tag_name} -> {self.short_sha} ({self.timestamp.isoformat()})"
+        if self.branch_name:
+            marker = "*" if self.is_current_branch else " "
+            return (
+                f"{marker} {self.branch_name} -> {self.short_sha} "
+                f"({self.timestamp.isoformat()})"
+            )
+        if self.commit_message:
+            return (
+                f"{self.short_sha} {self.commit_message} - {self.author_name} "
+                f"({self.timestamp.isoformat()})"
+            )
+        return f"{self.short_sha} ({self.timestamp.isoformat()})"
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_git_references(cls, data: Any) -> Any:
+        """
+        Extracts branch and tag metadata from the 'refs' input string.
+
+        Logic identifies the current branch via 'HEAD ->' and extracts
+        the most recent tags.
+        """
+        if not isinstance(data, dict):
+            return data
+
+        if "ref_names" in data:
+            data["refs"] = data["ref_names"]
+
+        if "refs" not in data:
+            return data
+
+        reference_string = data["refs"]
+        reference_parts = [part.strip() for part in reference_string.split(",")]
+        found_tags = []
+
+        for part in reference_parts:
+            # Detect current branch from 'HEAD -> branch_name'
+            if "HEAD ->" in part:
+                data["branch_name"] = part.replace("HEAD ->", "").strip()
+                data["is_current_branch"] = True
+
+            # Detect tags
+            elif "tag:" in part:
+                tag_content = part.replace("tag:", "").strip()
+                found_tags.append(tag_content)
+
+            # Fallback for plain branch names if HEAD was not explicitly indicated
+            elif not data.get("branch_name") and not part.startswith("tag:"):
+                data["branch_name"] = part
+
+        # The first tag in the ref list is considered the closest/most recent
+        if found_tags and not data.get("tag_name"):
+            data["tag_name"] = found_tags[0]
+
+        return data
 
 
 class GitRepository:
@@ -262,7 +264,12 @@ class GitRepository:
 
         :return: The total number of commits.
         """
-        return sum(1 for _ in self.commits)
+        if not self.is_available:
+            return 0
+        try:
+            return int(self._execute_command(["rev-list", "--count", "HEAD"]) or 0)
+        except ValueError:
+            return 0
 
     @property
     def is_dirty(self) -> bool:
@@ -284,29 +291,30 @@ class GitRepository:
         return [line[3:] for line in output.splitlines() if line]
 
     @property
-    def current_commit(self) -> Commit | None:
+    def current_commit(self) -> GitReference | None:
         """
         Gets the most recent commit.
 
-        :return: The most recent Commit object, or None if no commits exist.
+        :return: The most recent GitReference object, or None if no commits exist.
         """
         return next(self.commits, None)
 
     @property
-    def last_tag(self) -> Tag | None:
+    def last_tag(self) -> GitReference | None:
         """
         Gets the most recent tag.
 
-        :return: The most recent Tag object, or None if no tags exist.
+        :return: The most recent GitReference object, or None if no tags exist.
         """
         return next(self.tags, None)
 
     @property
-    def current_branch(self) -> Branch | None:
+    def current_branch(self) -> GitReference | None:
         """
         Gets the currently checked-out branch.
 
-        :return: The Branch object representing the current branch, or None if detached.
+        :return: The GitReference object representing the current branch,
+            or None if detached.
         """
         return next(
             (branch for branch in self.branches if branch.is_current_branch),
@@ -327,42 +335,67 @@ class GitRepository:
         return ""
 
     @property
-    def commits(self) -> Iterator[Commit]:
+    def commits(self) -> Iterator[GitReference]:
         """
         Yields all commits in the repository.
 
-        :return: An iterator of Commit objects.
+        :return: An iterator of GitReference objects.
         :raises NotAGitRepositoryError: If the repository is not valid.
         """
         self._ensure_valid_repository()
-        format_string = "%H|%h|%cI|%an|%ae|%s"
+        total_commits = self.commit_count
+        format_string = "%H|%h|%cI|%an|%ae|%s|%D"
         lines = self._stream_command(["log", f"--format={format_string}"])
 
         for index, line in enumerate(lines):
-            parts = line.split("|", 5)
-            if len(parts) == 6:  # noqa: PLR2004
-                yield Commit(
+            parts = line.split("|", 6)
+            if len(parts) == 7:  # noqa: PLR2004
+                tag_name = ""
+                branch_name = ""
+                is_current_branch = False
+
+                refs = parts[6].split(", ") if parts[6] else []
+                for ref in refs:
+                    if ref.startswith("tag: "):
+                        tag_name = ref[5:]
+                    elif "->" in ref:
+                        branch_name = ref.split(" -> ")[1]
+                        is_current_branch = True
+                    elif (
+                        ref
+                        and not ref.startswith("origin/")
+                        and ref != "HEAD"
+                        and not branch_name
+                    ):
+                        branch_name = ref
+
+                yield GitReference(
                     commit_sha=parts[0],
                     short_sha=parts[1],
                     timestamp=datetime.fromisoformat(parts[2].replace("Z", "+00:00")),
                     author_name=parts[3],
                     author_email=parts[4],
                     commit_message=parts[5],
+                    tag_name=tag_name,
+                    branch_name=branch_name,
+                    is_current_branch=is_current_branch,
                     distance_from_head=index,
                     is_head_commit=(index == 0),
+                    total_commits=total_commits,
                 )
 
     @property
-    def tags(self) -> Iterator[Tag]:
+    def tags(self) -> Iterator[GitReference]:
         """
         Yields all tags in the repository.
 
-        :return: An iterator of Tag objects.
+        :return: An iterator of GitReference objects.
         :raises NotAGitRepositoryError: If the repository is not valid.
         """
         self._ensure_valid_repository()
         current = self.current_commit
         head_sha = current.commit_sha if current else ""
+        total_commits = self.commit_count
         format_string = "%(refname:short)|%(creatordate:iso-strict)|%(objectname)"
 
         lines = self._stream_command(
@@ -379,26 +412,28 @@ class GitRepository:
             distance_str = self._execute_command(
                 ["rev-list", "--count", f"{sha}..HEAD"]
             )
-            yield Tag(
+            yield GitReference(
                 tag_name=name,
                 commit_sha=sha,
                 short_sha=sha[:7],
                 timestamp=datetime.fromisoformat(date_str.replace("Z", "+00:00")),
                 distance_from_head=int(distance_str or 0),
                 is_head_commit=(sha == head_sha),
+                total_commits=total_commits,
             )
 
     @property
-    def branches(self) -> Iterator[Branch]:
+    def branches(self) -> Iterator[GitReference]:
         """
         Yields all branches in the repository.
 
-        :return: An iterator of Branch objects.
+        :return: An iterator of GitReference objects.
         :raises NotAGitRepositoryError: If the repository is not valid.
         """
         self._ensure_valid_repository()
         current = self.current_commit
         head_sha = current.commit_sha if current else ""
+        total_commits = self.commit_count
         format_string = (
             "%(refname:short)|%(objectname)|%(HEAD)|%(committerdate:iso-strict)"
         )
@@ -414,7 +449,7 @@ class GitRepository:
 
         for line in lines:
             name, sha, current_marker, date_str = line.split("|")
-            yield Branch(
+            yield GitReference(
                 branch_name=name,
                 commit_sha=sha,
                 short_sha=sha[:7],
@@ -422,6 +457,7 @@ class GitRepository:
                 distance_from_head=0,
                 is_head_commit=(sha == head_sha),
                 is_current_branch=(current_marker == "*"),
+                total_commits=total_commits,
             )
 
     def _stream_command(self, arguments: list[str]) -> Iterator[str]:

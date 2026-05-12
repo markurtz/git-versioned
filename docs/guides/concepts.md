@@ -29,6 +29,7 @@ If `source_type = ["tag", "file"]`:
 1. `gitversioned` first checks the repository for Git tags matching the `regex_tag` pattern.
 1. If it finds matches (e.g., `v1.2.0`), it selects the tag that is "closest" (has the fewest commits) to the current `HEAD`.
 1. If no matching tags exist (e.g., a fresh repository or a shallow clone without tags), it falls back to inspecting the file defined by `version_source_file`.
+1. **Archive Fallback:** If all configured sources fail to resolve a version (or if the `.git` directory is entirely absent, such as in a GitHub ZIP download), `gitversioned` will attempt to parse a version and metadata from the file specified by `version_source_archive` (defaulting to `.git_archival.txt`).
 
 ______________________________________________________________________
 

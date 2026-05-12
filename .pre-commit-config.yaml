@@ -10,7 +10,6 @@ repos:
       - id: check-yaml
         args:
           - --unsafe
-      - id: check-added-large-files
       - id: check-merge-conflict
   - repo: local
     hooks:

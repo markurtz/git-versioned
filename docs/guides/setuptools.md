@@ -104,6 +104,9 @@ With this configuration:
 1. The sdist packages `version.py` (provided it's tracked by Git or added to your manifest).
 1. When a user runs `pip install my-package.tar.gz`, `gitversioned` fails to find `.git`, falls back to `file`, parses `version.py`, and successfully sets the version.
 
+> [!TIP] "GitHub ZIP Downloads vs. sdists"
+> If a user downloads your repository as a ZIP directly from GitHub, there is no `.git` directory and no pre-generated `version.py` file! For this scenario, `gitversioned` provides an **Archive Fallback** mechanism that parses a substituted `.git_archival.txt` file. See the [Quick Start](../getting-started/quickstart.md#configure-archive-support-recommended) for setup instructions.
+
 ### Excluding the Version File from Git
 
 If you add your generated `version.py` file to `.gitignore` so it isn't committed to your repository, Setuptools will natively ignore it during the build process if you are using `setuptools-scm` or native git file discovery, meaning it won't be included in your final wheel or sdist.

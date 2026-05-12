@@ -10,7 +10,6 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"      # Strict semver: v1.2.3
-      - "v[0-9]+.[0-9]+.[0-9]+-*"    # Pre-releases:  v1.2.3-rc.1
 permissions:
   contents: write
   packages: write
@@ -53,7 +52,7 @@ jobs:
     uses: ./.github/workflows/_docs.yml
     with:
       build_type: "release"
-      alias: "${{ github.ref_name }}"
+      alias: "latest"
       include_coverage: true
 
   # ── Stage 5: Immutable Build ───────────────────────────────────────────────
@@ -74,5 +73,3 @@ jobs:
     with:
       build_type: "release"
       build_location: "dist/"
-    secrets:
-      pypi_token: ${{ secrets.PYPI_API_TOKEN }}

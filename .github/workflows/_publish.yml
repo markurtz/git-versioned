@@ -24,14 +24,11 @@ on:
         description: "The type of build (e.g., nightly, release)"
         required: true
         type: string
-    secrets:
-      pypi_token:
-        description: "PyPI API Token for publishing"
-        required: false
 permissions:
-  contents: read
+  contents: write  # For GitHub Releases
   id-token: write  # For PyPI OIDC trusted publishing
   packages: write  # To publish to GitHub Container Registry or GitHub Packages
+  attestations: write  # For artifact attestations
 jobs:
   publish:
     name: "Publish (${{ inputs.build_type }})"
@@ -45,9 +42,20 @@ jobs:
         with:
           name: build-artifact-${{ inputs.build_type }}-${{ github.run_id }}
           path: ${{ inputs.build_location }}
+      - name: Generate artifact attestations
+        if: ${{ inputs.build_location != '' }}
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2  # v1.5.1
+        with:
+          subject-path: ${{ inputs.build_location }}/*
       - name: Publish to PyPI
         if: ${{ inputs.build_location != '' }}
         uses: pypa/gh-action-pypi-publish@81e9d935c883d0b210363ab89cf05f3894778450  # v1.8.14
         with:
           packages-dir: ${{ inputs.build_location }}
-          password: ${{ secrets.pypi_token }}
+      - name: Create GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191  # v2.0.8
+        with:
+          files: ${{ inputs.build_location }}/*
+          generate_release_notes: true
+          prerelease: ${{ inputs.build_type != 'release' }}

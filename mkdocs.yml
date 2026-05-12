@@ -28,6 +28,8 @@ extra:
   roadmap_url: "https://github.com/markurtz/git-versioned/milestones"
 theme:
   name: material
+  logo: assets/branding/icon-white.svg
+  favicon: assets/branding/icon-blue.png
   features:
     - navigation.tabs
     - navigation.tabs.sticky

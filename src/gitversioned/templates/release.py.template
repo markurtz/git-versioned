@@ -34,6 +34,9 @@ class GitMetadata(NamedTuple):
     tag: str
     dirty: list[str]
     commit_count: int
+    commit_message: str
+    distance_from_head: int
+    is_head_commit: bool
 
 
 class BuildMetadata(NamedTuple):
@@ -57,11 +60,14 @@ __VERSION_METADATA__ = VersionMetadata(
 )
 
 __GIT_METADATA__ = GitMetadata(
-    hash="{repo.current_commit.commit_sha if repo.is_available and repo.current_commit else ''}",
-    branch="{repo.head_name if repo.is_available else ''}",
-    tag="{repo.last_tag.tag_name if repo.is_available and repo.last_tag else ''}",
+    hash="{ref.commit_sha}",
+    branch="{ref.branch_name}",
+    tag="{ref.tag_name}",
     dirty={repo.dirty_files if repo.is_available else []},
-    commit_count={repo.commit_count if repo.is_available else 0},
+    commit_count={ref.total_commits},
+    commit_message="{ref.commit_message}",
+    distance_from_head={ref.distance_from_head},
+    is_head_commit={ref.is_head_commit},
 )
 
 __BUILD_METADATA__ = BuildMetadata(

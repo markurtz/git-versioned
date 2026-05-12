@@ -31,6 +31,9 @@ Controls the priority order of sources used to extract the version.
 - **Default:** `["auto"]` (Expands to: `file`, `function`, `tag`, `branch`, `commit`)
 - **Options:** `tag`, `branch`, `commit`, `file`, `function`, `auto`
 
+> [!NOTE]
+> If `gitversioned` fails to extract a version from all configured sources (or if the `.git` directory is entirely absent, such as in a GitHub ZIP download), it will automatically attempt an **Archive Fallback**.
+
 ```toml
 # Only resolve versions from Git tags or a hardcoded file.
 [tool.gitversioned]
@@ -53,10 +56,17 @@ The file to inspect when the `file` source type is evaluated.
 
 ### `version_source_function`
 
-A Python module and function to execute when the `function` source type is evaluated. Must return a version string.
+A Python module and function to execute when the `function` source type is evaluated. The function must accept `**kwargs` (including `settings`, `repo`, and `env`) and return a tuple containing a `Version` object and an optional `GitReference` object.
 
 - **Type:** String (Format: `module.path:function_name`)
 - **Default:** `None`
+
+### `version_source_archive`
+
+The file to inspect when the archive fallback mechanism is triggered (e.g., when the repository is downloaded as a ZIP file without a `.git` directory).
+
+- **Type:** String (Path)
+- **Default:** `".git_archival.txt"`
 
 ### Regex Patterns
 
@@ -66,6 +76,7 @@ When evaluating Git sources or files, `gitversioned` uses regex to capture the m
 - **`regex_branch`**: Matches against the current branch name.
 - **`regex_commit`**: Matches against commit messages.
 - **`regex_file`**: Matches against the contents of `version_source_file`.
+- **`regex_archive`**: Matches against the contents of `version_source_archive` during the archive fallback.
 
 ```toml
 [tool.gitversioned]
@@ -88,6 +99,19 @@ Forces a specific build type. By default, `gitversioned` intelligently decides t
 - **Type:** String
 - **Default:** `"auto"`
 - **Options:** `auto`, `release`, `dev`, `pre`, `alpha`, `nightly`, `post`
+
+### `dirty_ignore`
+
+A list of file paths to ignore when `gitversioned` checks if the repository is in a "dirty" state (which normally forces a `dev` version type). The `output_file` and `version_source_file` are always automatically ignored. This is particularly useful for configuration files that might be modified during build processes.
+
+- **Type:** List of strings
+- **Default:** `[]`
+
+```toml
+[tool.gitversioned]
+# Ignore changes to these files when checking dirty state
+dirty_ignore = ["poetry.lock", "tests/sandbox/"]
+```
 
 ### `auto_increment`
 

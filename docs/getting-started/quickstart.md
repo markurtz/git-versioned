@@ -45,6 +45,28 @@ source = "gitversioned"
 
 Now, any time you build your package, the version will be dynamically resolved based on your Git repository state!
 
+### Configure Archive Support (Recommended)
+
+To ensure GitVersioned can resolve your version when users download your repository as a ZIP file (e.g., from GitHub) where the `.git` directory is missing, set up archive support.
+
+1. Create a `.git_archival.txt` file in your repository root with the following contents:
+   ```text
+   commit_sha: $Format:%H$
+   short_sha: $Format:%h$
+   timestamp: $Format:%aI$
+   author_name: $Format:%an$
+   author_email: $Format:%ae$
+   ref_names: $Format:%D$
+   commit_message:
+   $Format:%B$
+   ```
+1. Create or update your `.gitattributes` file in the repository root to enable variable substitution during archive creation:
+   ```text
+   .git_archival.txt export-subst
+   ```
+
+When an archive is created (via `git archive` or GitHub's download ZIP feature), Git will replace those placeholders with the actual commit metadata, allowing GitVersioned to fall back to this file and resolve the correct version!
+
 ## Step 3 — A Complete Scenario
 
 Let's look at a realistic, full-featured scenario for a standard Git repository utilizing Hatch. In this scenario, your `src` directory is under `project/src/package` (standard for Hatch). We will configure `gitversioned` to use tag-based versioning, document the default formats, and set up auto-incrementing rules for your development and pre-release builds.

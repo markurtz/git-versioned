@@ -13,18 +13,48 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write
   security-events: write
   actions: read
 jobs:
 
+  # ── Stage 0: Check Changes ─────────────────────────────────────────────────
+  check-changes:
+    name: "Check for Source Changes"
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 0
+      - name: Check for recent commits
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            COMMITS=$(git log --since="24 hours ago" --oneline)
+            if [ -z "$COMMITS" ]; then
+              echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
   # ── Stage 1: Security Audit ────────────────────────────────────────────────
   security:
     name: "Security Audit"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
     uses: ./.github/workflows/_security.yml
 
   # ── Stage 2: Extended Test Suite ───────────────────────────────────────────
   test:
     name: "Extended Tests"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
     uses: ./.github/workflows/_tests.yml
     with:
       test_matrix: >-
@@ -41,6 +71,8 @@ jobs:
   # ── Stage 3: Link Check ────────────────────────────────────────────────────
   link-check:
     name: "Link Check"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
     uses: ./.github/workflows/_link-check.yml
     with:
       fail_on_error: false
@@ -48,6 +80,8 @@ jobs:
   # ── Stage 4: Alpha Docs ────────────────────────────────────────────────────
   docs:
     name: "Nightly Docs"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
     uses: ./.github/workflows/_docs.yml
     with:
       build_type: "nightly"
@@ -58,8 +92,10 @@ jobs:
   build:
     name: "Nightly Build"
     needs:
+      - check-changes
       - test
       - security
+    if: needs.check-changes.outputs.has_changes == 'true'
     uses: ./.github/workflows/_build_package.yml
     with:
       build_type: "nightly"
@@ -67,10 +103,11 @@ jobs:
   # ── Stage 6: Publish Artifacts ─────────────────────────────────────────────
   publish:
     name: "Publish Nightly"
-    needs: build
+    needs:
+      - check-changes
+      - build
+    if: needs.check-changes.outputs.has_changes == 'true'
     uses: ./.github/workflows/_publish.yml
     with:
       build_type: "nightly"
       build_location: "dist/"
-    secrets:
-      pypi_token: ${{ secrets.PYPI_API_TOKEN }}

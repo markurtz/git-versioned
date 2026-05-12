@@ -17,7 +17,7 @@ Example:
 from __future__ import annotations
 
 from .environment import BuildEnvironment, get_ci_info, get_user
-from .git import Branch, Commit, GitRepository, NotAGitRepositoryError, Tag
+from .git import GitReference, GitRepository, NotAGitRepositoryError
 from .pydantic import (
     EnsureBool,
     EnsureList,
@@ -28,15 +28,13 @@ from .pydantic import (
 )
 
 __all__ = [
-    "Branch",
     "BuildEnvironment",
-    "Commit",
     "EnsureBool",
     "EnsureList",
     "EnsurePath",
+    "GitReference",
     "GitRepository",
     "NotAGitRepositoryError",
-    "Tag",
     "coerce_bool",
     "coerce_list",
     "coerce_path",
