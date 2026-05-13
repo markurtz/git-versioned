@@ -15,6 +15,11 @@
     "aliases": []
   },
   {
+    "version": "nightly",
+    "title": "nightly",
+    "aliases": []
+  },
+  {
     "version": "dev",
     "title": "dev",
     "aliases": [
