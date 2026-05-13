@@ -42,6 +42,6 @@ __all__ = [
 __version__: Annotated[
     str,
     "The current version of the gitversioned package as a PEP 440 compliant string",
-] = "0.1.0"
+] = "0.1.1"
 
 configure_logger()
