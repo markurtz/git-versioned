@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────────────────────
-# _security.yml — Reusable Security Audit
+# _security.yml
 #
 # Performs dependency vulnerability scanning and secret scanning.
 #

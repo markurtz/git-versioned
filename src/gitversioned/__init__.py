@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from .logging import configure_logger
+from .logging import LoggingSettings, configure_logger, logger
 from .settings import Settings
 from .versioning import (
     generate_version_py,
@@ -29,9 +29,12 @@ from .versioning import (
 )
 
 __all__ = [
+    "LoggingSettings",
     "Settings",
     "__version__",
+    "configure_logger",
     "generate_version_py",
+    "logger",
     "resolve_and_generate_version",
     "resolve_version",
 ]

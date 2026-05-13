@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────────────────────
-# _tests.yml — Reusable Test Runner
+# _tests.yml
 #
 # Executes the project test suite using specified types and levels.
 #

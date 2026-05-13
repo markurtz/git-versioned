@@ -24,6 +24,10 @@ dependencies = [
 hatch = [
     "hatchling~=1.18",
 ]
+opentelemetry = [
+    "opentelemetry-api>=1.0.0",
+    "opentelemetry-sdk>=1.0.0",
+]
 
 [dependency-groups]
 dev = [
@@ -35,7 +39,8 @@ dev = [
     "respx~=0.23",
 
     # code quality
-    "mypy~=1.20",
+    "mypy~=2.1",
+    "pre-commit~=4.1",
     "ruff~=0.15",
 
     # docs quality
@@ -52,9 +57,9 @@ docs = [
     "mkdocs~=1.6",
     "mkdocstrings[python]~=1.0",
     "mkdocs-macros-plugin~=1.5",
-    "mkdocs-material[imaging]~=9.7",
+    "mkdocs-material~=9.7",
     "mkdocs-minify-plugin~=0.8",
-    "mkdocs-nav-weight~=0.2",
+    "mkdocs-nav-weight~=0.3",
     "mkdocs-section-index~=0.3",
     "pymdown-extensions~=10.21",
 ]
@@ -95,9 +100,6 @@ dependencies = [
 [tool.hatch.envs.lint]
 detached = true
 dependency-groups = ["dev"]
-dependencies = [
-  "pre-commit",
-]
 
 [tool.hatch.envs.lint.scripts]
 # Quality checks (Read-only)
@@ -154,6 +156,9 @@ all-cov = "pytest --cov=src --cov-report=term-missing --cov-report=html:docs/cov
 [tool.hatch.envs.docs]
 detached = true
 dependency-groups = ["docs"]
+
+[tool.hatch.envs.docs.env-vars]
+DISABLE_MKDOCS_2_WARNING = "true"
 
 [tool.hatch.envs.docs.scripts]
 build = "mkdocs build --clean --strict"

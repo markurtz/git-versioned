@@ -129,6 +129,7 @@ class TestConfigureLogger:
                 mock_context.is_valid = True
                 mock_context.trace_id = 12345
                 mock_context.span_id = 67890
+                mock_context.trace_flags = 1
                 mock_span.get_span_context.return_value = mock_context
                 mock_trace.get_current_span.return_value = mock_span
                 patch_target = "gitversioned.logging.opentelemetry_trace"
@@ -160,6 +161,9 @@ class TestConfigureLogger:
                     class MockLevel:
                         name = "INFO"
 
+                    class MockProcess:
+                        id = 1234
+
                     record = {
                         "time": datetime.now(),
                         "level": MockLevel(),
@@ -168,6 +172,7 @@ class TestConfigureLogger:
                         "function": "func",
                         "line": 10,
                         "extra": {"custom": "value"},
+                        "process": MockProcess(),
                     }
                     if mock_opentelemetry:
                         with patch(

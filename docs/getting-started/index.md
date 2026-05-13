@@ -6,32 +6,41 @@ Follow the pages in order for the best experience, or jump directly to the secti
 
 ## In This Section
 
-<div class="grid cards" markdown>
+<div class="grid" markdown>
 
-- :material-download-outline: **Installation**
+<div class="card" markdown>
+:material-download-outline: **Installation**
 
-  ______________________________________________________________________
+______________________________________________________________________
 
-  Install `gitversioned` via pip, from source, or using Docker.
-  Includes platform-specific notes and verification steps.
+Install `gitversioned` via pip, from source, or using Docker.
+Includes platform-specific notes and verification steps.
 
-  [:octicons-arrow-right-24: Installation Guide](installation.md)
+[:octicons-arrow-right-24: Installation Guide](installation.md)
 
-- :material-play-circle-outline: **Quick Start**
+</div>
 
-  ______________________________________________________________________
+<div class="card" markdown>
+:material-play-circle-outline: **Quick Start**
 
-  Your first 5 minutes with `gitversioned`. Initialize, run a command,
-  and see results — fast.
+______________________________________________________________________
 
-  [:octicons-arrow-right-24: Quick Start](quickstart.md)
+Your first 5 minutes with `gitversioned`. Initialize, run a command,
+and see results — fast.
 
-- :material-transit-connection-variant: **Workflows**
+[:octicons-arrow-right-24: Quick Start](quickstart.md)
 
-  ______________________________________________________________________
+</div>
 
-  End-to-end walkthroughs for the most common user stories and usage patterns.
+<div class="card" markdown>
+:material-transit-connection-variant: **Workflows**
 
-  [:octicons-arrow-right-24: Workflows](workflows.md)
+______________________________________________________________________
+
+End-to-end walkthroughs for the most common user stories and usage patterns.
+
+[:octicons-arrow-right-24: Workflows](workflows.md)
+
+</div>
 
 </div>

@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/branding/logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/branding/logo-light.svg">
-    <img alt="GitVersioned Logo" src="docs/assets/branding/logo-light.svg" width="400">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/logo-light.svg">
+    <img alt="GitVersioned Logo" src="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/logo-light.svg" width="400">
   </picture>
 </p>
 
@@ -50,9 +50,9 @@ ______________________________________________________________________
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/branding/user-flow-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/branding/user-flow-light.svg">
-    <img alt="User Flow Diagram" src="docs/assets/branding/user-flow-light.svg" width="800">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/user-flow-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/user-flow-light.svg">
+    <img alt="User Flow Diagram" src="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/user-flow-light.svg" width="800">
   </picture>
 </p>
 
@@ -131,30 +131,30 @@ The repository is structured to separate documentation, application logic, and t
 
 ## Advanced Usage
 
-Please check the [`examples/`](examples/) directory for advanced examples and configurations.
+Please check the [`examples/`](https://github.com/markurtz/git-versioned/tree/main/examples/) directory for advanced examples and configurations.
 
 ## General
 
 ### Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for more details. For development setup, check out [DEVELOPING.md](DEVELOPING.md).
-Please ensure you follow our [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
+We welcome contributions! Please see our [Contributing Guide](https://github.com/markurtz/git-versioned/blob/main/CONTRIBUTING.md) for more details. For development setup, check out [DEVELOPING.md](https://github.com/markurtz/git-versioned/blob/main/DEVELOPING.md).
+Please ensure you follow our [Code of Conduct](https://github.com/markurtz/git-versioned/blob/main/CODE_OF_CONDUCT.md) in all interactions.
 
 ### Support and Security
 
-- For help and general questions, see [SUPPORT.md](SUPPORT.md).
-- To report a security vulnerability, please refer to our [Security Policy](SECURITY.md).
+- For help and general questions, see [SUPPORT.md](https://github.com/markurtz/git-versioned/blob/main/SUPPORT.md).
+- To report a security vulnerability, please refer to our [Security Policy](https://github.com/markurtz/git-versioned/blob/main/SECURITY.md).
 
 ### AI & LLM Tooling
 
 This repository includes first-class support for agentic and LLM-assisted development workflows:
 
-- **[AGENTS.md](AGENTS.md):** Repository-specific instructions for AI coding agents (Codex, Copilot Workspace, Gemini, Claude, Cursor, and similar tools). Contains the authoritative guide for project structure, executable commands, code style, and critical constraints.
-- **[llms.txt](llms.txt):** A machine-readable index of the project's documentation, following the [llms.txt specification](https://llmstxt.org/). Served at `/llms.txt` on the documentation site to help LLMs quickly locate and consume relevant content.
+- **[AGENTS.md](https://github.com/markurtz/git-versioned/blob/main/AGENTS.md):** Repository-specific instructions for AI coding agents (Codex, Copilot Workspace, Gemini, Claude, Cursor, and similar tools). Contains the authoritative guide for project structure, executable commands, code style, and critical constraints.
+- **[llms.txt](https://github.com/markurtz/git-versioned/blob/main/llms.txt):** A machine-readable index of the project's documentation, following the [llms.txt specification](https://llmstxt.org/). Served at `/llms.txt` on the documentation site to help LLMs quickly locate and consume relevant content.
 
 ### License
 
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0. See the [LICENSE](https://github.com/markurtz/git-versioned/blob/main/LICENSE) file for details.
 
 ### Citations
 

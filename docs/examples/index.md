@@ -7,36 +7,42 @@ This section contains runnable code examples that demonstrate real-world usage o
 
 ## Example Categories
 
-<div class="grid cards" markdown>
+<div class="grid" markdown>
 
-- :material-rocket-launch-outline: **Setuptools Examples**
+<div class="card" markdown>
+:material-rocket-launch-outline: **Setuptools Examples**
 
-  ______________________________________________________________________
+______________________________________________________________________
 
-  Simple, self-contained examples that demonstrate configuring `gitversioned` for projects using `setuptools`.
+Simple, self-contained examples that demonstrate configuring `gitversioned` for projects using `setuptools`.
 
-  - [:octicons-arrow-right-24: Setuptools Configuration via Version File](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-file/)
-  - [:octicons-arrow-right-24: Setuptools Configuration via Version Function](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-function/)
-  - [:octicons-arrow-right-24: Setuptools Configuration via Tool Table](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-tool-table/)
-  - [:octicons-arrow-right-24: Setuptools Configuration via Git Tags](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-tags/)
-  - [:octicons-arrow-right-24: Setuptools Configuration via Git Branch](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-branch/)
-  - [:octicons-arrow-right-24: Setuptools Configuration via Git Commits](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-commits/)
-  - [:octicons-arrow-right-24: Setuptools Configuration via `setup.py`](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-setup-py/)
-  - [:octicons-arrow-right-24: Setuptools Configuration via `setup.cfg`](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-setup-cfg/)
+- [:octicons-arrow-right-24: Setuptools Configuration via Version File](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-file/)
+- [:octicons-arrow-right-24: Setuptools Configuration via Version Function](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-function/)
+- [:octicons-arrow-right-24: Setuptools Configuration via Tool Table](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-tool-table/)
+- [:octicons-arrow-right-24: Setuptools Configuration via Git Tags](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-tags/)
+- [:octicons-arrow-right-24: Setuptools Configuration via Git Branch](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-branch/)
+- [:octicons-arrow-right-24: Setuptools Configuration via Git Commits](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-commits/)
+- [:octicons-arrow-right-24: Setuptools Configuration via `setup.py`](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-setup-py/)
+- [:octicons-arrow-right-24: Setuptools Configuration via `setup.cfg`](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-setup-cfg/)
 
-- :material-tune-variant: **Hatchling Examples**
+</div>
 
-  ______________________________________________________________________
+<div class="card" markdown>
+:material-tune-variant: **Hatchling Examples**
 
-  Simple, self-contained examples that demonstrate configuring `gitversioned` for projects using `hatchling`.
+______________________________________________________________________
 
-  - [:octicons-arrow-right-24: Hatchling Configuration via Version File](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-file/)
-  - [:octicons-arrow-right-24: Hatchling Configuration via Version Function](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-function/)
-  - [:octicons-arrow-right-24: Hatchling Configuration via Hatch Vars](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-hatch-vars/)
-  - [:octicons-arrow-right-24: Hatchling Configuration via Tool Table](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-tool-table/)
-  - [:octicons-arrow-right-24: Hatchling Configuration via Git Tags](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-tags/)
-  - [:octicons-arrow-right-24: Hatchling Configuration via Git Branch](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-branch/)
-  - [:octicons-arrow-right-24: Hatchling Configuration via Git Commits](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-commits/)
+Simple, self-contained examples that demonstrate configuring `gitversioned` for projects using `hatchling`.
+
+- [:octicons-arrow-right-24: Hatchling Configuration via Version File](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-file/)
+- [:octicons-arrow-right-24: Hatchling Configuration via Version Function](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-function/)
+- [:octicons-arrow-right-24: Hatchling Configuration via Hatch Vars](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-hatch-vars/)
+- [:octicons-arrow-right-24: Hatchling Configuration via Tool Table](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-tool-table/)
+- [:octicons-arrow-right-24: Hatchling Configuration via Git Tags](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-tags/)
+- [:octicons-arrow-right-24: Hatchling Configuration via Git Branch](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-branch/)
+- [:octicons-arrow-right-24: Hatchling Configuration via Git Commits](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-commits/)
+
+</div>
 
 </div>
 

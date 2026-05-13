@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────────────────────
-# _build_package.yml — Reusable Package Builder
+# _build_package.yml
 #
 # Compiles or packages the project. This workflow handles only the build step.
 # It returns the directory where the build artifacts are located, allowing

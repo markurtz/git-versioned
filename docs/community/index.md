@@ -4,56 +4,71 @@
 
 ## Get Involved
 
-<div class="grid cards" markdown>
+<div class="grid" markdown>
 
-- :material-source-pull: **Contributing**
+<div class="card" markdown>
+:material-source-pull: **Contributing**
 
-  ______________________________________________________________________
+______________________________________________________________________
 
-  How to report bugs, suggest features, and submit pull requests.
+How to report bugs, suggest features, and submit pull requests.
 
-  [:octicons-arrow-right-24: Contributing Guide](contributing.md)
+[:octicons-arrow-right-24: Contributing Guide](contributing.md)
 
-- :material-wrench-outline: **Developer Setup**
+</div>
 
-  ______________________________________________________________________
+<div class="card" markdown>
+:material-wrench-outline: **Developer Setup**
 
-  Full environment setup guide for contributors — Docker, local dev,
-  testing, and code quality standards.
+______________________________________________________________________
 
-  [:octicons-arrow-right-24: Developer Setup](developing.md)
+Full environment setup guide for contributors — Docker, local dev,
+testing, and code quality standards.
 
-- :material-handshake-outline: **Code of Conduct**
+[:octicons-arrow-right-24: Developer Setup](developing.md)
 
-  ______________________________________________________________________
+</div>
 
-  Our community standards and the guidelines we expect all participants to follow.
+<div class="card" markdown>
+:material-handshake-outline: **Code of Conduct**
 
-  [:octicons-arrow-right-24: Code of Conduct](code-of-conduct.md)
+______________________________________________________________________
 
-- :material-shield-lock-outline: **Security Policy**
+Our community standards and the guidelines we expect all participants to follow.
 
-  ______________________________________________________________________
+[:octicons-arrow-right-24: Code of Conduct](code-of-conduct.md)
 
-  How to responsibly disclose security vulnerabilities and our triage process.
+</div>
 
-  [:octicons-arrow-right-24: Security Policy](security.md)
+<div class="card" markdown>
+:material-shield-lock-outline: **Security Policy**
 
-- :material-lifebuoy: **Support**
+______________________________________________________________________
 
-  ______________________________________________________________________
+How to responsibly disclose security vulnerabilities and our triage process.
 
-  Where to ask questions, report issues, and find help.
+[:octicons-arrow-right-24: Security Policy](security.md)
 
-  [:octicons-arrow-right-24: Support](support.md)
+</div>
+
+<div class="card" markdown>
+:material-lifebuoy: **Support**
+
+______________________________________________________________________
+
+Where to ask questions, report issues, and find help.
+
+[:octicons-arrow-right-24: Support](support.md)
+
+</div>
 
 </div>
 
 ## Community Channels
 
-| Channel                                                                       | Purpose                                        |
-| :---------------------------------------------------------------------------- | :--------------------------------------------- |
-| \[GitHub Issues\](https://github.com/markurtz/git-versioned/issues)           | Bug reports and feature requests               |
-| \[GitHub Discussions\](https://github.com/markurtz/git-versioned/discussions) | Q&A, ideas, and general community conversation |
-| \[Slack\](https://slack.markurtz.org)                                         | Real-time chat with the team and community     |
-| \[Blog\](https://blog.markurtz.org)                                           | Project updates, tutorials, and announcements  |
+| Channel                                                                     | Purpose                                        |
+| :-------------------------------------------------------------------------- | :--------------------------------------------- |
+| [GitHub Issues](https://github.com/markurtz/git-versioned/issues)           | Bug reports and feature requests               |
+| [GitHub Discussions](https://github.com/markurtz/git-versioned/discussions) | Q&A, ideas, and general community conversation |
+| [Slack](https://slack.markurtz.org)                                         | Real-time chat with the team and community     |
+| [Blog](https://blog.markurtz.org)                                           | Project updates, tutorials, and announcements  |

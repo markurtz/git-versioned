@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────────────────────
-# _link-check.yml — Reusable Documentation Link Checker
+# _link-check.yml
 #
 # Validates that all hyperlinks in project documentation and Markdown files
 # are reachable and not returning errors.
@@ -41,8 +41,8 @@ jobs:
         uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411  # v2
         id: lychee
         with:
-          args: --verbose --no-progress --accept 200,206,301,302,429 --exclude-loopback --exclude-mail
-            --exclude "\{\{[^}]+\}\}" '**/*.md'
+          args: --verbose --no-progress --accept 200,206,301,302,429 --exclude-loopback --exclude
+            "\{\{[^}]+\}\}" '**/*.md'
           fail: ${{ inputs.fail_on_error }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
