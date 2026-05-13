@@ -4,47 +4,62 @@ This section contains task-oriented how-to guides for `gitversioned`. Unlike the
 
 ## Available Guides
 
-<div class="grid cards" markdown>
+<div class="grid" markdown>
 
-- :material-file-code-outline: **Templates & Formatting**
+<div class="card" markdown>
+:material-file-code-outline: **Templates & Formatting**
 
-  ______________________________________________________________________
+______________________________________________________________________
 
-  A deep dive into formatting strings, output file generation, and the rich build context available for template evaluation.
+A deep dive into formatting strings, output file generation, and the rich build context available for template evaluation.
 
-  [:octicons-arrow-right-24: Templates Guide](templates.md)
+[:octicons-arrow-right-24: Templates Guide](templates.md)
 
-- :material-cog-outline: **Configuration**
+</div>
 
-  ______________________________________________________________________
+<div class="card" markdown>
+:material-cog-outline: **Configuration**
 
-  A deep dive into all configuration options, file formats, and environment variables supported by `gitversioned`.
+______________________________________________________________________
 
-  [:octicons-arrow-right-24: Configuration Guide](configuration.md)
+A deep dive into all configuration options, file formats, and environment variables supported by `gitversioned`.
 
-- :material-puzzle-outline: **Hatchling Integration**
+[:octicons-arrow-right-24: Configuration Guide](configuration.md)
 
-  ______________________________________________________________________
+</div>
 
-  Step-by-step instructions for integrating `gitversioned` natively with the Hatchling build backend.
+<div class="card" markdown>
+:material-puzzle-outline: **Hatchling Integration**
 
-  [:octicons-arrow-right-24: Hatchling Guide](hatchling.md)
+______________________________________________________________________
 
-- :material-puzzle-outline: **Setuptools Integration**
+Step-by-step instructions for integrating `gitversioned` natively with the Hatchling build backend.
 
-  ______________________________________________________________________
+[:octicons-arrow-right-24: Hatchling Guide](hatchling.md)
 
-  Step-by-step instructions for integrating `gitversioned` natively with the Setuptools build backend.
+</div>
 
-  [:octicons-arrow-right-24: Setuptools Guide](setuptools.md)
+<div class="card" markdown>
+:material-puzzle-outline: **Setuptools Integration**
 
-- :material-brain: **Concepts & Resolution**
+______________________________________________________________________
 
-  ______________________________________________________________________
+Step-by-step instructions for integrating `gitversioned` natively with the Setuptools build backend.
 
-  A deep dive into how `gitversioned` resolves sources, determines environments, and calculates auto-increments.
+[:octicons-arrow-right-24: Setuptools Guide](setuptools.md)
 
-  [:octicons-arrow-right-24: Concepts Guide](concepts.md)
+</div>
+
+<div class="card" markdown>
+:material-brain: **Concepts & Resolution**
+
+______________________________________________________________________
+
+A deep dive into how `gitversioned` resolves sources, determines environments, and calculates auto-increments.
+
+[:octicons-arrow-right-24: Concepts Guide](concepts.md)
+
+</div>
 
 </div>
 

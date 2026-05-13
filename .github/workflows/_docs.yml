@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────────────────────
-# _docs.yml — Reusable Documentation Builder & Deployer
+# _docs.yml
 #
 # Builds static documentation using MkDocs and Mike for versioning, and
 # deploys it to GitHub Pages.

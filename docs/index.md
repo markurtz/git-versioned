@@ -17,12 +17,8 @@ hide:
 
 **Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation.**
 
-<!-- mdformat off -->
-
 [Get Started](getting-started/index.md){ .md-button .md-button--primary }
-\[View on GitHub\](https://github.com/markurtz/git-versioned){ .md-button }
-
-<!-- mdformat on -->
+[View on GitHub](https://github.com/markurtz/git-versioned){ .md-button }
 
 </div>
 </div>
@@ -39,55 +35,73 @@ hide:
 
 ## What's Included
 
-<div class="grid cards" markdown>
+<div class="grid" markdown>
 
-- :material-rocket-launch-outline: **Getting Started**
+<div class="card" markdown>
+:material-rocket-launch-outline: **Getting Started**
 
-  ______________________________________________________________________
+______________________________________________________________________
 
-  Installation guide, quick start tutorial, and common workflow walkthroughs.
+Installation guide, quick start tutorial, and common workflow walkthroughs.
 
-  [:octicons-arrow-right-24: Get Started](getting-started/index.md)
+[:octicons-arrow-right-24: Get Started](getting-started/index.md)
 
-- :material-book-open-outline: **Guides**
+</div>
 
-  ______________________________________________________________________
+<div class="card" markdown>
+:material-book-open-outline: **Guides**
 
-  Step-by-step guides for common tasks, integrations, and configuration patterns.
+______________________________________________________________________
 
-  [:octicons-arrow-right-24: Browse Guides](guides/index.md)
+Step-by-step guides for common tasks, integrations, and configuration patterns.
 
-- :material-code-braces: **Examples**
+[:octicons-arrow-right-24: Browse Guides](guides/index.md)
 
-  ______________________________________________________________________
+</div>
 
-  Runnable code examples that demonstrate real-world usage of GitVersioned.
+<div class="card" markdown>
+:material-code-braces: **Examples**
 
-  [:octicons-arrow-right-24: See Examples](examples/index.md)
+______________________________________________________________________
 
-- :material-file-document-outline: **Reference**
+Runnable code examples that demonstrate real-world usage of GitVersioned.
 
-  ______________________________________________________________________
+[:octicons-arrow-right-24: See Examples](examples/index.md)
 
-  Full API reference and configuration schema.
+</div>
 
-  [:octicons-arrow-right-24: View Reference](reference/index.md)
+<div class="card" markdown>
+:material-file-document-outline: **Reference**
 
-- :material-account-group-outline: **Community**
+______________________________________________________________________
 
-  ______________________________________________________________________
+Full API reference and configuration schema.
 
-  Contributing guide, developer setup, Code of Conduct, and support resources.
+[:octicons-arrow-right-24: View Reference](reference/index.md)
 
-  [:octicons-arrow-right-24: Get Involved](community/index.md)
+</div>
 
-- :material-shield-lock-outline: **Security**
+<div class="card" markdown>
+:material-account-group-outline: **Community**
 
-  ______________________________________________________________________
+______________________________________________________________________
 
-  Our security policy, responsible disclosure process, and supported versions.
+Contributing guide, developer setup, Code of Conduct, and support resources.
 
-  [:octicons-arrow-right-24: Security Policy](community/security.md)
+[:octicons-arrow-right-24: Get Involved](community/index.md)
+
+</div>
+
+<div class="card" markdown>
+:material-shield-lock-outline: **Security**
+
+______________________________________________________________________
+
+Our security policy, responsible disclosure process, and supported versions.
+
+[:octicons-arrow-right-24: Security Policy](community/security.md)
+
+</div>
 
 </div>
 
@@ -110,11 +124,7 @@ For advanced installation options, Setuptools alternatives, and step-by-step onb
 
 ## Links
 
-<!-- mdformat off -->
-
-- :material-github: \[GitHub Repository\](https://github.com/markurtz/git-versioned)
-- :material-map-marker-path: \[Roadmap\](https://github.com/markurtz/git-versioned/milestones)
-- :material-post-outline: \[Blog\](https://blog.markurtz.org)
-- :material-slack: \[Slack Community\](https://slack.markurtz.org)
-
-<!-- mdformat on -->
+- :material-github: [GitHub Repository](https://github.com/markurtz/git-versioned)
+- :material-map-marker-path: [Roadmap](https://github.com/markurtz/git-versioned/milestones)
+- :material-post-outline: [Blog](https://blog.markurtz.org)
+- :material-slack: [Slack Community](https://slack.markurtz.org)

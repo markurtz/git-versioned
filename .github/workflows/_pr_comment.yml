@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# pr_comment.yml — Safe PR Commenting
+# pr_comment.yml
 #
 # Triggers:
 #   workflow_run → CI — Development (completed)

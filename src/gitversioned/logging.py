@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import json
 import sys
+import traceback
 from collections.abc import Callable
 from typing import Any, ClassVar, Literal
 
@@ -121,7 +122,7 @@ class LoggingSettings(BaseSettings):
 
 def _otel_formatter(record: dict[str, Any]) -> str:
     """Format the log record as an OpenTelemetry compliant JSON string."""
-    trace_id = span_id = None
+    trace_id = span_id = trace_flags = None
 
     if opentelemetry_trace:
         span = opentelemetry_trace.get_current_span()
@@ -129,6 +130,7 @@ def _otel_formatter(record: dict[str, Any]) -> str:
         if context.is_valid:
             trace_id = format(context.trace_id, "032x")
             span_id = format(context.span_id, "016x")
+            trace_flags = format(context.trace_flags, "02x")
 
     log_record = {
         "timestamp": record["time"].isoformat(),
@@ -139,14 +141,32 @@ def _otel_formatter(record: dict[str, Any]) -> str:
             "module": record["name"],
             "function": record["function"],
             "line": record["line"],
+            "process_id": record["process"].id,
             **record["extra"],
         },
     }
 
-    if trace_id:
-        log_record.update({"trace_id": trace_id, "span_id": span_id})
+    if record.get("exception"):
+        exception = record["exception"]
+        log_record["attributes"]["exception.type"] = exception.type.__name__
+        log_record["attributes"]["exception.message"] = str(exception.value)
+        log_record["attributes"]["exception.stacktrace"] = "".join(
+            traceback.format_exception(
+                exception.type, exception.value, exception.traceback
+            )
+        )
 
-    return json.dumps(log_record) + "\n"
+    if trace_id:
+        log_record.update(
+            {
+                "trace_id": trace_id,
+                "span_id": span_id,
+                "trace_flags": trace_flags,
+            }
+        )
+
+    # Escape braces so loguru doesn't interpret the JSON string as a format string
+    return json.dumps(log_record).replace("{", "{{").replace("}", "}}") + "\n"
 
 
 def configure_logger(settings: LoggingSettings | None = None) -> None:
@@ -197,16 +217,26 @@ def configure_logger(settings: LoggingSettings | None = None) -> None:
         )
 
     log_format = _otel_formatter if use_otel else settings.format
-    filter_key = "gitversioned" if settings.filter is True else settings.filter
+    filter_val = "gitversioned" if settings.filter is True else settings.filter
+
+    if isinstance(filter_val, (list, tuple)):
+        prefixes = tuple(filter_val)
+
+        def final_filter(record: dict[str, Any]) -> bool:
+            return bool(record["name"] and record["name"].startswith(prefixes))
+
+    elif isinstance(filter_val, str):
+
+        def final_filter(record: dict[str, Any]) -> bool:
+            return bool(record["name"] and record["name"].startswith(filter_val))
+
+    else:
+        final_filter = None if filter_val is False else filter_val  # type: ignore[assignment]
 
     _GITVERSIONED_HANDLER_ID = logger.add(
         settings.sink,  # type: ignore[arg-type]
         level=settings.level,
-        filter=(
-            None
-            if not filter_key
-            else lambda rec: bool(rec["name"] and rec["name"].startswith(filter_key))
-        ),
+        filter=final_filter,  # type: ignore[arg-type]
         format=log_format,  # type: ignore[arg-type]
         enqueue=settings.enqueue,
         **settings.kwargs,

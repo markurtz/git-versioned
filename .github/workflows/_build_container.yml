@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────────────────────
-# _build_container.yml — Reusable Container Builder
+# _build_container.yml
 #
 # Builds container images for the project. This workflow handles only the
 # build step. It returns the image name and tag, allowing calling workflows

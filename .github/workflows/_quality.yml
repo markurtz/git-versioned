@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────────────────────
-# _quality.yml — Reusable Quality Gate
+# _quality.yml
 #
 # Encapsulates quality checking, style/lint, and type checking.
 # Fails the pipeline if any of these checks fail.

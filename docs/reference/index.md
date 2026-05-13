@@ -4,31 +4,40 @@ The Reference section contains the complete technical documentation for GitVersi
 
 ## In This Section
 
-<div class="grid cards" markdown>
+<div class="grid" markdown>
 
-- :material-code-json: **API Reference**
+<div class="card" markdown>
+:material-code-json: **API Reference**
 
-  ______________________________________________________________________
+______________________________________________________________________
 
-  Auto-generated documentation for all public classes, methods, and modules.
+Auto-generated documentation for all public classes, methods, and modules.
 
-  [:octicons-arrow-right-24: Python API Reference](api.md)
+[:octicons-arrow-right-24: Python API Reference](api.md)
 
-- :material-tune-variant: **Configuration Schema**
+</div>
 
-  ______________________________________________________________________
+<div class="card" markdown>
+:material-tune-variant: **Configuration Schema**
 
-  All supported configuration file options, types, defaults, and examples.
+______________________________________________________________________
 
-  [:octicons-arrow-right-24: Configuration Guide](../guides/configuration.md)
+All supported configuration file options, types, defaults, and examples.
 
-- :material-test-tube: **Test Coverage**
+[:octicons-arrow-right-24: Configuration Guide](../guides/configuration.md)
 
-  ______________________________________________________________________
+</div>
 
-  Coverage reports are generated during CI/CD or locally.
+<div class="card" markdown>
+:material-test-tube: **Test Coverage**
 
-  Run `hatch run test:all-cov` to generate HTML reports in `docs/coverage/`.
+______________________________________________________________________
+
+Coverage reports are generated during CI/CD or locally.
+
+Run `hatch run test:all-cov` to generate HTML reports in `docs/coverage/`.
+
+</div>
 
 </div>
 

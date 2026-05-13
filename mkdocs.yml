@@ -41,8 +41,14 @@ theme:
     - search.highlight
     - search.share
     - content.code.copy
+    - content.code.annotate
+    - content.code.select
     - content.action.edit
+    - content.tabs.link
     - content.tooltips
+    - toc.follow
+    - toc.integrate
+    - header.autohide
   palette:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
@@ -84,6 +90,15 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - tables
+  - footnotes
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.magiclink
+  - pymdownx.smartsymbols
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
   - toc:
       permalink: true
 plugins:
@@ -101,7 +116,6 @@ plugins:
             docstring_style: sphinx
   - search
   - section-index
-  - social
   - tags
 extra_css:
   - stylesheets/extra.css
@@ -117,3 +131,11 @@ extra_javascript:
 # The root AGENTS.md contains agent-specific coding instructions; it is also
 # surfaced in the docs nav under Community > AI Agent Guide.
 # ---------------------------------------------------------------------------
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    absolute_links: warn
+    unrecognized_links: warn
