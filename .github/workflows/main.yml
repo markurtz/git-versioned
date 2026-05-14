@@ -52,7 +52,9 @@ jobs:
   # ── Stage 3: Documentation ─────────────────────────────────────────────────
   docs:
     name: "Build & Deploy Docs"
-    needs: quality
+    needs:
+      - quality
+      - tests
     uses: ./.github/workflows/_docs.yml
     with:
       build_type: "dev"

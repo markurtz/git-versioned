@@ -49,6 +49,7 @@ jobs:
   # ── Stage 4: Versioned Docs ────────────────────────────────────────────────
   docs:
     name: "Versioned Docs"
+    needs: test
     uses: ./.github/workflows/_docs.yml
     with:
       build_type: "release"

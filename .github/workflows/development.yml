@@ -75,7 +75,9 @@ jobs:
   # ── Stage 3: Docs (Conditional) ────────────────────────────────────────────
   docs:
     name: "Build & Deploy Docs"
-    needs: changes
+    needs:
+      - changes
+      - tests
     if: needs.changes.outputs.docs == 'true' && github.event.pull_request.head.repo.fork ==
       false
     uses: ./.github/workflows/_docs.yml

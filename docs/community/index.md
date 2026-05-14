@@ -70,5 +70,3 @@ Where to ask questions, report issues, and find help.
 | :-------------------------------------------------------------------------- | :--------------------------------------------- |
 | [GitHub Issues](https://github.com/markurtz/git-versioned/issues)           | Bug reports and feature requests               |
 | [GitHub Discussions](https://github.com/markurtz/git-versioned/discussions) | Q&A, ideas, and general community conversation |
-| [Slack](https://slack.markurtz.org)                                         | Real-time chat with the team and community     |
-| [Blog](https://blog.markurtz.org)                                           | Project updates, tutorials, and announcements  |
