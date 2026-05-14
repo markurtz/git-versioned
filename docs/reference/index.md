@@ -13,7 +13,7 @@ ______________________________________________________________________
 
 Auto-generated documentation for all public classes, methods, and modules.
 
-[:octicons-arrow-right-24: Python API Reference](api.md)
+[:octicons-arrow-right-24: Python API Reference](api/gitversioned/index.md)
 
 </div>
 
@@ -33,9 +33,11 @@ All supported configuration file options, types, defaults, and examples.
 
 ______________________________________________________________________
 
-Coverage reports are generated during CI/CD or locally.
+Run `hatch run test:all-cov` to generate HTML reports locally, or view the latest pipeline runs:
 
-Run `hatch run test:all-cov` to generate HTML reports in `docs/coverage/`.
+- [:octicons-arrow-right-24: Unit Tests](../coverage/unit/htmlcov/index.html)
+- [:octicons-arrow-right-24: Integration Tests](../coverage/integration/htmlcov/index.html)
+- [:octicons-arrow-right-24: End-to-End Tests](../coverage/e2e/htmlcov/index.html)
 
 </div>
 

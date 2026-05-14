@@ -10,6 +10,14 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Mark Kurtz" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 dependencies = [
     "loguru~=0.7",
     "packaging>=26.0",
@@ -56,6 +64,8 @@ docs = [
     "mike~=2.2",
     "mkdocs~=1.6",
     "mkdocstrings[python]~=1.0",
+    "mkdocs-gen-files~=0.5",
+    "mkdocs-literate-nav~=0.6",
     "mkdocs-macros-plugin~=1.5",
     "mkdocs-material~=9.7",
     "mkdocs-minify-plugin~=0.8",
@@ -69,6 +79,7 @@ docs = [
 Homepage = "https://github.com/markurtz/git-versioned"
 Repository = "https://github.com/markurtz/git-versioned.git"
 Issues = "https://github.com/markurtz/git-versioned/issues"
+Documentation = "https://markurtz.github.io/git-versioned/"
 
 [project.entry-points.hatch]
 gitversioned = "gitversioned.plugins.hatchling_plugin"
@@ -298,10 +309,7 @@ asyncio_mode = "auto"
 markers = [
     "smoke: quick tests to check basic functionality",
     "sanity: detailed tests to ensure major functions work correctly",
-    "regression: tests to ensure that new changes do not break existing functionality",
-    "e2e: end-to-end integration tests",
-    "unit: unit tests",
-    "integration: integration tests"
+    "regression: tests to ensure that new changes do not break existing functionality"
 ]
 testpaths = ["tests"]
 

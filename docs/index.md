@@ -126,5 +126,3 @@ For advanced installation options, Setuptools alternatives, and step-by-step onb
 
 - :material-github: [GitHub Repository](https://github.com/markurtz/git-versioned)
 - :material-map-marker-path: [Roadmap](https://github.com/markurtz/git-versioned/milestones)
-- :material-post-outline: [Blog](https://blog.markurtz.org)
-- :material-slack: [Slack Community](https://slack.markurtz.org)
