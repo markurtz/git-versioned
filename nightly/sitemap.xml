@@ -2,90 +2,138 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/community/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/community/agents/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/community/code-of-conduct/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/community/contributing/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/community/developing/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/community/security/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/community/support/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/examples/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/getting-started/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/getting-started/installation/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/getting-started/quickstart/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/getting-started/workflows/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/guides/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/guides/concepts/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/guides/configuration/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/guides/github-workflows/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/guides/hatchling/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/guides/setuptools/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/guides/templates/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
          <loc>https://markurtz.github.io/git-versioned/nightly/reference/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-15</lastmod>
     </url>
     <url>
-         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/SUMMARY/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/compat/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/logging/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/settings/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/versioning/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/plugins/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/plugins/hatchling_plugin/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/plugins/setuptools_plugin/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/utils/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/utils/environment/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/utils/git/</loc>
+         <lastmod>2026-05-15</lastmod>
+    </url>
+    <url>
+         <loc>https://markurtz.github.io/git-versioned/nightly/reference/api/gitversioned/utils/pydantic/</loc>
+         <lastmod>2026-05-15</lastmod>
     </url>
 </urlset>
