@@ -1,5 +1,7 @@
 try:
-    from hatchling_version_commits import __version__  # type: ignore[attr-defined]
+    import hatchling_version_commits
+
+    __version__ = getattr(hatchling_version_commits, "__version__", "not available yet")
 except ImportError:
     __version__ = "not available yet"
 

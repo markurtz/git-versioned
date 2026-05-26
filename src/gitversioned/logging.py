@@ -14,7 +14,7 @@ import json
 import sys
 import traceback
 from collections.abc import Callable
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, cast
 
 from loguru import logger
 from pydantic import Field, field_validator
@@ -24,7 +24,9 @@ from gitversioned.compat import opentelemetry_trace
 
 __all__ = ["LoggingSettings", "configure_logger", "logger"]
 
-_GITVERSIONED_HANDLER_ID: int | None = None
+
+class _LoggingState:
+    handler_id: int | None = None
 
 
 class LoggingSettings(BaseSettings):
@@ -166,7 +168,14 @@ def _otel_formatter(record: dict[str, Any]) -> str:
         )
 
     # Escape braces so loguru doesn't interpret the JSON string as a format string
-    return json.dumps(log_record).replace("{", "{{").replace("}", "}}") + "\n"
+    # Escape '<' and '>' to prevent loguru from interpreting them as color markup tags
+    return (
+        json.dumps(log_record)
+        .replace("{", "{{")
+        .replace("}", "}}")
+        .replace("<", "\\<")
+        .replace(">", "\\>")
+    ) + "\n"
 
 
 def configure_logger(settings: LoggingSettings | None = None) -> None:
@@ -190,7 +199,6 @@ def configure_logger(settings: LoggingSettings | None = None) -> None:
     :raises ImportError: If OpenTelemetry formatting is explicitly enabled but the
                          package is not installed.
     """
-    global _GITVERSIONED_HANDLER_ID  # noqa: PLW0603
 
     settings = settings or LoggingSettings()
 
@@ -202,11 +210,11 @@ def configure_logger(settings: LoggingSettings | None = None) -> None:
 
     if settings.clear_loggers:
         logger.remove()
-        _GITVERSIONED_HANDLER_ID = None
-    elif isinstance(_GITVERSIONED_HANDLER_ID, int):
+        _LoggingState.handler_id = None
+    elif isinstance(_LoggingState.handler_id, int):
         with contextlib.suppress(ValueError):
-            logger.remove(_GITVERSIONED_HANDLER_ID)
-        _GITVERSIONED_HANDLER_ID = None
+            logger.remove(_LoggingState.handler_id)
+        _LoggingState.handler_id = None
 
     use_otel = settings.otel_formatting == "enable" or (
         settings.otel_formatting == "auto" and opentelemetry_trace is not None
@@ -231,13 +239,13 @@ def configure_logger(settings: LoggingSettings | None = None) -> None:
             return bool(record["name"] and record["name"].startswith(filter_val))
 
     else:
-        final_filter = None if filter_val is False else filter_val  # type: ignore[assignment]
+        final_filter = None if filter_val is False else filter_val
 
-    _GITVERSIONED_HANDLER_ID = logger.add(
-        settings.sink,  # type: ignore[arg-type]
+    _LoggingState.handler_id = cast("Any", logger).add(
+        settings.sink,
         level=settings.level,
-        filter=final_filter,  # type: ignore[arg-type]
-        format=log_format,  # type: ignore[arg-type]
+        filter=final_filter,
+        format=log_format,
         enqueue=settings.enqueue,
         **settings.kwargs,
     )

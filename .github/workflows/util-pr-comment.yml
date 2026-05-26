@@ -1,0 +1,149 @@
+---
+# Copyright 2026 markurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# =============================================================================
+# util-pr-comment.yml
+#
+# Triggers:
+#   workflow_run → CI — Development (completed)
+#
+# Resolves the GitHub Actions fork permission issue. Workflows triggered
+# via `pull_request` from a fork do not have `write` permissions to post
+# comments. `workflow_run` executes in the context of the base repository
+# and can safely download artifacts, compile reports, and comment on the PR.
+# =============================================================================
+name: "PR Commenter"
+on:
+  workflow_run:
+    workflows:
+      - "CI — Development"
+    types:
+      - completed
+permissions:
+  pull-requests: write
+  actions: read
+jobs:
+  post_comment:
+    name: "Post PR Status Comment"
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.event == 'pull_request'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372ec801d16  # v4.1.8
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Compile and Post PR Status Comments"
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |-
+            const fs = require('fs');
+            const path = require('path');
+            const workflowRun = context.payload.workflow_run;
+            // 1. Get the pull request associated with the commit
+            const response = await github.rest.search.issuesAndPullRequests({
+              q: `is:pr repo:${context.repo.owner}/${context.repo.repo} sha:${workflowRun.head_sha}`
+            });
+            if (response.data.total_count === 0) {
+              console.log('No PR found for this commit.');
+              return;
+            }
+            const prNumber = response.data.items[0].number;
+            // 2. Scan workspace for downloaded artifacts
+            const workspace = process.env.GITHUB_WORKSPACE || '.';
+            const dirs = fs.readdirSync(workspace);
+            let docsComment = "";
+            const buildComments = [];
+            let pythonCoverageReports = "";
+            let hasCoverage = false;
+            for (const dirName of dirs) {
+              const dirPath = path.join(workspace, dirName);
+              if (!fs.statSync(dirPath).isDirectory()) continue;
+              // Parse docs comment
+              if (dirName.startsWith('pr-comment-docs-')) {
+                const filePath = path.join(dirPath, 'docs-comment.txt');
+                if (fs.existsSync(filePath)) {
+                  docsComment = fs.readFileSync(filePath, 'utf8');
+                }
+              }
+              // Parse build comment
+              if (dirName.startsWith('pr-comment-build-py')) {
+                const filePath = path.join(dirPath, 'build-comment.txt');
+                if (fs.existsSync(filePath)) {
+                  buildComments.push(fs.readFileSync(filePath, 'utf8'));
+                }
+              }
+              // Parse python coverage
+              if (dirName.startsWith('coverage-report-unit-python-py')) {
+                const pyVerMatch = dirName.match(/python-(py\d+\.\d+)/);
+                const pyVer = pyVerMatch ? pyVerMatch[1] : "Python";
+                const funcCovPath = path.join(dirPath, 'coverage_tests-func.md');
+                if (fs.existsSync(funcCovPath)) {
+                  const content = fs.readFileSync(funcCovPath, 'utf8');
+                  pythonCoverageReports += `#### 🐍 Python Coverage (${pyVer} — Functional Tests)\n\n${content}\n\n`;
+                  hasCoverage = true;
+                }
+                const e2eCovPath = path.join(dirPath, 'coverage_tests-e2e.md');
+                if (fs.existsSync(e2eCovPath)) {
+                  const content = fs.readFileSync(e2eCovPath, 'utf8');
+                  pythonCoverageReports += `#### 🐍 Python Coverage (${pyVer} — E2E Tests)\n\n${content}\n\n`;
+                  hasCoverage = true;
+                }
+              }
+            }
+            // 3. Compile and Post Comments
+            // Separate Comment: Docs Preview (if built)
+            if (docsComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: docsComment
+              });
+              console.log("Posted Documentation Preview comment.");
+            }
+            // Separate Comments: Build Artifacts (if created)
+            for (const buildComment of buildComments) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: buildComment
+              });
+              console.log("Posted Package Build comment.");
+            }
+            // Separate Comment: Status and Test Coverage compilation
+            const status = workflowRun.conclusion;
+            let statusBody = `## CI Development Pipeline Status\n\n`;
+            if (status === 'success') {
+              statusBody += `✅ **Pipeline**: Completed successfully. [View Run Details](${workflowRun.html_url})\n\n`;
+            } else {
+              statusBody += `❌ **Pipeline**: Failed or was cancelled. [Check logs](${workflowRun.html_url})\n\n`;
+            }
+            if (hasCoverage) {
+              statusBody += `### 📊 Compiled Code Coverage Results\n\n`;
+              if (pythonCoverageReports) {
+                statusBody += `### Python Test Suites\n\n${pythonCoverageReports}`;
+              }
+            } else {
+              statusBody += `No code coverage reports were compiled for this run.`;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: statusBody
+            });
+            console.log("Posted Pipeline Status and Coverage comment.");

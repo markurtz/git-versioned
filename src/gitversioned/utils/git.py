@@ -34,6 +34,8 @@ __all__ = [
     "NotAGitRepositoryError",
 ]
 
+_EXPECTED_LOG_PARTS_COUNT = 7
+
 
 class NotAGitRepositoryError(Exception):
     """
@@ -349,7 +351,7 @@ class GitRepository:
 
         for index, line in enumerate(lines):
             parts = line.split("|", 6)
-            if len(parts) == 7:  # noqa: PLR2004
+            if len(parts) == _EXPECTED_LOG_PARTS_COUNT:
                 tag_name = ""
                 branch_name = ""
                 is_current_branch = False

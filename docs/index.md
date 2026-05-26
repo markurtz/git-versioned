@@ -8,8 +8,8 @@ hide:
 <div class="hero-content" markdown>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logo-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/branding/logo-light.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/branding/logo-dark.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logo-light.svg">
   <img alt="GitVersioned Logo" src="assets/branding/logo-light.svg" width="400">
 </picture>
 
@@ -27,15 +27,15 @@ hide:
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/user-flow-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="assets/branding/user-flow-light.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/branding/user-flow-dark.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/user-flow-light.svg">
     <img alt="User Flow Diagram" src="assets/branding/user-flow-light.svg" width="800">
   </picture>
 </p>
 
 ## What's Included
 
-<div class="grid" markdown>
+<div class="grid cards" markdown>
 
 <div class="card" markdown>
 :material-rocket-launch-outline: **Getting Started**

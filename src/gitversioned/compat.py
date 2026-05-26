@@ -10,30 +10,34 @@ rather than attempting direct imports elsewhere.
 
 from __future__ import annotations
 
+import importlib
 import types
 from typing import Annotated
 
 __all__ = ["opentelemetry_trace", "psutil", "tomllib"]
 
+_tomllib: types.ModuleType | None = None
 try:
-    import tomllib as _tomllib
+    _tomllib = importlib.import_module("tomllib")
 except ImportError:
     try:
-        import tomli as _tomllib  # type: ignore[import-not-found, no-redef]
+        _tomllib = importlib.import_module("tomli")
     except ImportError:
-        _tomllib = None  # type: ignore[assignment]
+        _tomllib = None
 
+_opentelemetry_trace: types.ModuleType | None = None
 try:
-    from opentelemetry import (
-        trace as _opentelemetry_trace,  # type: ignore[import-not-found]
-    )
-except ImportError:
-    _opentelemetry_trace = None  # type: ignore[assignment]
+    from opentelemetry import trace
 
-try:
-    import psutil as _psutil
+    _opentelemetry_trace = trace
 except ImportError:
-    _psutil = None  # type: ignore[assignment]
+    _opentelemetry_trace = None
+
+_psutil: types.ModuleType | None = None
+try:
+    _psutil = importlib.import_module("psutil")
+except ImportError:
+    _psutil = None
 
 opentelemetry_trace: Annotated[
     types.ModuleType | None,

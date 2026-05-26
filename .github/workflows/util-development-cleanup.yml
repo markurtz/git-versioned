@@ -1,0 +1,48 @@
+---
+# =============================================================================
+# util-development-cleanup.yml
+#
+# Triggers:
+#   pull_request → closed (merged or abandoned)
+#
+# Purpose:
+#   Deletes the ephemeral documentation preview deployed to GitHub Pages
+#   during the PR lifecycle (e.g., pr-123/) to prevent gh-pages branch bloat.
+# =============================================================================
+name: "CI — Development Cleanup"
+on:
+  pull_request:
+    types:
+      - closed
+permissions:
+  contents: write  # Required to push deletion to gh-pages
+jobs:
+  cleanup-pr-docs:
+    name: "Delete PR Docs Preview"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+      - name: Delete PR docs preview
+        run: |-
+          PR_PATH="pr-${{ github.event.pull_request.number }}"
+          echo "Deleting docs preview at path: ${PR_PATH}"
+          git fetch origin gh-pages:gh-pages || true
+          git checkout gh-pages || exit 0
+          if [ -d "$PR_PATH" ]; then
+            git rm -rf "$PR_PATH"
+            git commit -m "docs: cleanup ephemeral docs preview for $PR_PATH" || echo "No changes to commit"
+            git push origin gh-pages
+          else
+            echo "No docs preview found for $PR_PATH, nothing to clean up."
+          fi

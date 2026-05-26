@@ -4,6 +4,7 @@ import datetime
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import zipfile
 from abc import ABC, abstractmethod
@@ -12,7 +13,7 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-from tests.integration.conftest import GitRepoHelper
+from tests.conftest import GitRepoHelper
 
 
 def get_version_function() -> str:
@@ -311,6 +312,8 @@ class TestHatchlingBuilds(BuildTestHelper):
         # Remove Hatch's tracking variables to avoid "Unknown environment" errors
         env.pop("HATCH_ENV", None)
         env.pop("HATCH_ENV_ACTIVE", None)
+        venv_bin = str(Path(sys.executable).parent)
+        env["PATH"] = os.pathsep.join([venv_bin, env.get("PATH", "")])
         result = subprocess.run(
             ["hatch", "build"],
             cwd=str(repo.path),
@@ -343,6 +346,8 @@ class TestSetuptoolsBuilds(BuildTestHelper):
         # Remove Hatch's tracking variables to avoid "Unknown environment" errors
         env.pop("HATCH_ENV", None)
         env.pop("HATCH_ENV_ACTIVE", None)
+        venv_bin = str(Path(sys.executable).parent)
+        env["PATH"] = os.pathsep.join([venv_bin, env.get("PATH", "")])
 
         # FORCE PIP TO IGNORE CACHE AND REBUILD LOCAL PATHS
         env["PIP_NO_CACHE_DIR"] = "1"

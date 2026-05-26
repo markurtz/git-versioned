@@ -112,7 +112,7 @@ To ensure `gitversioned` can resolve the version when users download your reposi
    .git_archival.txt export-subst
    ```
 
-For full installation options, Setuptools alternatives, and step-by-step onboarding, see the **[Getting Started guide](https://markurtz.github.io/git-versioned/getting-started/)**.
+For full installation options, Setuptools alternatives, and step-by-step onboarding, see the **[Getting Started guide](docs/getting-started/index.md)**.
 
 ## Core Concepts
 

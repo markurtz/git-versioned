@@ -1,5 +1,9 @@
 try:
-    from hatchling_version_function import __version__  # type: ignore[attr-defined]
+    import hatchling_version_function
+
+    __version__ = getattr(
+        hatchling_version_function, "__version__", "not available yet"
+    )
 except ImportError:
     __version__ = "not available yet"
 

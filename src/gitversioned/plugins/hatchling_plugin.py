@@ -9,7 +9,7 @@ core version resolution and file generation engine.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from hatchling.metadata.core import ProjectMetadata
 from hatchling.plugin import hookimpl
@@ -44,7 +44,7 @@ class GitVersionedVersionSource(VersionSourceInterface):
     :cvar PLUGIN_NAME: The registered name of the plugin within the Hatchling ecosystem
     """
 
-    PLUGIN_NAME: ClassVar[str] = "gitversioned"  # type: ignore[misc]
+    PLUGIN_NAME: str = "gitversioned"
 
     def get_version_data(self) -> dict[str, str]:
         """
@@ -80,11 +80,7 @@ class GitVersionedVersionSource(VersionSourceInterface):
 
         return {"version": str(version)}
 
-    def set_version(
-        self,
-        version: str,
-        version_data: dict[str, Any],  # noqa: ARG002
-    ) -> None:
+    def set_version(self, version: str, version_data: dict[str, Any]):
         """
         Handler for manual version setting via the Hatch CLI.
 
@@ -98,9 +94,10 @@ class GitVersionedVersionSource(VersionSourceInterface):
         :param version: The raw version string passed by the user
         :param version_data: Additional version data context from Hatchling
         """
-        _ = (version_data,)  # to avoid lint errors for unused parameters
+
         logger.debug(
-            f"GitVersionedVersionSource.set_version called with version='{version}'"
+            "GitVersionedVersionSource.set_version called with "
+            f"version='{version}', context={version_data}"
         )
 
         config = Settings(**self.get_settings_kwargs())
@@ -208,7 +205,7 @@ class GitVersionedVersionSource(VersionSourceInterface):
 
         sources = hatch_config.get("sources", None)
         if sources and isinstance(sources, dict):
-            return root / list(sources.keys())[0]
+            return root / str(list(sources.keys())[0])
 
         package_name = self.get_package_name()
 

@@ -25,7 +25,7 @@ from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitReference, GitRepository
 
 __all__ = [
-    "generate_version_py",
+    "generate_version_file",
     "resolve_and_generate_version",
     "resolve_version",
 ]
@@ -112,7 +112,7 @@ def _resolve_function(
 
     try:
         module_name, function_name = str(settings.version_source_function).split(":", 1)
-        module = importlib.import_module(module_name)
+        module = importlib.import_module(module_name)  # nosemgrep
         version, ref = getattr(module, function_name)(
             settings=settings, repo=repo, env=env
         )
@@ -392,7 +392,11 @@ def _get_dirty_files(repository: GitRepository, settings: Settings) -> list[str]
 
     ignored_paths = set()
     for path_str in [
-        settings.output_file,
+        (
+            settings.output
+            if settings.output not in ("sys.stdout", "sys.stderr")
+            else None
+        ),
         settings.version_source_file,
         *settings.dirty_ignore,
     ]:
@@ -512,42 +516,91 @@ def resolve_version(
     return final_version, reference
 
 
-def generate_version_py(
+def _get_version_file_pattern(format_name: str) -> str:
+    """Gets the regex pattern for a known configuration file format."""
+    if format_name == "cargo":
+        # Target version = "..." under [package] or [workspace.package]
+        return (
+            r"(?s)(\[(?:workspace\.)?package\].*?^version\s*=\s*)"
+            r"([\"'])(?P<version>.*?)\2"
+        )
+    if format_name == "pyproject":
+        # Target version = "..." under [project]
+        return (
+            r"(?s)(^\[project\].*?^version\s*=\s*)"
+            r"([\"'])(?P<version>.*?)\2"
+        )
+    return format_name
+
+
+MAX_PATH_LENGTH = 255
+
+
+def _resolve_template_or_regex(
+    value: str, project_root: Path
+) -> tuple[str, Literal["template", "regex"]]:
+    """Helper to classify a configuration pattern value as template/regex."""
+    # 1. Check if it's a known alias
+    if value == "template":
+        return "template", "template"
+    if value in ("cargo", "pyproject"):
+        return value, "regex"
+
+    # 2. Check if it's a file path that exists
+    if "\n" not in value and len(value) <= MAX_PATH_LENGTH and "\x00" not in value:
+        try:
+            path = Path(value)
+            if not path.is_absolute():
+                path = project_root / path
+            if path.is_file():
+                content = path.read_text(encoding="utf-8")
+                # If content contains (?P<version>, treat it as regex
+                if "(?P<version>" in content:
+                    return content, "regex"
+                else:
+                    return content, "template"
+        except OSError:
+            pass
+
+    # 3. Check if it's a regex directly (e.g. contains named group (?P<version>)
+    if "(?P<version>" in value:
+        return value, "regex"
+
+    # 4. Otherwise it's a template string (which might contain formatting tags)
+    return value, "template"
+
+
+def resolve_template_and_mode(
+    pattern_val: str,
+    output: str,
+    project_root: Path,
+) -> tuple[str, Literal["template", "regex"]]:
+    """Resolves pattern content and execution mode (template vs regex)."""
+    # If the pattern value is one of the default templates,
+    # and output is a known file format, auto-detect pattern type.
+    is_default_template = (
+        pattern_val.strip().startswith('"""')
+        and "Auto-generated version file from git-versioned" in pattern_val
+    )
+    if is_default_template:
+        out_name = Path(output).name.lower()
+        if out_name == "cargo.toml":
+            pattern_val = "cargo"
+        elif out_name == "pyproject.toml":
+            pattern_val = "pyproject"
+
+    return _resolve_template_or_regex(pattern_val, project_root)
+
+
+def _generate_template_content(
+    pattern_content: str,
     version: Version,
     reference: GitReference,
     settings: Settings,
     repository: GitRepository,
     environment: BuildEnvironment,
-) -> Path | None:
-    """
-    Writes the resolved version metadata to a python file using templates.
-
-    This function utilizes the configured release or development templates to
-    generate a python file containing version information, which can then be
-    included directly within the target package.
-
-    Example:
-        >>> path = generate_version_py(version, ref, settings, repo, env)
-
-    :param version: The resolved PEP 440 version object.
-    :param reference: The resolved Git reference object.
-    :param settings: Configuration rules for resolving the version.
-    :param repository: The current git repository state.
-    :param environment: Build environment metadata.
-    :return: The Path object pointing to the written file.
-    """
-    logger.debug(
-        f"generate_version_py called for version={version} reference={reference} "
-        f"settings={settings} repository={repository} environment={environment}"
-    )
-
-    if not settings.output_file:
-        logger.debug("No output file configured, skipping generation of version file.")
-        return None
-
-    template = (
-        settings.template_dev if version.dev is not None else settings.template_release
-    )
+) -> str:
+    """Render the pattern content as a template string."""
     context = {
         "version": version,
         "repo": repository,
@@ -555,22 +608,144 @@ def generate_version_py(
         "env": environment,
         "ref": reference,
     }
-    content = str(render(generate_template(template, context, use_eval=True)))
+    tmpl = generate_template(pattern_content, context, use_eval=True)
+    return str(render(tmpl))
+
+
+def _resolve_stdout_input_path(pattern_content: str, project_root: Path) -> Path:
+    """Determine the input file to inject version into when outputting to stdout."""
+    if pattern_content == "cargo":
+        return project_root / "Cargo.toml"
+    if pattern_content == "pyproject":
+        return project_root / "pyproject.toml"
+    for name in ("pyproject.toml", "Cargo.toml", "setup.cfg"):
+        p = project_root / name
+        if p.exists():
+            return p
+    msg = (
+        "Could not determine input file to inject version into "
+        "when outputting to stdout."
+    )
+    logger.exception(msg)
+    raise FileNotFoundError(msg)
+
+
+def _generate_regex_content(
+    pattern_content: str,
+    version: Version,
+    settings: Settings,
+) -> str:
+    """Inject version into source file using regex pattern matching."""
+    if settings.output == "sys.stdout":
+        input_path = _resolve_stdout_input_path(pattern_content, settings.project_root)
+    else:
+        input_path = Path(settings.output)
+        if not input_path.is_absolute():
+            input_path = settings.src_root / input_path
+
+    if not input_path.exists():
+        msg = f"Version file to inject into {input_path} does not exist."
+        logger.exception(msg)
+        raise FileNotFoundError(msg)
+
+    pattern = _get_version_file_pattern(pattern_content)
+    file_content = input_path.read_text(encoding="utf-8")
+
+    match = re.search(pattern, file_content, flags=re.MULTILINE)
+    if not match:
+        msg = f"Could not find matching pattern for version in {input_path}."
+        logger.exception(msg)
+        raise ValueError(msg)
 
     try:
-        output_path = Path(settings.output_file)
+        version_span = match.span("version")
+    except IndexError as ver_err:
+        msg = (
+            f"Regex pattern '{pattern_content}' does not contain "
+            f"a named capture group '(?P<version>...)'."
+        )
+        logger.exception(msg)
+        raise ValueError(msg) from ver_err
+
+    return (
+        file_content[: version_span[0]] + str(version) + file_content[version_span[1] :]
+    )
+
+
+def generate_version_file(
+    version: Version,
+    reference: GitReference,
+    settings: Settings,
+    repository: GitRepository,
+    environment: BuildEnvironment,
+) -> Path | None:
+    """Writes resolved version metadata to output/stdout/stderr stream.
+
+    This function utilizes the configured pattern to determine whether to
+    generate a file from templates, or inject the version into an existing
+    file using predefined or custom regex. If settings.output is "sys.stdout",
+    the output is written directly to standard output.
+
+    :param version: The resolved PEP 440 version object.
+    :param reference: The resolved Git reference object.
+    :param settings: Configuration rules for resolving the version.
+    :param repository: The current git repository state.
+    :param environment: Build environment metadata.
+    :return: Path to written file, or None if written to stdout/stderr.
+    """
+    logger.debug(
+        f"generate_version_file called for version={version} reference={reference} "
+        f"settings={settings} repository={repository} environment={environment}"
+    )
+
+    if not settings.output:
+        logger.debug(
+            "No output target configured, skipping generation of version file."
+        )
+        return None
+
+    # Choose template pattern based on dev or release build
+    pattern_val = (
+        settings.pattern_dev if version.dev is not None else settings.pattern_release
+    )
+
+    pattern_content, mode = resolve_template_and_mode(
+        pattern_val, settings.output, settings.project_root
+    )
+
+    if mode == "template":
+        content = _generate_template_content(
+            pattern_content, version, reference, settings, repository, environment
+        )
+    else:
+        content = _generate_regex_content(pattern_content, version, settings)
+
+    # Write content to output destination (stdout, stderr, or file)
+    if settings.output == "sys.stdout":
+        sys.stdout.write(content)
+        if not content.endswith("\n"):
+            sys.stdout.write("\n")
+        sys.stdout.flush()
+        return None
+    elif settings.output == "sys.stderr":
+        sys.stderr.write(content)
+        if not content.endswith("\n"):
+            sys.stderr.write("\n")
+        sys.stderr.flush()
+        return None
+    else:
+        output_path = Path(settings.output)
         if not output_path.is_absolute():
             output_path = settings.src_root / output_path
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(content, encoding="utf-8")
-        logger.info(f"Generated version py file successfully at: {output_path}")
-    except Exception as error:
-        logger.exception(
-            f"Failed to write version python file to {output_path}: {error}"
-        )
-        raise
 
-    return output_path
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(content, encoding="utf-8")
+            logger.info(f"Updated version {version} into {output_path}")
+            return output_path
+        except Exception as error:
+            logger.exception(f"Failed to update file at {output_path}: {error}")
+            raise
 
 
 def resolve_and_generate_version(
@@ -596,7 +771,7 @@ def resolve_and_generate_version(
         f"repo={repository} env={environment}"
     )
     version, reference = resolve_version(settings, repository, environment)
-    output_path = generate_version_py(
+    output_path = generate_version_file(
         version, reference, settings, repository, environment
     )
 

@@ -12,7 +12,6 @@
 ## Critical Constraints
 
 > [!CAUTION]
->
 > 1. **Never commit secrets.** Do not add API keys, tokens, or credentials anywhere.
 > 1. **Do not modify `LICENSE` or `NOTICE`.** These are legally binding.
 > 1. **Do not modify workflow trigger conditions** without human review.

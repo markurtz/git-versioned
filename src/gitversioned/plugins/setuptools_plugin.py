@@ -10,7 +10,7 @@ from __future__ import annotations
 import email
 from distutils.errors import DistutilsSetupError
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 from packaging.utils import canonicalize_name
@@ -46,7 +46,7 @@ def setup_keywords(distribution: Distribution, attribute: str, value: Any) -> No
         logger.error("gitversioned keyword argument must be a dict")
         raise DistutilsSetupError("gitversioned must be a dict")
 
-    distribution.gitversioned_config = value
+    cast("Any", distribution).gitversioned_config = value
 
 
 def finalize_distribution_options(distribution: Distribution) -> None:
@@ -139,9 +139,9 @@ def _extract_established_version(
 
 def _find_existing_version_file(settings: Settings) -> Path | None:
     """Locate the existing version file if resolution is skipped."""
-    if not settings.output_file:
+    if not settings.output or settings.output in ("sys.stdout", "sys.stderr"):
         return None
-    path = Path(settings.output_file)
+    path = Path(settings.output)
     output_path = path if path.is_absolute() else settings.src_root / path
     return output_path if output_path.exists() else None
 

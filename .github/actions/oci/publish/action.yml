@@ -1,0 +1,57 @@
+---
+# Copyright 2026 markurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: "OCI Publisher"
+description: "Tags and pushes container image to GHCR, optionally loading it from a tar archive"
+inputs:
+  image-tag:
+    description: "The tag to use for pushing"
+    required: false
+    default: "latest"
+  github-token:
+    description: "GitHub token for authentication"
+    required: true
+  load-image:
+    description: "Whether to load the image from a tarball archive first"
+    required: false
+    default: "false"
+runs:
+  using: "composite"
+  steps:
+    - name: Load OCI Image from Tarball
+      if: inputs.load-image == 'true'
+      shell: bash
+      run: |
+        if [ -f "gitversioned-latest.tar" ]; then
+          echo "[INFO] Loading OCI image from gitversioned-latest.tar..."
+          docker load -i gitversioned-latest.tar
+        else
+          echo "[WARNING] gitversioned-latest.tar not found! Proceeding without loading."
+        fi
+    - name: Log in to GHCR
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567  # v3.3.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.github-token }}
+    - name: Tag and Push Image
+      shell: bash
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
+      run: |-
+        docker tag gitversioned:latest ghcr.io/"$GITHUB_REPOSITORY":"$IMAGE_TAG"
+        docker tag gitversioned:latest ghcr.io/"$GITHUB_REPOSITORY":latest
+        docker push ghcr.io/"$GITHUB_REPOSITORY":"$IMAGE_TAG"
+        docker push ghcr.io/"$GITHUB_REPOSITORY":latest

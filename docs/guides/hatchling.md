@@ -96,7 +96,8 @@ regex_file = [
 
 This ensures `hatch build` works perfectly in both local clones and downstream source installations.
 
-> [!TIP] "GitHub ZIP Downloads vs. sdists"
+> [!TIP]
+> "GitHub ZIP Downloads vs. sdists"
 > If a user downloads your repository as a ZIP directly from GitHub, there is no `.git` directory and no pre-generated `version.py` file! For this scenario, `gitversioned` provides an **Archive Fallback** mechanism that parses a substituted `.git_archival.txt` file. See the [Quick Start](../getting-started/quickstart.md#configure-archive-support-recommended) for setup instructions.
 
 ### Excluding the Version File from Git

@@ -1,0 +1,60 @@
+---
+# Copyright 2026 markurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: "Python Build"
+description: "Builds the python wheel and sdist package using Hatch"
+inputs:
+  python-version:
+    description: "Python version to build package against"
+    required: false
+    default: "3.10"
+  force-run:
+    description: "Always run even if no changes are detected"
+    required: false
+    default: "false"
+outputs:
+  location:
+    description: "Directory where artifacts are built"
+    value: "dist/"
+runs:
+  using: "composite"
+  steps:
+    - name: Detect changes
+      if: inputs.force-run != 'true'
+      uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590  # v3.0.3
+      id: filter
+      with:
+        filters: .github/paths-filter.yml
+    - name: Evaluate changes
+      id: check
+      shell: bash
+      run: |
+        if [[ "${{ inputs.force-run }}" == "true" || \
+              "${{ steps.filter.outputs.github_changes }}" == "true" || \
+              "${{ steps.filter.outputs.src_changes }}" == "true" || \
+              "${{ steps.filter.outputs.pyproject_changes }}" == "true" ]]; then
+          echo "run=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "run=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Set up Python & Hatch
+      if: steps.check.outputs.run == 'true'
+      uses: ./.github/actions/utility/setup-python
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Build Package
+      if: steps.check.outputs.run == 'true'
+      shell: bash
+      run: |-
+        hatch build

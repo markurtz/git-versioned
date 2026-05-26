@@ -16,10 +16,12 @@ Example:
 from __future__ import annotations
 
 import configparser
+import contextlib
+import re
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import (
     BaseSettings,
     CliSettingsSource,
@@ -28,12 +30,13 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
+from gitversioned.compat import tomllib
 from gitversioned.utils import EnsureList, EnsurePath
 
 __all__ = ["Settings", "SetupCfgSettingsSource"]
 
 
-class SetupCfgSettingsSource(PydanticBaseSettingsSource):  # type: ignore[misc, abstract]
+class SetupCfgSettingsSource(PydanticBaseSettingsSource):
     """Custom settings source to load configuration from setup.cfg."""
 
     def __init__(self, settings_cls: type[BaseSettings], project_root: Path) -> None:
@@ -61,12 +64,12 @@ class SetupCfgSettingsSource(PydanticBaseSettingsSource):  # type: ignore[misc, 
         for section in config_parser.sections():
             if section.startswith(prefix):
                 key = section[len(prefix) :]
-                if key not in result:
-                    result[key] = {}
-                elif not isinstance(result[key], dict):
-                    result[key] = {"_": result[key]}  # type: ignore[dict-item]
+                val = result.get(key, {})
+                if not isinstance(val, dict):
+                    val = {"_": val}
 
-                result[key].update(config_parser.items(section))  # type: ignore[union-attr]
+                val.update(config_parser.items(section))
+                result[key] = val
 
         return result
 
@@ -141,6 +144,7 @@ class Settings(BaseSettings):
 
     # GitVersioned Configuration
     package_name: str = Field(
+        default="auto",
         description="The package name being versioned.",
     )
     version: str = Field(
@@ -179,57 +183,76 @@ class Settings(BaseSettings):
     )
 
     # Sourcing properties
-    regex_version: EnsureList[str] = Field(
-        default_factory=lambda: [  # type: ignore[arg-type]
-            r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
-        ],
-        description="Regex used to extract version from explicit version strings.",
+    regex_version: EnsureList[str] = cast(
+        "EnsureList[str]",
+        Field(
+            default_factory=lambda: [
+                r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
+            ],
+            description="Regex used to extract version from explicit version strings.",
+        ),
     )
-    regex_tag: EnsureList[str] = Field(
-        default_factory=lambda: [  # type: ignore[arg-type]
-            r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
-        ],
-        description="Regex used to find version tags and extract the version.",
+    regex_tag: EnsureList[str] = cast(
+        "EnsureList[str]",
+        Field(
+            default_factory=lambda: [
+                r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
+            ],
+            description="Regex used to find version tags and extract the version.",
+        ),
     )
-    regex_branch: EnsureList[str] = Field(
-        default_factory=lambda: [  # type: ignore[arg-type]
-            r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
-        ],
-        description="Regex used to extract version from the current branch.",
+    regex_branch: EnsureList[str] = cast(
+        "EnsureList[str]",
+        Field(
+            default_factory=lambda: [
+                r"^(?:releases?/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
+            ],
+            description="Regex used to extract version from the current branch.",
+        ),
     )
-    regex_commit: EnsureList[str] = Field(
-        default_factory=lambda: [  # type: ignore[arg-type]
-            r"(?i)^(?:release\s+|bump(?:\s+\w+)*\s+)?"
-            r"v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
-        ],
-        description="Regex used to extract version from previous commits.",
+    regex_commit: EnsureList[str] = cast(
+        "EnsureList[str]",
+        Field(
+            default_factory=lambda: [
+                r"(?i)^(?:release\s+|bump(?:\s+\w+)*\s+)?"
+                r"v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
+            ],
+            description="Regex used to extract version from previous commits.",
+        ),
     )
-    regex_file: EnsureList[str] = Field(
-        default_factory=lambda: [  # type: ignore[arg-type]
-            r"(?i)(?:version|__version__)\s*[:=]\s*['\"]?"
-            r"(v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:[a-zA-Z0-9.\-]+)?)"
-            r"['\"]?"
-        ],
-        description="Regex used to extract version from a file.",
+    regex_file: EnsureList[str] = cast(
+        "EnsureList[str]",
+        Field(
+            default_factory=lambda: [
+                r"(?i)(?:version|__version__)\s*[:=]\s*['\"]?"
+                r"(v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:[a-zA-Z0-9.\-]+)?)"
+                r"['\"]?"
+            ],
+            description="Regex used to extract version from a file.",
+        ),
     )
-    regex_archive: EnsureList[str] = Field(
-        default_factory=lambda: [  # type: ignore[arg-type]
-            r"(?sm)"
-            r"(?=.*^commit_sha:\s*(?P<commit_sha>[^\n]*))"
-            r"(?=.*^short_sha:\s*(?P<short_sha>[^\n]*))"
-            r"(?=.*^timestamp:\s*(?P<timestamp>[^\n]*))"
-            r"(?=.*^author_name:\s*(?P<author_name>[^\n]*))"
-            r"(?=.*^author_email:\s*(?P<author_email>[^\n]*))"
-            r"(?=.*^ref_names:\s*(?P<ref_names>[^\n]*))"
-            r"(?=.*^ref_names:.*?(?:v)?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+))"
-            r"(?=.*^distance_from_head:\s*(?P<distance_from_head>[^\n]*))"
-            r"(?=.*^is_head_commit:\s*(?P<is_head_commit>[^\n]*))"
-            r"(?=.*^total_commits:\s*(?P<total_commits>[^\n]*))"
-            r"(?=.*^is_current_branch:\s*(?P<is_current_branch>[^\n]*))"
-            r"(?=.*^commit_message:\n(?P<commit_message>.*))"
-        ],
-        description=(
-            "Regex patterns used to extract versions/metadata from an archive export."
+    regex_archive: EnsureList[str] = cast(
+        "EnsureList[str]",
+        Field(
+            default_factory=lambda: [
+                r"(?sm)"
+                r"(?=.*^commit_sha:\s*(?P<commit_sha>[^\n]*))"
+                r"(?=.*^short_sha:\s*(?P<short_sha>[^\n]*))"
+                r"(?=.*^timestamp:\s*(?P<timestamp>[^\n]*))"
+                r"(?=.*^author_name:\s*(?P<author_name>[^\n]*))"
+                r"(?=.*^author_email:\s*(?P<author_email>[^\n]*))"
+                r"(?=.*^ref_names:\s*(?P<ref_names>[^\n]*))"
+                r"(?=.*^ref_names:.*?(?:v)?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+))"
+                r"(?=.*^distance_from_head:\s*(?P<distance_from_head>[^\n]*))"
+                r"(?=.*^is_head_commit:\s*(?P<is_head_commit>[^\n]*))"
+                r"(?=.*^total_commits:\s*(?P<total_commits>[^\n]*))"
+                r"(?=.*^is_current_branch:\s*(?P<is_current_branch>[^\n]*))"
+                r"(?=.*^commit_message:\n(?P<commit_message>.*))"
+            ],
+            description=(
+                "Regex patterns used to extract versions/metadata from "
+                "an archive export."
+            ),
         ),
     )
     version_source_file: str | None = Field(
@@ -244,12 +267,15 @@ class Settings(BaseSettings):
         default=None,
         description="Module and function to resolve version and git reference.",
     )
-    source_type: EnsureList[str] = Field(
-        default_factory=lambda: ["auto"],  # type: ignore[arg-type]
-        description="Priority order of source types to extract the version from.",
+    source_type: EnsureList[str] = cast(
+        "EnsureList[str]",
+        Field(
+            default_factory=lambda: ["auto"],
+            description="Priority order of source types to extract the version from.",
+        ),
     )
     dirty_ignore: EnsureList[str] = Field(
-        default_factory=list,  # type: ignore[arg-type]
+        default_factory=list,
         description=(
             "List of file paths to ignore when checking if the repository is dirty."
         ),
@@ -275,22 +301,116 @@ class Settings(BaseSettings):
         default="auto",
         description="Type of version to create.",
     )
-    output_file: str = Field(
+    output: str = Field(
         default="version.py",
-        description="File path where the generated version string is written.",
+        description=(
+            "Where the version string is written (file path, 'sys.stdout' for stdout)."
+        ),
     )
-    template_release: str = Field(
+    pattern_release: str = Field(
         default_factory=(
             Path(__file__).parent / "templates" / "release.py.template"
         ).read_text,
-        description="The ExStr template used for release builds.",
+        description=(
+            "Output representation for release builds. Supports default "
+            "templates, aliases ('template', 'cargo', 'pyproject'), "
+            "file paths, or custom string/regex."
+        ),
     )
-    template_dev: str = Field(
+    pattern_dev: str = Field(
         default_factory=(
             Path(__file__).parent / "templates" / "dev.py.template"
         ).read_text,
-        description="The ExStr template used for dev builds.",
+        description=(
+            "Output representation for dev builds. Supports default "
+            "templates, aliases ('template', 'cargo', 'pyproject'), "
+            "file paths, or custom string/regex."
+        ),
     )
+    build_backend: str | None = Field(
+        default=None,
+        validation_alias="GITVERSIONED_BUILD_BACKEND",
+        description=(
+            "Target build backend to delegate to (e.g. 'maturin' or "
+            "'setuptools.build_meta')."
+        ),
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_keys(cls, data: Any) -> Any:
+        """Normalize legacy/dashed keys to standard settings field names."""
+        if isinstance(data, dict):
+            # Normalize build-backend / build_backend
+            if "build-backend" in data and "build_backend" not in data:
+                data["build_backend"] = data.pop("build-backend")
+            # Normalize output_file / output
+            if "output_file" in data and "output" not in data:
+                data["output"] = data.pop("output_file")
+            if "output-file" in data and "output" not in data:
+                data["output"] = data.pop("output-file")
+            # Normalize template_release / pattern_release
+            if "template_release" in data and "pattern_release" not in data:
+                data["pattern_release"] = data.pop("template_release")
+            if "template-release" in data and "pattern_release" not in data:
+                data["pattern_release"] = data.pop("template-release")
+            # Normalize template_dev / pattern_dev
+            if "template_dev" in data and "pattern_dev" not in data:
+                data["pattern_dev"] = data.pop("template_dev")
+            if "template-dev" in data and "pattern_dev" not in data:
+                data["pattern_dev"] = data.pop("template-dev")
+        return data
+
+    @model_validator(mode="after")
+    def _resolve_auto_fields(self) -> Settings:
+        """Resolve dynamic fields like package_name and src_root.
+
+        This is performed when fields are configured to 'auto'.
+        """
+        if self.package_name == "auto":
+            self.package_name = self._detect_package_name()
+
+        # Resolve src_root if it is default (equal to project_root)
+        if self.src_root == self.project_root:
+            pkg_name = self.package_name
+            src_pkg = self.project_root / "src" / pkg_name
+            pkg_dir = self.project_root / pkg_name
+            if src_pkg.exists() and src_pkg.is_dir():
+                self.src_root = src_pkg
+            elif pkg_dir.exists() and pkg_dir.is_dir():
+                self.src_root = pkg_dir
+        return self
+
+    def _detect_package_name(self) -> str:
+        """Detect package name from various config files or folder name."""
+        # 1. Try to read from pyproject.toml
+        pyproject_path = self.project_root / "pyproject.toml"
+        if pyproject_path.exists() and tomllib is not None:
+            try:
+                with pyproject_path.open("rb") as f:
+                    data = tomllib.load(f)
+                    name = data.get("project", {}).get("name")
+                    if name:
+                        return str(name).replace("-", "_")
+            except (OSError, ValueError):
+                with contextlib.suppress(OSError, ValueError):
+                    content = pyproject_path.read_text(encoding="utf-8")
+                    match = re.search(r'(?m)^name\s*=\s*["\']([^"\']+)["\']', content)
+                    if match:
+                        return match.group(1).replace("-", "_")
+
+        # 2. Try to read from setup.cfg
+        setup_cfg_path = self.project_root / "setup.cfg"
+        if setup_cfg_path.exists():
+            with contextlib.suppress(OSError, configparser.Error):
+                config = configparser.ConfigParser()
+                config.read(setup_cfg_path)
+                name = config.get("metadata", "name", fallback=None)
+                if name:
+                    return name.replace("-", "_")
+
+        # 3. Fallback to project root directory name
+        return self.project_root.name.replace("-", "_")
 
     def __str__(self) -> str:
         """Return a concise string representation."""
@@ -298,7 +418,7 @@ class Settings(BaseSettings):
             f"Settings(package_name={self.package_name!r}, version={self.version!r}, "
             f"version_type={self.version_type!r}, project_root={self.project_root!r}, "
             f"src_root={self.src_root!r}, source_type={self.source_type!r}, "
-            f"auto_increment={self.auto_increment!r}, output_file={self.output_file!r},"
+            f"auto_increment={self.auto_increment!r}, output={self.output!r},"
             f" dirty_ignore={self.dirty_ignore!r})"
         )
 
@@ -317,8 +437,9 @@ class Settings(BaseSettings):
             f"version_source_function={self.version_source_function!r}, "
             f"source_type={self.source_type!r}, dirty_ignore={self.dirty_ignore!r}, "
             f"auto_increment={self.auto_increment!r}, "
-            f"version_type={self.version_type!r}, output_file={self.output_file!r}, "
-            f"template_release={self.template_release!r}, "
-            f"template_dev={self.template_dev!r}"
+            f"version_type={self.version_type!r}, output={self.output!r}, "
+            f"pattern_release={self.pattern_release!r}, "
+            f"pattern_dev={self.pattern_dev!r}, "
+            f"build_backend={self.build_backend!r}"
             f")"
         )

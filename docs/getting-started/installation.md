@@ -74,7 +74,7 @@ python -c "import gitversioned; print(gitversioned.__version__)"
 You should see output similar to:
 
 ```console
-0.1.0
+0.2.0
 ```
 
 ## Install from Source

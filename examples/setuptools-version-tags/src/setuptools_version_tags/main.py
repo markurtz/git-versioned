@@ -1,5 +1,7 @@
 try:
-    from setuptools_version_tags import __version__  # type: ignore[attr-defined]
+    import setuptools_version_tags
+
+    __version__ = getattr(setuptools_version_tags, "__version__", "not available yet")
 except ImportError:
     __version__ = "not available yet"
 
