@@ -387,6 +387,7 @@ class TestHatchlingBuildBackendDeclarativeMetadataHooks:
         """US-1: Verify Pydantic settings model marshalling limits."""
         settings_obj = Settings(
             package_name=valid_instances["package_name"],
+            project_root=valid_instances["repo"].path,
             version="auto",
             source_type=["tag"],
         )
@@ -929,6 +930,7 @@ class TestHatchlingVersionOutputTypeEnforcementAndCoercion:
         """US-2: Verify Pydantic settings model marshalling limits."""
         settings_obj = Settings(
             package_name=valid_instances["package_name"],
+            project_root=valid_instances["repo"].path,
             version_type="dev",
         )
         dumped = settings_obj.model_dump()
@@ -1235,6 +1237,7 @@ class TestHatchlingGranularAutoIncrementScoping:
         """US-3: Verify Pydantic settings model marshalling limits."""
         settings_obj = Settings(
             package_name=valid_instances["package_name"],
+            project_root=valid_instances["repo"].path,
             auto_increment={"release": "patch", "dev": "minor"},
         )
         dumped = settings_obj.model_dump()

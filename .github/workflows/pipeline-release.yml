@@ -133,15 +133,10 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 0
-      - name: Resolve and set version
-        id: version-resolver
-        uses: ./.github/actions/utility/resolve-version
-        with:
-          build-type: "release"
       - name: Run Python Build
         uses: ./.github/actions/python/build
         with:
-          build-version: ${{ steps.version-resolver.outputs.version }}
+          build-type: "release"
           force-run: "true"
       - name: Upload Build Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -157,16 +152,11 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 0
-      - name: Resolve and set version
-        id: version-resolver
-        uses: ./.github/actions/utility/resolve-version
-        with:
-          build-type: "release"
       - name: Run OCI Build
         id: build
         uses: ./.github/actions/oci/build
         with:
-          build-version: ${{ steps.version-resolver.outputs.version }}
+          build-type: "release"
           force-run: "true"
       - name: Upload OCI Image Tarball
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

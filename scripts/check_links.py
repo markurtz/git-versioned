@@ -107,7 +107,7 @@ def main(
                     "--file-types",
                     ".md",
                     "--exclude-patterns",
-                    "localhost,127.0.0.1",
+                    "localhost,127.0.0.1,actions/workflows",
                 ]
                 + extra_options,
                 check=True,

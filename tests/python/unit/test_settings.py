@@ -531,9 +531,9 @@ class TestSettings:
             assert f"{field}=" in repr_val, f"__repr__ missing field: {field}"
 
     @pytest.mark.smoke
-    def test_output_strategies_default(self) -> None:
+    def test_output_strategies_default(self, tmp_path: Path) -> None:
         """Test that default output strategies are initialized correctly."""
-        settings_instance = Settings(package_name="test")
+        settings_instance = Settings(package_name="test", project_root=tmp_path)
         assert isinstance(settings_instance.output_strategies, dict)
         assert "release" in settings_instance.output_strategies
         assert "dev" in settings_instance.output_strategies

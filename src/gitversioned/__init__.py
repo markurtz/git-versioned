@@ -13,7 +13,7 @@ Example:
     version, _, ref = resolve_version(
         Settings(), GitRepository(), BuildEnvironment()
     )
-    print(f"Current version: {version}")
+    print("Current version:", version)
 """
 
 from __future__ import annotations
@@ -36,6 +36,6 @@ __all__ = [
     "resolve_version_output_to_stream",
 ]
 
-__version__ = "0.1.3.dev10+9eea393"
+__version__ = "0.1.2.dev20260514+9eea393"
 
 configure_logger()

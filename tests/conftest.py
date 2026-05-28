@@ -12,8 +12,6 @@ from pathlib import Path
 import pytest
 from loguru import logger
 
-from gitversioned.logging import _state
-
 __all__ = [
     "GitRepoHelper",
     "PropagateHandler",
@@ -53,6 +51,8 @@ def caplog_loguru(
     This ensures that assertions like `assert "foo" in caplog.text` work
     seamlessly with Loguru output.
     """
+    from gitversioned.logging import _state  # noqa: PLC0415
+
     logger.remove()
     _state["handler_id"] = None
     logger.enable("gitversioned")

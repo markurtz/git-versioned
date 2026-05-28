@@ -23,8 +23,8 @@
   </a>
   <br/>
   <!-- CI/CD & Build Status -->
-  <a href="https://github.com/markurtz/git-versioned/actions/workflows/main.yml">
-    <img src="https://github.com/markurtz/git-versioned/actions/workflows/main.yml/badge.svg" alt="CI Status">
+  <a href="https://github.com/markurtz/git-versioned/actions/workflows/pipeline-main.yml">
+    <img src="https://github.com/markurtz/git-versioned/actions/workflows/pipeline-main.yml/badge.svg" alt="CI Status">
   </a>
   <br/>
   <!-- Issues & Support -->

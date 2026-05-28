@@ -119,7 +119,7 @@ OCI_IMAGE = "gitversioned:latest"
 MDFORMAT_TARGETS = ".devcontainer/ .github/ docs/*.md docs/community/ docs/examples/ docs/getting-started/ docs/guides/ examples/ scripts/ src/ tests/ *.md"
 YAML_TARGETS = ".devcontainer/ .github/ docs/ examples/ scripts/ src/ tests/ *.yml *.yaml"
 TOML_TARGETS = ".devcontainer/ .github/ docs/ examples/ scripts/ src/ tests/ *.toml"
-PYTHON_SRC = "src"
+PYTHON_SRC = "gitversioned"
 PYTHON_UNIT_TESTS = "tests/python/unit"
 PYTHON_INT_TESTS = "tests/python/integration"
 PYTHON_COV_DIR = "coverage/python"
@@ -529,3 +529,17 @@ sequence_style = "block_style"
 preserve_quotes = true
 
 [tool.coverage.run]
+
+[tool.gitversioned]
+output = "src/gitversioned/__init__.py"
+source_type = ["tag"]
+format_dev = "dev{ref.total_commits}+{ref.short_sha}"
+format_pre = "a{ref.timestamp:%Y%m%d}"
+
+[tool.gitversioned.auto_increment]
+dev = "micro"
+nightly = "minor"
+
+[tool.gitversioned.output_strategies]
+release = { type = "regex", pattern = '(?m)^__version__\s*=\s*"(?P<version>[^"]+)"' }
+dev = { type = "regex", pattern = '(?m)^__version__\s*=\s*"(?P<version>[^"]+)"' }
