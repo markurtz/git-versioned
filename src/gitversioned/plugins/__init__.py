@@ -1,4 +1,4 @@
-"""
+r"""
 Build system plugins for integrating gitversioned with Python build backends.
 
 This package provides the integration plugins required to connect the core
@@ -42,4 +42,4 @@ Configure Maturin with overridden configurations within ``pyproject.toml``:
    output_strategies.pattern = '''
    (?ms)^\[package\].*?^(\s*version\s*=\s*)(["\'])(?P<version>[^"\']+)\2
    '''
-"""  # noqa: W605
+"""

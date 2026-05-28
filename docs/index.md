@@ -107,10 +107,11 @@ Our security policy, responsible disclosure process, and supported versions.
 
 ## Quick Install
 
-### Build Configuration
+GitVersioned supports multiple integration paths. Select your preferred method to get started:
 
-GitVersioned is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml`:
+=== "Hatchling"
 
+````
 ```toml
 [build-system]
 requires = ["hatchling", "gitversioned"]
@@ -119,8 +120,44 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "gitversioned"
 ```
+````
 
-For advanced installation options, Setuptools/Maturin alternatives, and step-by-step onboarding, see the [Installation Guide](getting-started/installation.md).
+=== "Setuptools"
+
+````
+```toml
+[build-system]
+requires = ["setuptools>=61.0", "gitversioned"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+```
+````
+
+=== "Maturin"
+
+````
+```toml
+[build-system]
+requires = ["maturin>=1.0,<2.0", "gitversioned"]
+build-backend = "gitversioned.plugins.maturin_plugin"
+
+[project]
+dynamic = ["version"]
+```
+````
+
+=== "CLI"
+
+````
+```bash
+pip install gitversioned
+gitversioned calculate
+```
+````
+
+For advanced options, archive support, and step-by-step onboarding, see the [Installation Guide](getting-started/installation.md) and the [Quick Start Guide](getting-started/quickstart.md).
 
 ## Links
 
