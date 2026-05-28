@@ -10,6 +10,7 @@ from __future__ import annotations
 import configparser
 import contextlib
 import functools
+import json
 import re
 from pathlib import Path
 from typing import Annotated, Any, Literal, cast
@@ -260,12 +261,20 @@ class SetupCfgSettingsSource(PydanticBaseSettingsSource):
         for section in config_parser.sections():
             if section.startswith(prefix):
                 key = section[len(prefix) :]
-                val = result.get(key, {})
-                if not isinstance(val, dict):
-                    val = {"_": val}
-
-                val.update(config_parser.items(section))
-                result[key] = val
+                if key.startswith("overrides:"):
+                    override_name = key[10:]
+                    overrides_dict = result.setdefault("overrides", {})
+                    if not isinstance(overrides_dict, dict):
+                        overrides_dict = {}
+                        result["overrides"] = overrides_dict
+                    override_val = overrides_dict.setdefault(override_name, {})
+                    override_val.update(config_parser.items(section))
+                else:
+                    val = result.get(key, {})
+                    if not isinstance(val, dict):
+                        val = {"_": val}
+                    val.update(config_parser.items(section))
+                    result[key] = val
 
         return result
 
@@ -290,7 +299,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         arbitrary_types_allowed=True,
-        extra="ignore",
+        extra="allow",
         populate_by_name=True,
         validate_assignment=True,
         env_prefix="GITVERSIONED__",
@@ -324,6 +333,10 @@ class Settings(BaseSettings):
         description=(
             "Flag indicating whether the package is built as an editable installation."
         ),
+    )
+    overrides: dict[str, dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Override-based settings configurations.",
     )
 
     # Version Source Configuration
@@ -471,7 +484,7 @@ class Settings(BaseSettings):
         description="Format string for post-release builds.",
     )
     dirty_ignore: Annotated[list[str], EnsureList()] = Field(
-        default_factory=lambda: ["target", "build", "dist"],
+        default_factory=lambda: ["target", "build", "dist", "__pycache__"],
         description=(
             "List of file paths and directories to ignore when "
             "checking if the repository is dirty."
@@ -523,7 +536,7 @@ class Settings(BaseSettings):
         """
         _ = (file_secret_settings,)  # Allow unused variable to satisfy lint/format
         input_args = init_settings()
-        project_root = input_args.get("project_root") or Path.cwd()
+        project_root = Path(input_args.get("project_root") or Path.cwd())
 
         return (
             init_settings,
@@ -596,6 +609,38 @@ class Settings(BaseSettings):
             f"output_strategies={self.output_strategies!r}"
             f")"
         )
+
+    @autolog
+    def get_overridden_settings(self, override_name: str) -> Settings:
+        """
+        Get a new Settings instance with overrides for the given override name.
+
+        This method dumps the root settings, pops the 'overrides' key to prevent
+        infinite recursion, and updates the settings with override-specific config.
+
+        :param override_name: Name of the override configuration to load settings for.
+        :returns: A new Settings instance with the overrides applied.
+        :raises ValueError: If the override name does not exist.
+        """
+        if override_name not in self.overrides:
+            raise ValueError(f"Override '{override_name}' not found in configuration.")
+
+        data = self.model_dump()
+        if self.model_extra:
+            data.update(self.model_extra)
+
+        # Set overrides to an empty dict in data to prevent loading error or warnings
+        # during Pydantic initialization.
+        data["overrides"] = {}
+        override_configs = self.overrides[override_name]
+        data.update(override_configs)
+
+        settings = Settings(**data)
+        # Explicitly clear overrides on the returned instance to prevent
+        # infinite recursion if dictionary fields merge during Pydantic
+        # Settings loading from files (e.g. pyproject.toml).
+        settings.overrides = {}
+        return settings
 
     @autolog
     def resolve_path_from_root(
@@ -684,8 +729,19 @@ class Settings(BaseSettings):
     @field_validator("auto_increment", mode="before")
     @classmethod
     def _coerce_auto_increment(cls, value: Any) -> Any:
-        if isinstance(value, str) and value.lower().strip() == "none":
-            return None
+        if isinstance(value, str):
+            if value.lower().strip() == "none":
+                return None
+            with contextlib.suppress(json.JSONDecodeError):
+                value = json.loads(value)
+        return value
+
+    @field_validator("output_strategies", mode="before")
+    @classmethod
+    def _coerce_output_strategies(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            with contextlib.suppress(json.JSONDecodeError):
+                return json.loads(value)
         return value
 
     @model_validator(mode="after")

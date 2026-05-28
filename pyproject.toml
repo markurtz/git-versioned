@@ -102,9 +102,26 @@ gitversioned = "gitversioned.plugins.setuptools_plugin:setup_keywords"
 [project.entry-points."setuptools.finalize_distribution_options"]
 gitversioned = "gitversioned.plugins.setuptools_plugin:finalize_distribution_options"
 
+
+# ==============================================================================
+# Versioning
+# ==============================================================================
+
 [tool.hatch.version]
 path = "src/gitversioned/__init__.py"
 pattern = "(?m)^__version__[^=]*= *(['\"])v?(?P<version>.+?)\\1"
+
+[tool.gitversioned]
+output = "src/gitversioned/__init__.py"
+source_type = ["tag"]
+format_dev = "dev{ref.total_commits}+{ref.short_sha}"
+format_pre = "a{ref.timestamp:%Y%m%d}"
+output_strategies = { type = "regex", pattern = '(?m)^__version__\s*=\s*"(?P<version>[^"]+)"' }
+
+[tool.gitversioned.auto_increment]
+dev = "micro"
+nightly = "minor"
+
 
 # ==============================================================================
 # Hatch Environment Configurations
@@ -114,7 +131,9 @@ pattern = "(?m)^__version__[^=]*= *(['\"])v?(?P<version>.+?)\\1"
 dependency-groups = ["dev"]
 
 [tool.hatch.envs.default.env-vars]
+PYTHONPATH = "."
 PYTHON_TARGETS = "docs examples scripts src tests"
+GITVERSIONED__LOGGING__LEVEL = "ERROR"
 OCI_IMAGE = "gitversioned:latest"
 MDFORMAT_TARGETS = ".devcontainer/ .github/ docs/*.md docs/community/ docs/examples/ docs/getting-started/ docs/guides/ examples/ scripts/ src/ tests/ *.md"
 YAML_TARGETS = ".devcontainer/ .github/ docs/ examples/ scripts/ src/ tests/ *.yml *.yaml"
@@ -380,7 +399,14 @@ tests-int-cov = [
   "hatch run project:tests-int {args}",
   "echo '[INFO] No coverage analysis is applicable for integration tests in the project environment'",
 ]
-tests-e2e = "python {env:CHECK_LINKS_SCRIPT} {args:{env:MDFORMAT_TARGETS}}"
+link-checks = "python {env:CHECK_LINKS_SCRIPT} {args:{env:MDFORMAT_TARGETS}}"
+link-checks-cov = [
+  "hatch run project:link-checks {args}",
+  "echo '[INFO] No coverage analysis is applicable for link checks in the project environment'",
+]
+tests-e2e = [
+  "hatch -e python run pytest --import-mode=importlib examples {args}",
+]
 tests-e2e-cov = [
   "hatch run project:tests-e2e {args}",
   "echo '[INFO] No coverage analysis is applicable for E2E tests in the project environment'",
@@ -495,6 +521,9 @@ select = [
 "examples/**/*.py" = [
   "T201",   # allow print in examples
   "INP001", # allow implicit namespace packages
+  "S603",   # allow subprocess check with untrusted input
+  "S607",   # allow starting a process with a partial executable path
+  "S101",   # allow asserts in tests/examples
 ]
 "scripts/**/*.py" = [
   "T201",    # allow print in scripts
@@ -521,7 +550,7 @@ markers = [
   "sanity: detailed tests to ensure major functions work correctly",
   "regression: tests to ensure that new changes do not break existing functionality",
 ]
-testpaths = ["tests"]
+testpaths = ["tests", "examples"]
 
 [tool.yamlfix]
 line_length = 88
@@ -529,17 +558,3 @@ sequence_style = "block_style"
 preserve_quotes = true
 
 [tool.coverage.run]
-
-[tool.gitversioned]
-output = "src/gitversioned/__init__.py"
-source_type = ["tag"]
-format_dev = "dev{ref.total_commits}+{ref.short_sha}"
-format_pre = "a{ref.timestamp:%Y%m%d}"
-
-[tool.gitversioned.auto_increment]
-dev = "micro"
-nightly = "minor"
-
-[tool.gitversioned.output_strategies]
-release = { type = "regex", pattern = '(?m)^__version__\s*=\s*"(?P<version>[^"]+)"' }
-dev = { type = "regex", pattern = '(?m)^__version__\s*=\s*"(?P<version>[^"]+)"' }

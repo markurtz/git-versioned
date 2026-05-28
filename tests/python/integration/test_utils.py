@@ -169,6 +169,8 @@ class TestGitRepository:
                 "git@github.com:markurtz/git-versioned.git",
             ],
             cwd=valid_instances.base_path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         assert valid_instances.repository_name == "git-versioned"
 
@@ -180,6 +182,8 @@ class TestGitRepository:
                 "https://github.com/markurtz/another-repo",
             ],
             cwd=valid_instances.base_path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         assert valid_instances.repository_name == "another-repo"
 
@@ -198,6 +202,8 @@ class TestGitRepository:
                 url_val,
             ],
             cwd=valid_instances.base_path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         assert valid_instances.remote_origin_url == url_val
 
@@ -215,6 +221,7 @@ class TestGitRepository:
                 out_bytes = subprocess.check_output(
                     ["git", "rev-list", "--count", "HEAD"],
                     cwd=valid_instances.base_path,
+                    stderr=subprocess.DEVNULL,
                 )
                 expected_count = int(out_bytes.strip())
             except subprocess.CalledProcessError:
@@ -254,6 +261,8 @@ class TestGitRepository:
         subprocess.check_call(
             ["git", "mv", "original.txt", "renamed.txt"],
             cwd=temp_git_repo.path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         repo = GitRepository(temp_git_repo.path)
         dirty_list = repo.dirty_files
@@ -318,17 +327,19 @@ class TestGitRepository:
             assert head_str in ("main", "master")
 
     @pytest.mark.regression
-    def test_head_name_empty(self, temp_git_repo: GitRepoHelper) -> None:
+    def test_head_name_empty(self, tmp_path: Path) -> None:
         """Test head name is empty when no commits exist."""
-        repo = GitRepository(temp_git_repo.path)
+        repo_helper = GitRepoHelper(tmp_path, initial_commit=False)
+        repo = GitRepository(repo_helper.path)
         assert repo.head_name == ""
 
     @pytest.mark.regression
-    def test_commits(self, temp_git_repo: GitRepoHelper) -> None:
+    def test_commits(self, tmp_path: Path) -> None:
         """Test commits iterator properties."""
-        temp_git_repo.commit("Commit one")
-        temp_git_repo.commit("Commit two")
-        repo = GitRepository(temp_git_repo.path)
+        repo_helper = GitRepoHelper(tmp_path, initial_commit=False)
+        repo_helper.commit("Commit one")
+        repo_helper.commit("Commit two")
+        repo = GitRepository(repo_helper.path)
         commits_list = list(repo.commits)
         assert len(commits_list) == 2
         assert commits_list[0].commit_message == "Commit two"
@@ -339,25 +350,27 @@ class TestGitRepository:
         assert commits_list[1].is_head_commit is False
 
     @pytest.mark.regression
-    def test_tags(self, temp_git_repo: GitRepoHelper) -> None:
+    def test_tags(self, tmp_path: Path) -> None:
         """Test tags sorting and fields."""
-        temp_git_repo.commit("Initial commit")
-        temp_git_repo.tag("v1.0.0", annotated=True, message="Annotated tag")
-        temp_git_repo.commit("Second commit")
-        temp_git_repo.tag("v2.0.0")
+        repo_helper = GitRepoHelper(tmp_path, initial_commit=False)
+        repo_helper.commit("Initial commit")
+        repo_helper.tag("v1.0.0", annotated=True, message="Annotated tag")
+        repo_helper.commit("Second commit")
+        repo_helper.tag("v2.0.0")
 
-        repo = GitRepository(temp_git_repo.path)
+        repo = GitRepository(repo_helper.path)
         tags_list = list(repo.tags)
         assert len(tags_list) == 2
         tag_names = {ref.tag_name for ref in tags_list}
         assert tag_names == {"v1.0.0", "v2.0.0"}
 
     @pytest.mark.regression
-    def test_branches(self, temp_git_repo: GitRepoHelper) -> None:
+    def test_branches(self, tmp_path: Path) -> None:
         """Test branches list and current status."""
-        temp_git_repo.commit("Initial commit")
-        temp_git_repo.branch("feature-branch")
-        repo = GitRepository(temp_git_repo.path)
+        repo_helper = GitRepoHelper(tmp_path, initial_commit=False)
+        repo_helper.commit("Initial commit")
+        repo_helper.branch("feature-branch")
+        repo = GitRepository(repo_helper.path)
         branches_list = list(repo.branches)
         names = {ref.branch_name for ref in branches_list}
         assert "feature-branch" in names
@@ -366,16 +379,17 @@ class TestGitRepository:
         assert current_branches[0].branch_name == "feature-branch"
 
     @pytest.mark.sanity
-    def test_filtered_dirty_files(self, temp_git_repo: GitRepoHelper) -> None:
+    def test_filtered_dirty_files(self, tmp_path: Path) -> None:
         """Test filtering modified files with ignore paths."""
-        temp_git_repo.add("pyproject.toml")
-        temp_git_repo.commit("Initial commit")
-        (temp_git_repo.path / "subfolder").mkdir(exist_ok=True)
-        temp_git_repo.dirty("file1.txt")
-        temp_git_repo.dirty("subfolder/file2.txt")
-        temp_git_repo.dirty("subfolder/file3.txt")
+        repo_helper = GitRepoHelper(tmp_path, initial_commit=False)
+        repo_helper.add("pyproject.toml")
+        repo_helper.commit("Initial commit")
+        (repo_helper.path / "subfolder").mkdir(exist_ok=True)
+        repo_helper.dirty("file1.txt")
+        repo_helper.dirty("subfolder/file2.txt")
+        repo_helper.dirty("subfolder/file3.txt")
 
-        repo = GitRepository(temp_git_repo.path)
+        repo = GitRepository(repo_helper.path)
         all_dirty = repo.filtered_dirty_files()
         assert len(all_dirty) == 2
 

@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from hatchling.version.source.plugin.interface import VersionSourceInterface
 
-from gitversioned.plugins import setuptools_plugin
+from gitversioned.plugins import maturin_plugin, setuptools_plugin
 from gitversioned.plugins.hatchling_plugin import (
     GitVersionedVersionSource,
     hatch_register_version_source,
@@ -446,3 +446,542 @@ class TestFinalizeDistributionOptions:
             match="Failed to resolve version: Something unexpected broke",
         ):
             finalize_distribution_options(distribution)
+
+
+class MockMaturinModule:
+    """Mock maturin module to capture and assert hook invocations."""
+
+    def __init__(self) -> None:
+        self.called_args: dict[str, tuple[Any, ...]] = {}
+        self.called_kwargs: dict[str, dict[str, Any]] = {}
+
+    def build_wheel(
+        self,
+        wheel_directory: str,
+        config_settings: dict[str, Any] | None = None,
+        metadata_directory: str | None = None,
+    ) -> str:
+        self.called_args["build_wheel"] = (wheel_directory,)
+        self.called_kwargs["build_wheel"] = {
+            "config_settings": config_settings,
+            "metadata_directory": metadata_directory,
+        }
+        return "mock_package-0.1.0-py3-none-any.whl"
+
+    def build_sdist(
+        self,
+        sdist_directory: str,
+        config_settings: dict[str, Any] | None = None,
+    ) -> str:
+        self.called_args["build_sdist"] = (sdist_directory,)
+        self.called_kwargs["build_sdist"] = {"config_settings": config_settings}
+        return "mock_package-0.1.0.tar.gz"
+
+    def get_requires_for_build_wheel(
+        self,
+        config_settings: dict[str, Any] | None = None,
+    ) -> list[str]:
+        self.called_args["get_requires_for_build_wheel"] = ()
+        self.called_kwargs["get_requires_for_build_wheel"] = {
+            "config_settings": config_settings
+        }
+        return ["maturin>=1.0,<2.0"]
+
+    def get_requires_for_build_sdist(
+        self,
+        config_settings: dict[str, Any] | None = None,
+    ) -> list[str]:
+        self.called_args["get_requires_for_build_sdist"] = ()
+        self.called_kwargs["get_requires_for_build_sdist"] = {
+            "config_settings": config_settings
+        }
+        return ["maturin>=1.0,<2.0"]
+
+    def prepare_metadata_for_build_wheel(
+        self,
+        metadata_directory: str,
+        config_settings: dict[str, Any] | None = None,
+    ) -> str:
+        self.called_args["prepare_metadata_for_build_wheel"] = (metadata_directory,)
+        self.called_kwargs["prepare_metadata_for_build_wheel"] = {
+            "config_settings": config_settings
+        }
+        return "mock_package-0.1.0.dist-info"
+
+    def build_editable(
+        self,
+        wheel_directory: str,
+        config_settings: dict[str, Any] | None = None,
+        metadata_directory: str | None = None,
+    ) -> str:
+        self.called_args["build_editable"] = (wheel_directory,)
+        self.called_kwargs["build_editable"] = {
+            "config_settings": config_settings,
+            "metadata_directory": metadata_directory,
+        }
+        return "mock_package-0.1.0-py3-none-any.whl"
+
+    def get_requires_for_build_editable(
+        self,
+        config_settings: dict[str, Any] | None = None,
+    ) -> list[str]:
+        self.called_args["get_requires_for_build_editable"] = ()
+        self.called_kwargs["get_requires_for_build_editable"] = {
+            "config_settings": config_settings
+        }
+        return ["maturin>=1.0,<2.0"]
+
+    def prepare_metadata_for_build_editable(
+        self,
+        metadata_directory: str,
+        config_settings: dict[str, Any] | None = None,
+    ) -> str:
+        self.called_args["prepare_metadata_for_build_editable"] = (metadata_directory,)
+        self.called_kwargs["prepare_metadata_for_build_editable"] = {
+            "config_settings": config_settings
+        }
+        return "mock_package-0.1.0.dist-info"
+
+
+class TestBuildWheel:
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("repo_state", ["clean", "tagged"])
+    def test_invocation(
+        self,
+        temp_git_repo: GitRepoHelper,
+        repo_state: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test build_wheel hook calculates, updates Cargo.toml, and delegates."""
+        temp_git_repo = temp_git_repo.setup_state(repo_state)
+        cargo_path = temp_git_repo.path / "Cargo.toml"
+        cargo_path.write_text(
+            '[package]\nname = "mock_pkg"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_path = maturin_plugin.build_wheel(
+            "dist_dir", config_settings={"option": "val"}
+        )
+        assert result_path == "mock_package-0.1.0-py3-none-any.whl"
+
+        # Assert correct delegation
+        assert mock_maturin.called_args["build_wheel"] == ("dist_dir",)
+        assert mock_maturin.called_kwargs["build_wheel"] == {
+            "config_settings": {"option": "val"},
+            "metadata_directory": None,
+        }
+
+        # Assert Cargo.toml was updated with resolved version
+        cargo_content = cargo_path.read_text(encoding="utf-8")
+        assert 'version = "' in cargo_content
+        assert "0.0.0" not in cargo_content
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("is_missing", "error_message"),
+        [
+            (True, "The 'maturin' package must be installed"),
+        ],
+    )
+    def test_invalid(
+        self,
+        is_missing: bool,
+        error_message: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test build_wheel raises ImportError when maturin is missing."""
+        if is_missing:
+            monkeypatch.setattr(maturin_plugin, "maturin", None)
+
+        with pytest.raises(ImportError, match=error_message):
+            maturin_plugin.build_wheel("dist_dir")
+
+    @pytest.mark.regression
+    def test_invocation_custom_overrides(
+        self, temp_git_repo: GitRepoHelper, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test build_wheel respects existing overrides configuration."""
+        temp_git_repo = temp_git_repo.setup_state("clean")
+        cargo_path = temp_git_repo.path / "Cargo.toml"
+        cargo_path.write_text(
+            '[package]\nname = "mock_pkg"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+
+        pyproject_path = temp_git_repo.path / "pyproject.toml"
+        pyproject_path.write_text(
+            "[project]\n"
+            'name = "mock_pkg"\n'
+            'dynamic = ["version"]\n\n'
+            "[tool.gitversioned]\n"
+            'output = "version.py"\n'
+            "[tool.gitversioned.overrides.cargo]\n"
+            'output = "Cargo.toml"\n'
+            'output_strategies = { type = "regex", pattern = '
+            "'''(?ms)^\\[package\\].*?^(\\s*version\\s*=\\s*)"
+            "(['\"])(?P<version>[^'\"]+)\\2''' }\n",
+            encoding="utf-8",
+        )
+
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_path = maturin_plugin.build_wheel("dist_dir")
+        assert result_path == "mock_package-0.1.0-py3-none-any.whl"
+
+        # Verify Cargo.toml was updated via resolved overrides
+        cargo_content = cargo_path.read_text(encoding="utf-8")
+        assert 'version = "0.1.0' in cargo_content
+
+
+class TestBuildSdist:
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("repo_state", ["clean", "tagged"])
+    def test_invocation(
+        self,
+        temp_git_repo: GitRepoHelper,
+        repo_state: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test build_sdist hook calculates, updates Cargo.toml, and delegates."""
+        temp_git_repo = temp_git_repo.setup_state(repo_state)
+        cargo_path = temp_git_repo.path / "Cargo.toml"
+        cargo_path.write_text(
+            '[package]\nname = "mock_pkg"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_path = maturin_plugin.build_sdist(
+            "dist_dir", config_settings={"option": "val"}
+        )
+        assert result_path == "mock_package-0.1.0.tar.gz"
+
+        assert mock_maturin.called_args["build_sdist"] == ("dist_dir",)
+        assert mock_maturin.called_kwargs["build_sdist"] == {
+            "config_settings": {"option": "val"}
+        }
+
+        cargo_content = cargo_path.read_text(encoding="utf-8")
+        assert 'version = "' in cargo_content
+        assert "0.0.0" not in cargo_content
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("is_missing", "error_message"),
+        [
+            (True, "The 'maturin' package must be installed"),
+        ],
+    )
+    def test_invalid(
+        self,
+        is_missing: bool,
+        error_message: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test build_sdist raises ImportError when maturin is missing."""
+        if is_missing:
+            monkeypatch.setattr(maturin_plugin, "maturin", None)
+
+        with pytest.raises(ImportError, match=error_message):
+            maturin_plugin.build_sdist("dist_dir")
+
+
+class TestGetRequiresForBuildWheel:
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("repo_state", ["clean", "tagged"])
+    def test_invocation(
+        self,
+        temp_git_repo: GitRepoHelper,
+        repo_state: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test get_requires_for_build_wheel resolves version and delegates."""
+        temp_git_repo = temp_git_repo.setup_state(repo_state)
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_reqs = maturin_plugin.get_requires_for_build_wheel(
+            config_settings={"option": "val"}
+        )
+        assert result_reqs == ["maturin>=1.0,<2.0"]
+        assert mock_maturin.called_args["get_requires_for_build_wheel"] == ()
+        assert mock_maturin.called_kwargs["get_requires_for_build_wheel"] == {
+            "config_settings": {"option": "val"}
+        }
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("is_missing", "error_message"),
+        [
+            (True, "The 'maturin' package must be installed"),
+        ],
+    )
+    def test_invalid(
+        self,
+        is_missing: bool,
+        error_message: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test get_requires_for_build_wheel raises ImportError if missing."""
+        if is_missing:
+            monkeypatch.setattr(maturin_plugin, "maturin", None)
+
+        with pytest.raises(ImportError, match=error_message):
+            maturin_plugin.get_requires_for_build_wheel()
+
+
+class TestGetRequiresForBuildSdist:
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("repo_state", ["clean", "tagged"])
+    def test_invocation(
+        self,
+        temp_git_repo: GitRepoHelper,
+        repo_state: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test get_requires_for_build_sdist resolves version and delegates."""
+        temp_git_repo = temp_git_repo.setup_state(repo_state)
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_reqs = maturin_plugin.get_requires_for_build_sdist(
+            config_settings={"option": "val"}
+        )
+        assert result_reqs == ["maturin>=1.0,<2.0"]
+        assert mock_maturin.called_args["get_requires_for_build_sdist"] == ()
+        assert mock_maturin.called_kwargs["get_requires_for_build_sdist"] == {
+            "config_settings": {"option": "val"}
+        }
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("is_missing", "error_message"),
+        [
+            (True, "The 'maturin' package must be installed"),
+        ],
+    )
+    def test_invalid(
+        self,
+        is_missing: bool,
+        error_message: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test get_requires_for_build_sdist raises ImportError if missing."""
+        if is_missing:
+            monkeypatch.setattr(maturin_plugin, "maturin", None)
+
+        with pytest.raises(ImportError, match=error_message):
+            maturin_plugin.get_requires_for_build_sdist()
+
+
+class TestPrepareMetadataForBuildWheel:
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("repo_state", ["clean", "tagged"])
+    def test_invocation(
+        self,
+        temp_git_repo: GitRepoHelper,
+        repo_state: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test prepare_metadata_for_build_wheel resolves version and delegates."""
+        temp_git_repo = temp_git_repo.setup_state(repo_state)
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_meta = maturin_plugin.prepare_metadata_for_build_wheel(
+            "metadata_dir", config_settings={"option": "val"}
+        )
+        assert result_meta == "mock_package-0.1.0.dist-info"
+        assert mock_maturin.called_args["prepare_metadata_for_build_wheel"] == (
+            "metadata_dir",
+        )
+        assert mock_maturin.called_kwargs["prepare_metadata_for_build_wheel"] == {
+            "config_settings": {"option": "val"}
+        }
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("is_missing", "error_message"),
+        [
+            (True, "The 'maturin' package must be installed"),
+        ],
+    )
+    def test_invalid(
+        self,
+        is_missing: bool,
+        error_message: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test prepare_metadata_for_build_wheel raises ImportError if missing."""
+        if is_missing:
+            monkeypatch.setattr(maturin_plugin, "maturin", None)
+
+        with pytest.raises(ImportError, match=error_message):
+            maturin_plugin.prepare_metadata_for_build_wheel("metadata_dir")
+
+
+class TestBuildEditable:
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("repo_state", ["clean", "tagged"])
+    def test_invocation(
+        self,
+        temp_git_repo: GitRepoHelper,
+        repo_state: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test build_editable hook calculates, updates Cargo.toml, and delegates."""
+        temp_git_repo = temp_git_repo.setup_state(repo_state)
+        cargo_path = temp_git_repo.path / "Cargo.toml"
+        cargo_path.write_text(
+            '[package]\nname = "mock_pkg"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_path = maturin_plugin.build_editable(
+            "dist_dir", config_settings={"option": "val"}
+        )
+        assert result_path == "mock_package-0.1.0-py3-none-any.whl"
+
+        assert mock_maturin.called_args["build_editable"] == ("dist_dir",)
+        assert mock_maturin.called_kwargs["build_editable"] == {
+            "config_settings": {"option": "val"},
+            "metadata_directory": None,
+        }
+
+        cargo_content = cargo_path.read_text(encoding="utf-8")
+        assert 'version = "' in cargo_content
+        assert "0.0.0" not in cargo_content
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("is_missing", "error_message"),
+        [
+            (True, "The 'maturin' package must be installed"),
+        ],
+    )
+    def test_invalid(
+        self,
+        is_missing: bool,
+        error_message: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test build_editable raises ImportError when maturin is missing."""
+        if is_missing:
+            monkeypatch.setattr(maturin_plugin, "maturin", None)
+
+        with pytest.raises(ImportError, match=error_message):
+            maturin_plugin.build_editable("dist_dir")
+
+
+class TestGetRequiresForBuildEditable:
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("repo_state", ["clean", "tagged"])
+    def test_invocation(
+        self,
+        temp_git_repo: GitRepoHelper,
+        repo_state: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test get_requires_for_build_editable resolves version and delegates."""
+        temp_git_repo = temp_git_repo.setup_state(repo_state)
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_reqs = maturin_plugin.get_requires_for_build_editable(
+            config_settings={"option": "val"}
+        )
+        assert result_reqs == ["maturin>=1.0,<2.0"]
+        assert mock_maturin.called_args["get_requires_for_build_editable"] == ()
+        assert mock_maturin.called_kwargs["get_requires_for_build_editable"] == {
+            "config_settings": {"option": "val"}
+        }
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("is_missing", "error_message"),
+        [
+            (True, "The 'maturin' package must be installed"),
+        ],
+    )
+    def test_invalid(
+        self,
+        is_missing: bool,
+        error_message: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test get_requires_for_build_editable raises ImportError if missing."""
+        if is_missing:
+            monkeypatch.setattr(maturin_plugin, "maturin", None)
+
+        with pytest.raises(ImportError, match=error_message):
+            maturin_plugin.get_requires_for_build_editable()
+
+
+class TestPrepareMetadataForBuildEditable:
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("repo_state", ["clean", "tagged"])
+    def test_invocation(
+        self,
+        temp_git_repo: GitRepoHelper,
+        repo_state: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test prepare_metadata_for_build_editable resolves version and delegates."""
+        temp_git_repo = temp_git_repo.setup_state(repo_state)
+        monkeypatch.chdir(temp_git_repo.path)
+        mock_maturin = MockMaturinModule()
+        monkeypatch.setattr(maturin_plugin, "maturin", mock_maturin)
+        monkeypatch.setattr(maturin_plugin, "_logging_configured", False)
+
+        result_meta = maturin_plugin.prepare_metadata_for_build_editable(
+            "metadata_dir", config_settings={"option": "val"}
+        )
+        assert result_meta == "mock_package-0.1.0.dist-info"
+        assert mock_maturin.called_args["prepare_metadata_for_build_editable"] == (
+            "metadata_dir",
+        )
+        assert mock_maturin.called_kwargs["prepare_metadata_for_build_editable"] == {
+            "config_settings": {"option": "val"}
+        }
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("is_missing", "error_message"),
+        [
+            (True, "The 'maturin' package must be installed"),
+        ],
+    )
+    def test_invalid(
+        self,
+        is_missing: bool,
+        error_message: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test prepare_metadata_for_build_editable raises ImportError."""
+        if is_missing:
+            monkeypatch.setattr(maturin_plugin, "maturin", None)
+
+        with pytest.raises(ImportError, match=error_message):
+            maturin_plugin.prepare_metadata_for_build_editable("metadata_dir")

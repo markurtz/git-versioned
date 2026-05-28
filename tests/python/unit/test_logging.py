@@ -85,13 +85,16 @@ class TestLoggingSettings:
             LoggingSettings(**invalid_data)
 
     @pytest.mark.regression
-    def test_invalid_initialization_missing(self) -> None:
+    def test_invalid_initialization_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test initializing LoggingSettings when arguments are missing."""
+        monkeypatch.delenv("GITVERSIONED__LOGGING__LEVEL", raising=False)
         settings = LoggingSettings()
         assert settings.enabled is False
         assert settings.clear_loggers is False
         assert settings.sink is sys.stdout
-        assert settings.level == "INFO"
+        assert settings.level == "WARNING"
         assert settings.otel_formatting == "auto"
         assert settings.filter is True
         assert settings.enqueue is True
@@ -162,17 +165,17 @@ class TestConfigureLogger:
             (
                 {"enabled": True, "filter": "custom_prefix"},
                 "custom_prefix.test",
-                "other_namespace",
+                "other_scope",
             ),
             (
                 {"enabled": True, "filter": ["prefix1", "prefix2"]},
                 "prefix1.test",
-                "other_namespace",
+                "other_scope",
             ),
             (
                 {"enabled": True, "filter": ("prefix3", "prefix4")},
                 "prefix3.test",
-                "other_namespace",
+                "other_scope",
             ),
             ({"enabled": True, "filter": False}, None, None),
             (
@@ -181,7 +184,7 @@ class TestConfigureLogger:
                     "filter": lambda record: record["name"] == "gitversioned",
                 },
                 "gitversioned",
-                "other_namespace",
+                "other_scope",
             ),
         ],
     )

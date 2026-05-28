@@ -107,7 +107,7 @@ def main(
                     "--file-types",
                     ".md",
                     "--exclude-patterns",
-                    "localhost,127.0.0.1,actions/workflows",
+                    "localhost,127.0.0.1,actions/workflows,github.com/markurtz/git-versioned/tree",
                 ]
                 + extra_options,
                 check=True,

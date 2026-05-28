@@ -36,6 +36,6 @@ __all__ = [
     "resolve_version_output_to_stream",
 ]
 
-__version__ = "0.1.2.dev20260514+9eea393"
+__version__ = "0.2.0"
 
 configure_logger()

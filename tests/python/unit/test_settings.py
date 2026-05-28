@@ -815,3 +815,83 @@ def test_output_strategy() -> None:
 
     with pytest.raises(ValidationError):
         adapter.validate_python({"type": "invalid_type"})
+
+
+class TestOverriddenSettings:
+    """Test suite for overridden settings and overrides."""
+
+    @pytest.mark.smoke
+    def test_overrides_default(self) -> None:
+        """Verify that overrides defaults to an empty dictionary."""
+        settings = Settings(package_name="test")
+        assert settings.overrides == {}
+
+    @pytest.mark.smoke
+    def test_get_overridden_settings_overrides(self) -> None:
+        """Verify that get_overridden_settings correctly overrides root settings."""
+        settings = Settings(
+            package_name="test",
+            version_type="dev",
+            overrides={
+                "cargo": {
+                    "output": "Cargo.toml",
+                    "version_type": "release",
+                }
+            },
+        )
+        assert settings.overrides["cargo"]["output"] == "Cargo.toml"
+        assert settings.overrides["cargo"]["version_type"] == "release"
+
+        override_settings = settings.get_overridden_settings("cargo")
+        assert override_settings.package_name == "test"  # Inherited
+        assert override_settings.output == "Cargo.toml"  # Overridden
+        assert override_settings.version_type == "release"  # Overridden
+        assert override_settings.overrides == {}  # Popped to prevent recursion
+
+    @pytest.mark.sanity
+    def test_get_overridden_settings_missing_raises_valueerror(self) -> None:
+        """Verify get_overridden_settings raises ValueError for missing override."""
+        settings = Settings(package_name="test")
+        with pytest.raises(ValueError, match="not found in configuration"):
+            settings.get_overridden_settings("missing")
+
+    @pytest.mark.smoke
+    def test_setup_cfg_overrides_parsing(self, tmp_path: Path) -> None:
+        """Verify setup.cfg override sections are parsed into overrides."""
+        config = configparser.ConfigParser()
+        config["tool:gitversioned"] = {"package_name": "test"}
+        config["tool:gitversioned:overrides:cargo"] = {
+            "output": "Cargo.toml",
+            "version_type": "release",
+        }
+        with (tmp_path / "setup.cfg").open("w", encoding="utf-8") as target_file:
+            config.write(target_file)
+
+        source = SetupCfgSettingsSource(Settings, tmp_path)
+        result = source()
+        assert "overrides" in result
+        assert "cargo" in result["overrides"]
+        assert result["overrides"]["cargo"]["output"] == "Cargo.toml"
+
+        settings = Settings(project_root=tmp_path)
+        assert "cargo" in settings.overrides
+        assert settings.overrides["cargo"]["output"] == "Cargo.toml"
+        assert settings.overrides["cargo"]["version_type"] == "release"
+
+    @pytest.mark.smoke
+    def test_pyproject_toml_overrides_parsing(self, tmp_path: Path) -> None:
+        """Verify pyproject.toml nested overrides are parsed into overrides."""
+        pyproject = tmp_path / "pyproject.toml"
+        with pyproject.open("w", encoding="utf-8") as target_file:
+            target_file.write(
+                "[tool.gitversioned]\n"
+                'package_name = "test"\n\n'
+                "[tool.gitversioned.overrides.cargo]\n"
+                'output = "Cargo.toml"\n'
+                'version_type = "release"\n'
+            )
+
+        settings = Settings(project_root=tmp_path)
+        assert "cargo" in settings.overrides
+        assert settings.overrides["cargo"]["output"] == "Cargo.toml"
+        assert settings.overrides["cargo"]["version_type"] == "release"

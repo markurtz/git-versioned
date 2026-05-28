@@ -5,6 +5,7 @@ import json
 import os as os_mod
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -335,10 +336,13 @@ class TestSubcommandsIntegration:
             assert called_settings.sink is sys.stderr
 
     @pytest.mark.regression
-    def test_parse_cli_args_deserialization(self) -> None:
+    def test_parse_cli_args_deserialization(self, tmp_path: Path) -> None:
         """Validate that list/dict CLI arguments are deserialized from JSON strings."""
         # Valid JSON list for source_type
-        args_valid_list = {"source_type": '["tag", "branch"]'}
+        args_valid_list = {
+            "source_type": '["tag", "branch"]',
+            "project_root": str(tmp_path),
+        }
         settings_list = _parse_cli_args(args_valid_list)
         assert settings_list.source_type == ["tag", "branch"]
 
@@ -346,14 +350,20 @@ class TestSubcommandsIntegration:
         strategy_json = (
             '{"release": {"type": "template_str", "content": "VER={version}"}}'
         )
-        args_valid_dict = {"output_strategies": strategy_json}
+        args_valid_dict = {
+            "output_strategies": strategy_json,
+            "project_root": str(tmp_path),
+        }
         settings_dict = _parse_cli_args(args_valid_dict)
         assert isinstance(settings_dict.output_strategies, dict)
         assert settings_dict.output_strategies["release"].type == "template_str"
 
         # Malformed JSON dictionary starting/ending with brace should be caught,
         # suppressed, and kept as a raw string (which is standard string type).
-        args_malformed = {"version": "{malformed_json}"}
+        args_malformed = {
+            "version": "{malformed_json}",
+            "project_root": str(tmp_path),
+        }
         settings_malformed = _parse_cli_args(args_malformed)
         assert settings_malformed.version == "{malformed_json}"
 

@@ -68,7 +68,7 @@ class LoggingSettings(BaseSettings):
         ),
     )
     level: str = Field(
-        default="INFO",
+        default="WARNING",
         description="Sets the minimum severity level for logged messages.",
     )
     otel_formatting: Literal["auto", "enable", "disable"] = Field(

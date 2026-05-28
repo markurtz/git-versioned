@@ -202,7 +202,7 @@ jobs:
 
   # ── Stage 4: E2E Tests ─────────────────────────────────────────────────────
   project-e2e-tests:
-    name: "Project E2E Tests (Links)"
+    name: "Project E2E Tests (Examples)"
     needs: check-changes
     if: needs.check-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
@@ -215,6 +215,21 @@ jobs:
         uses: ./.github/actions/project/tests
         with:
           test-type: "e2e"
+          force-run: "true"
+  project-link-checks:
+    name: "Project Link Checks"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project Link Checks
+        uses: ./.github/actions/project/tests
+        with:
+          test-type: "link-checks"
           force-run: "true"
   python-e2e-tests:
     name: "Python E2E Tests (Py ${{ matrix.python-version }})"
@@ -290,6 +305,7 @@ jobs:
       - project-functional-tests
       - python-functional-tests
       - project-e2e-tests
+      - project-link-checks
       - python-e2e-tests
       - oci-e2e-tests
     if: needs.check-changes.outputs.has_changes == 'true'

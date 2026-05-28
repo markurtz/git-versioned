@@ -1,0 +1,6 @@
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+src/setuptools_pyproject_toml/version.py

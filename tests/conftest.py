@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import shutil
@@ -23,10 +24,11 @@ __all__ = [
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """Apply TEST_FILTER env var as a pytest keyword expression."""
+    """Apply TEST_FILTER env var and default log level for tests."""
     test_filter = os.environ.get("TEST_FILTER")
     if test_filter and not config.option.keyword:
         config.option.keyword = test_filter
+    os.environ.setdefault("GITVERSIONED__LOGGING__LEVEL", "ERROR")
 
 
 class PropagateHandler(logging.Handler):
@@ -67,39 +69,82 @@ def caplog_loguru(
 class GitRepoHelper:
     """Helper class to manage a temporary git repository for tests."""
 
-    def __init__(self, path: Path, init: bool = True):
+    def __init__(self, path: Path, init: bool = True, initial_commit: bool = False):
         self.path = path
         if init:
-            self._init_repo()
+            self._init_repo(initial_commit=initial_commit)
 
-    def _init_repo(self) -> None:
+    def _init_repo(self, initial_commit: bool = True) -> None:
         """Initialize a git repository in the temporary path."""
-        subprocess.check_call(["git", "init"], cwd=self.path)
+        try:
+            subprocess.check_call(
+                ["git", "init", "-b", "main"],
+                cwd=self.path,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except subprocess.CalledProcessError:
+            subprocess.check_call(
+                ["git", "init"],
+                cwd=self.path,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            with contextlib.suppress(subprocess.CalledProcessError):
+                subprocess.check_call(
+                    ["git", "checkout", "-b", "main"],
+                    cwd=self.path,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+
         subprocess.check_call(
-            ["git", "config", "user.name", "Test User"], cwd=self.path
+            ["git", "config", "user.name", "Test User"],
+            cwd=self.path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         subprocess.check_call(
-            ["git", "config", "user.email", "test@example.com"], cwd=self.path
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=self.path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-        # Create a dummy pyproject.toml for hatchling tests
+        # Create a dummy pyproject.toml for hatchling and maturin tests
         pyproject_path = self.path / "pyproject.toml"
         pyproject_path.write_text(
-            '[project]\nname = "test_pkg"\nversion = "0.1.0"\n', encoding="utf-8"
+            '[project]\nname = "test_pkg"\ndynamic = ["version"]\n', encoding="utf-8"
         )
+        if initial_commit:
+            self.add("pyproject.toml")
+            self.commit("Initial commit")
 
     def branch(self, name: str) -> None:
         """Create a branch in the repository."""
-        subprocess.check_call(["git", "checkout", "-b", name], cwd=self.path)
+        subprocess.check_call(
+            ["git", "checkout", "-b", name],
+            cwd=self.path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def add(self, file: str) -> None:
         """Add a file to the repository."""
-        subprocess.check_call(["git", "add", file], cwd=self.path)
+        subprocess.check_call(
+            ["git", "add", file],
+            cwd=self.path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     @property
     def short_sha(self) -> str:
         """Get the short SHA of the current commit."""
         return subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"], cwd=self.path, text=True
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=self.path,
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
 
     def commit(self, message: str, empty: bool = True) -> None:
@@ -107,7 +152,12 @@ class GitRepoHelper:
         cmd = ["git", "commit", "-m", message]
         if empty:
             cmd.append("--allow-empty")
-        subprocess.check_call(cmd, cwd=self.path)
+        subprocess.check_call(
+            cmd,
+            cwd=self.path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def tag(
         self, name: str, annotated: bool = False, message: str | None = None
@@ -118,7 +168,12 @@ class GitRepoHelper:
             cmd.extend(["-a", name, "-m", message or f"Tag {name}"])
         else:
             cmd.append(name)
-        subprocess.check_call(cmd, cwd=self.path)
+        subprocess.check_call(
+            cmd,
+            cwd=self.path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def dirty(self, filename: str = "dirty.txt") -> None:
         """Make the working directory dirty by creating an untracked file."""
@@ -129,21 +184,37 @@ class GitRepoHelper:
         """Checkout a detached HEAD state."""
         # Get the current commit hash
         commit_hash = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=self.path, text=True
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.path,
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
-        subprocess.check_call(["git", "checkout", commit_hash], cwd=self.path)
+        subprocess.check_call(
+            ["git", "checkout", commit_hash],
+            cwd=self.path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def shallow_clone(self, target_path: Path) -> GitRepoHelper:
         """Create a shallow clone of the repository."""
         subprocess.check_call(
-            ["git", "clone", "--depth", "1", f"file://{self.path}", str(target_path)]
+            ["git", "clone", "--depth", "1", f"file://{self.path}", str(target_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         # Re-configure user so commits can be made in the clone if needed
         subprocess.check_call(
-            ["git", "config", "user.name", "Test User"], cwd=target_path
+            ["git", "config", "user.name", "Test User"],
+            cwd=target_path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         subprocess.check_call(
-            ["git", "config", "user.email", "test@example.com"], cwd=target_path
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=target_path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         pyproject_path = self.path / "pyproject.toml"
         if pyproject_path.exists():

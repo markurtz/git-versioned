@@ -14,7 +14,13 @@ import importlib
 import types
 from typing import Annotated
 
-__all__ = ["opentelemetry_trace", "psutil", "tomllib"]
+__all__ = ["maturin", "opentelemetry_trace", "psutil", "tomllib"]
+
+_maturin: types.ModuleType | None = None
+try:
+    _maturin = importlib.import_module("maturin")
+except ImportError:
+    _maturin = None
 
 _tomllib: types.ModuleType | None = None
 try:
@@ -38,6 +44,12 @@ try:
     _psutil = importlib.import_module("psutil")
 except ImportError:
     _psutil = None
+
+maturin: Annotated[
+    types.ModuleType | None,
+    "Enables the maturin build backend wrapper. Provides the ``maturin`` "
+    "module or ``None``.",
+] = _maturin
 
 opentelemetry_trace: Annotated[
     types.ModuleType | None,

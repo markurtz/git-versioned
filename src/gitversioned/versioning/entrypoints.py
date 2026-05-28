@@ -70,13 +70,18 @@ def resolve_version(
     # Determine version type to build (release, dev, alpha, post)
     version_type = str(settings.version_type).strip().lower()
     if version_type == "auto":
+        raw_ignore = [
+            settings.output,
+            settings.version_source_file,
+            *settings.dirty_ignore,
+        ]
+        if hasattr(settings, "overrides") and settings.overrides:
+            for override_data in settings.overrides.values():
+                if isinstance(override_data, dict) and "output" in override_data:
+                    raw_ignore.append(override_data["output"])
         ignore_paths = [
             path
-            for raw_path in (
-                settings.output,
-                settings.version_source_file,
-                *settings.dirty_ignore,
-            )
+            for raw_path in raw_ignore
             if (path := settings.resolve_path_from_root(raw_path)) is not None
         ]
         is_dirty = bool(repository.filtered_dirty_files(ignore_paths=ignore_paths))
@@ -202,20 +207,34 @@ def resolve_version_output_to_stream(
         settings, repository, environment
     )
 
+    output_path = None
     if not settings.output:
         logger.debug("No output target configured, skipping writing to output path.")
-        return None, output_content, version, version_type, reference
+    else:
+        output_path = settings.resolve_path_from_root(
+            settings.output, enforce_existence=False
+        )
+        if output_path is None:
+            raise ValueError(
+                f"Could not resolve output path for target: {settings.output}"
+            )
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(output_content, encoding="utf-8")
+        except OSError as err:
+            raise ValueError(f"Invalid output target: {settings.output}") from err
 
-    output_path = settings.resolve_path_from_root(
-        settings.output, enforce_existence=False
-    )
-    if output_path is None:
-        raise ValueError(f"Could not resolve output path for target: {settings.output}")
-    try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(output_content, encoding="utf-8")
-    except OSError as err:
-        raise ValueError(f"Invalid output target: {settings.output}") from err
+    if hasattr(settings, "overrides") and settings.overrides:
+        for override_name in settings.overrides:
+            override_settings = settings.get_overridden_settings(override_name)
+            override_settings.version = str(version)
+            override_settings.auto_increment = None
+            override_settings.version_type = version_type
+            resolve_version_output_to_stream(
+                settings=override_settings,
+                repository=repository,
+                environment=environment,
+            )
 
     return output_path, output_content, version, version_type, reference
 

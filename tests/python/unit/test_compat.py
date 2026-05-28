@@ -1,3 +1,17 @@
+# Copyright 2026 The GitVersioned Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import importlib
@@ -13,6 +27,7 @@ from gitversioned import compat
 @pytest.fixture(autouse=True, scope="module")
 def restore_compat_module() -> Any:
     """Fixture to restore the original sys.modules and compat module state."""
+    original_maturin = sys.modules.get("maturin")
     original_opentelemetry = sys.modules.get("opentelemetry")
     original_opentelemetry_trace = sys.modules.get("opentelemetry.trace")
     original_psutil = sys.modules.get("psutil")
@@ -23,6 +38,7 @@ def restore_compat_module() -> Any:
 
     # Restore the original modules in sys.modules
     for module_name, module_ref in [
+        ("maturin", original_maturin),
         ("opentelemetry", original_opentelemetry),
         ("opentelemetry.trace", original_opentelemetry_trace),
         ("psutil", original_psutil),
@@ -41,10 +57,28 @@ def restore_compat_module() -> Any:
 @pytest.mark.smoke
 def test_smoke_module_exports() -> None:
     """Verify that compat exposes the expected variables and matches expected types."""
-    assert compat.__all__ == ["opentelemetry_trace", "psutil", "tomllib"]
+    assert compat.__all__ == ["maturin", "opentelemetry_trace", "psutil", "tomllib"]
+    assert hasattr(compat, "maturin")
     assert hasattr(compat, "opentelemetry_trace")
     assert hasattr(compat, "psutil")
     assert hasattr(compat, "tomllib")
+
+
+@pytest.mark.sanity
+def test_sanity_maturin_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify maturin is correctly resolved when available."""
+    mock_module = types.ModuleType("maturin")
+    monkeypatch.setitem(sys.modules, "maturin", mock_module)
+    importlib.reload(compat)
+    assert compat.maturin is mock_module
+
+
+@pytest.mark.regression
+def test_regression_maturin_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify maturin resolves to None when unavailable."""
+    monkeypatch.setitem(sys.modules, "maturin", cast("Any", None))
+    importlib.reload(compat)
+    assert compat.maturin is None
 
 
 @pytest.mark.sanity

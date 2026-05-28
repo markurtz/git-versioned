@@ -709,6 +709,12 @@ class TestDeprecatedManifest:
         setup_py_path = temp_git_repo.path / "setup.py"
         setup_py_path.write_text(setup_py_content, encoding="utf-8")
         temp_git_repo.add("setup.py")
+
+        # Unlink the default pyproject.toml created by conftest repo helper
+        pyproject_path = temp_git_repo.path / "pyproject.toml"
+        if pyproject_path.exists():
+            pyproject_path.unlink()
+
         return {
             "repo": temp_git_repo,
             "setup_py_path": setup_py_path,

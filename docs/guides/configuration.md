@@ -181,6 +181,34 @@ type = "template_str"
 content = "__version__ = '{version}'"
 ```
 
+### `overrides`
+
+Defines override-based settings profiles. Each sub-key under `overrides` represents a named profile that can override any core configuration field. Overrides are particularly useful for projects targeting multiple distinct files, such as writing version data to both a Python package file and a Rust module or `Cargo.toml`.
+
+- **Type:** Dictionary of dictionaries
+- **Default:** `{}`
+
+#### `pyproject.toml` Syntax:
+
+```toml
+[tool.gitversioned.overrides.cargo]
+output = "Cargo.toml"
+output_strategies = { type = "regex", pattern = '(?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2' }
+```
+
+#### `setup.cfg` Syntax:
+
+```ini
+[tool:gitversioned:overrides:cargo]
+output = Cargo.toml
+
+[tool:gitversioned:overrides:cargo:output_strategies]
+type = regex
+pattern = (?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2
+```
+
+Programmatically, overrides can be instantiated via `settings.get_overridden_settings("profile_name")`. From the CLI, overrides are executed using the `overrides` subcommand group: `gitversioned overrides profile_name [calculate|format|write]`.
+
 ______________________________________________________________________
 
 ## Formatting Options

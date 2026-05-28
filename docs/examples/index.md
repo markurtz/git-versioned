@@ -5,46 +5,37 @@ This section contains runnable code examples that demonstrate real-world usage o
 > [!NOTE]
 > All examples assume you have completed [Installation](../getting-started/installation.md).
 
-## Example Categories
+## Example Index
 
-<div class="grid" markdown>
+Below is a curated list of available examples, categorized by build tool and use case:
 
-<div class="card" markdown>
-:material-rocket-launch-outline: **Setuptools Examples**
+### Setuptools Examples
 
-______________________________________________________________________
+| Example                                                                                                                                            | Complexity   | Description                                                                         |
+| :------------------------------------------------------------------------------------------------------------------------------------------------- | :----------- | :---------------------------------------------------------------------------------- |
+| [Setuptools Configuration via pyproject.toml](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools_pyproject_toml/)             | Beginner     | Standard Setuptools configuration using `pyproject.toml` and `[tool.gitversioned]`. |
+| [Setuptools Configuration via setup.cfg](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools_setup_cfg/)                       | Beginner     | Standard Setuptools configuration using a `setup.cfg` file.                         |
+| [Setuptools Configuration via setup.py](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools_setup_py/)                         | Beginner     | Standard Setuptools configuration using a traditional `setup.py` file.              |
+| [Setuptools Configuration with Dockerfile Overrides](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools_pyproject_overrides/) | Intermediate | Setuptools integration with external `Dockerfile` overrides via `pyproject.toml`.   |
 
-Simple, self-contained examples that demonstrate configuring `gitversioned` for projects using `setuptools`.
+### Hatchling Examples
 
-- [:octicons-arrow-right-24: Setuptools Configuration via Version File](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-file/)
-- [:octicons-arrow-right-24: Setuptools Configuration via Version Function](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-function/)
-- [:octicons-arrow-right-24: Setuptools Configuration via Tool Table](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-tool-table/)
-- [:octicons-arrow-right-24: Setuptools Configuration via Git Tags](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-tags/)
-- [:octicons-arrow-right-24: Setuptools Configuration via Git Branch](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-branch/)
-- [:octicons-arrow-right-24: Setuptools Configuration via Git Commits](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-version-commits/)
-- [:octicons-arrow-right-24: Setuptools Configuration via `setup.py`](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-setup-py/)
-- [:octicons-arrow-right-24: Setuptools Configuration via `setup.cfg`](https://github.com/markurtz/git-versioned/tree/main/examples/setuptools-setup-cfg/)
+| Example                                                                                                                          | Complexity | Description                                                                |
+| :------------------------------------------------------------------------------------------------------------------------------- | :--------- | :------------------------------------------------------------------------- |
+| [Hatchling Configuration via pyproject.toml](https://github.com/markurtz/git-versioned/tree/main/examples/hatch_pyproject_toml/) | Beginner   | Hatchling configuration using `pyproject.toml` and `[tool.hatch.version]`. |
 
-</div>
+### Maturin Examples
 
-<div class="card" markdown>
-:material-tune-variant: **Hatchling Examples**
+| Example                                                                                                                                   | Complexity | Description                                                                                    |
+| :---------------------------------------------------------------------------------------------------------------------------------------- | :--------- | :--------------------------------------------------------------------------------------------- |
+| [Maturin Polyglot Configuration with Overrides](https://github.com/markurtz/git-versioned/tree/main/examples/maturin_polyglot_overrides/) | Advanced   | Maturin build backend integration with multi-target overrides (`Cargo.toml` and `Dockerfile`). |
 
-______________________________________________________________________
+### Command-Line Interface (CLI) Examples
 
-Simple, self-contained examples that demonstrate configuring `gitversioned` for projects using `hatchling`.
-
-- [:octicons-arrow-right-24: Hatchling Configuration via Version File](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-file/)
-- [:octicons-arrow-right-24: Hatchling Configuration via Version Function](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-function/)
-- [:octicons-arrow-right-24: Hatchling Configuration via Hatch Vars](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-hatch-vars/)
-- [:octicons-arrow-right-24: Hatchling Configuration via Tool Table](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-tool-table/)
-- [:octicons-arrow-right-24: Hatchling Configuration via Git Tags](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-tags/)
-- [:octicons-arrow-right-24: Hatchling Configuration via Git Branch](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-branch/)
-- [:octicons-arrow-right-24: Hatchling Configuration via Git Commits](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling-version-commits/)
-
-</div>
-
-</div>
+| Example                                                                                                               | Complexity | Description                                                                           |
+| :-------------------------------------------------------------------------------------------------------------------- | :--------- | :------------------------------------------------------------------------------------ |
+| [Docker Build Argument Injection](https://github.com/markurtz/git-versioned/tree/main/examples/docker_build_args/)    | Beginner   | Sourcing and formatting versions for Docker build arguments.                          |
+| [In-place File Update via Regex](https://github.com/markurtz/git-versioned/tree/main/examples/cli_regex_replacement/) | Beginner   | Direct, in-place version string replacement in non-python files using regex patterns. |
 
 !!! tip "Contributing an Example"
 Have a useful snippet or pattern to share? See the [Contributing Guide](../community/contributing.md) to learn how to add a new example to this section.

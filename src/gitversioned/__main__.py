@@ -42,6 +42,7 @@ __all__ = [
     "format_cmd",
     "main",
     "main_callback",
+    "overrides_app",
     "write",
 ]
 
@@ -55,6 +56,17 @@ app: Annotated[
 ] = typer.Typer(
     add_completion=False,
     help="Opinionated PEP 440 Python versioning for Git repos and submodules.",
+)
+
+overrides_app: Annotated[
+    typer.Typer,
+    (
+        "The Typer application instance serving as the overrides subcommand group. "
+        "Allows running commands under a specific overrides context."
+    ),
+] = typer.Typer(
+    add_completion=False,
+    help="Run commands under a specific overrides context.",
 )
 
 
@@ -101,6 +113,25 @@ def main_callback(
         raise typer.Exit
 
 
+@overrides_app.callback(invoke_without_command=True)
+def overrides_callback(
+    ctx: typer.Context,
+    overrides: Annotated[
+        str,
+        typer.Argument(
+            help="The overrides name context to use.",
+        ),
+    ],
+) -> None:
+    """
+    Handle overrides subcommand routing and capture overrides argument.
+    """
+    ctx.obj = overrides
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit
+
+
 @app.command(name="calculate")
 def calculate(**kwargs: Any) -> None:
     """
@@ -112,17 +143,7 @@ def calculate(**kwargs: Any) -> None:
     :param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
     :returns: None.
     """
-    with _cli_execution_context("calculate", kwargs) as (
-        settings,
-        repository,
-        environment,
-    ):
-        version, _, _ = resolve_version(
-            settings=settings,
-            repository=repository,
-            environment=environment,
-        )
-        typer.echo(str(version))
+    _run_calculate(kwargs)
 
 
 @app.command(name="format")
@@ -136,17 +157,7 @@ def format_cmd(**kwargs: Any) -> None:
     :param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
     :returns: None.
     """
-    with _cli_execution_context("format", kwargs) as (
-        settings,
-        repository,
-        environment,
-    ):
-        content, _, _, _ = resolve_version_output(
-            settings=settings,
-            repository=repository,
-            environment=environment,
-        )
-        typer.echo(content, nl=False)
+    _run_format(kwargs)
 
 
 @app.command(name="write")
@@ -160,7 +171,72 @@ def write(**kwargs: Any) -> None:
     :param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
     :returns: None.
     """
-    with _cli_execution_context("write", kwargs) as (
+    _run_write(kwargs)
+
+
+@overrides_app.command(name="calculate")
+def overrides_calculate(ctx: typer.Context, **kwargs: Any) -> None:
+    """
+    Resolve and output only the PEP 440 version string for overrides.
+    """
+    _run_calculate(kwargs, overrides=ctx.obj)
+
+
+@overrides_app.command(name="format")
+def overrides_format(ctx: typer.Context, **kwargs: Any) -> None:
+    """
+    Resolve the version and output formatted strategy templates for overrides.
+    """
+    _run_format(kwargs, overrides=ctx.obj)
+
+
+@overrides_app.command(name="write")
+def overrides_write(ctx: typer.Context, **kwargs: Any) -> None:
+    """
+    Resolve the version and write output files for overrides.
+    """
+    _run_write(kwargs, overrides=ctx.obj)
+
+
+def _run_calculate(kwargs: dict[str, Any], overrides: str | None = None) -> None:
+    """
+    Internal execution helper for the calculate subcommand.
+    """
+    with _cli_execution_context("calculate", kwargs, overrides=overrides) as (
+        settings,
+        repository,
+        environment,
+    ):
+        version, _, _ = resolve_version(
+            settings=settings,
+            repository=repository,
+            environment=environment,
+        )
+        typer.echo(str(version))
+
+
+def _run_format(kwargs: dict[str, Any], overrides: str | None = None) -> None:
+    """
+    Internal execution helper for the format subcommand.
+    """
+    with _cli_execution_context("format", kwargs, overrides=overrides) as (
+        settings,
+        repository,
+        environment,
+    ):
+        content, _, _, _ = resolve_version_output(
+            settings=settings,
+            repository=repository,
+            environment=environment,
+        )
+        typer.echo(content, nl=False)
+
+
+def _run_write(kwargs: dict[str, Any], overrides: str | None = None) -> None:
+    """
+    Internal execution helper for the write subcommand.
+    """
+    with _cli_execution_context("write", kwargs, overrides=overrides) as (
         settings,
         repository,
         environment,
@@ -176,8 +252,10 @@ def write(**kwargs: Any) -> None:
             typer.echo(f"Version successfully written to {output_path}")
 
 
-def _parse_cli_args(kwargs: dict[str, Any]) -> Settings:
-    # Filter out None values and deserialize JSON strings for list/dict/model fields.
+def _parse_cli_args(kwargs: dict[str, Any], overrides: str | None = None) -> Settings:
+    """
+    Filter out None values and deserialize JSON strings for list/dict/model fields.
+    """
     cli_args = {key: value for key, value in kwargs.items() if value is not None}
     for field, value in cli_args.items():
         if isinstance(value, str):
@@ -187,6 +265,13 @@ def _parse_cli_args(kwargs: dict[str, Any]) -> Settings:
             ):
                 with contextlib.suppress(Exception):
                     cli_args[field] = json.loads(stripped)
+    if overrides:
+        root_settings = Settings()
+        override_settings = root_settings.get_overridden_settings(overrides)
+        data = override_settings.model_dump()
+        data.pop("overrides", None)
+        data.update(cli_args)
+        return Settings(**data)
     return Settings(**typing.cast("Any", cli_args))
 
 
@@ -194,17 +279,22 @@ def _parse_cli_args(kwargs: dict[str, Any]) -> Settings:
 def _cli_execution_context(
     command_name: str,
     kwargs: dict[str, Any],
+    overrides: str | None = None,
 ) -> typing.Iterator[tuple[Settings, GitRepository, BuildEnvironment]]:
-    # Provide a unified execution context for CLI subcommands.
-    # Parses configuration, configures logging (ensuring stdout logger sinks are routed
-    # to stderr to prevent interference with command output), initializes repo and build
-    # environments, and handles all standard or unexpected errors/exits consistently.
-    #
-    # :param command_name: The name of the subcommand (for logging/errors).
-    # :param kwargs: Raw CLI argument dictionary matching Settings schema.
-    # :yields: A tuple of (Settings, GitRepository, BuildEnvironment) instances.
+    """
+    Provide a unified execution context for CLI subcommands.
+
+    Parses configuration, configures logging (ensuring stdout logger sinks are routed
+    to stderr to prevent interference with command output), initializes repo and build
+    environments, and handles all standard or unexpected errors/exits consistently.
+
+    :param command_name: The name of the subcommand (for logging/errors).
+    :param kwargs: Raw CLI argument dictionary matching Settings schema.
+    :param overrides: Optional overrides context name.
+    :yields: A tuple of (Settings, GitRepository, BuildEnvironment) instances.
+    """
     try:
-        settings = _parse_cli_args(kwargs)
+        settings = _parse_cli_args(kwargs, overrides=overrides)
 
         logging_settings = LoggingSettings()
         if logging_settings.sink is sys.stdout:
@@ -225,10 +315,23 @@ def _cli_execution_context(
         raise SystemExit(1) from error
 
 
-def _build_cli_signature(exclude_fields: set[str] | None = None) -> inspect.Signature:
-    # Dynamically build a CLI signature from the Settings model fields.
+def _build_cli_signature(
+    exclude_fields: set[str] | None = None,
+    include_ctx: bool = False,
+) -> inspect.Signature:
+    """
+    Dynamically build a CLI signature from the Settings model fields.
+    """
     exclude = exclude_fields or set()
     parameters = []
+    if include_ctx:
+        parameters.append(
+            inspect.Parameter(
+                "ctx",
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=typer.Context,
+            )
+        )
     for name, field in Settings.model_fields.items():
         if name in exclude:
             continue
@@ -268,8 +371,11 @@ def _build_cli_signature(exclude_fields: set[str] | None = None) -> inspect.Sign
     return inspect.Signature(parameters)
 
 
-# Patch function signatures dynamically to expose Settings fields as
-# CLI parameters to Typer.
+# Add the overrides application to the main app instance
+app.add_typer(overrides_app, name="overrides")
+
+
+# Patch signatures dynamically to expose Settings fields as CLI parameters to Typer.
 typing.cast("Any", calculate).__signature__ = _build_cli_signature(
     exclude_fields={"output", "output_strategies"}
 )
@@ -277,6 +383,18 @@ typing.cast("Any", format_cmd).__signature__ = _build_cli_signature(
     exclude_fields={"output"}
 )
 typing.cast("Any", write).__signature__ = _build_cli_signature()
+
+typing.cast("Any", overrides_calculate).__signature__ = _build_cli_signature(
+    exclude_fields={"output", "output_strategies"},
+    include_ctx=True,
+)
+typing.cast("Any", overrides_format).__signature__ = _build_cli_signature(
+    exclude_fields={"output"},
+    include_ctx=True,
+)
+typing.cast("Any", overrides_write).__signature__ = _build_cli_signature(
+    include_ctx=True,
+)
 
 
 if __name__ == "__main__":

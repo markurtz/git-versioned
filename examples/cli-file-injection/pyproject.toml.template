@@ -1,4 +1,0 @@
-[project]
-name = "test_cli_file_injection"
-version = "0.0.0"
-description = "A dummy project file for demonstrating CLI file injection."

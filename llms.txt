@@ -10,8 +10,11 @@ For complete, merged context containing the full codebase and all guides, see [l
 - [Getting Started](https://markurtz.github.io/git-versioned/getting-started/): Onboarding, installation, and setup
 - [Concepts & Architecture](https://markurtz.github.io/git-versioned/guides/concepts/): PEP 440, dirty state checks, and metadata fields
 - [Configuration Guide](https://markurtz.github.io/git-versioned/guides/configuration/): Setting overrides via `pyproject.toml`
+- [CLI Guide](https://markurtz.github.io/git-versioned/guides/cli/): Standalone CLI usage and subcommands
+- [Python API Guide](https://markurtz.github.io/git-versioned/guides/api/): Programmatic python usage
 - [Integration: Hatchling](https://markurtz.github.io/git-versioned/guides/hatchling/): Hatch versioning plugin integration
 - [Integration: Setuptools](https://markurtz.github.io/git-versioned/guides/setuptools/): Setuptools versioning hook integration
+- [Integration: Maturin](https://markurtz.github.io/git-versioned/guides/maturin/): Maturin versioning wrapper integration
 - [API Reference Documentation](https://markurtz.github.io/git-versioned/reference/): Complete API reference
 
 ## Architectural Topography
@@ -30,6 +33,7 @@ For complete, merged context containing the full codebase and all guides, see [l
 - [src/gitversioned/logging.py](src/gitversioned/logging.py): Loguru logging setup and stdout/stderr separation.
 - [src/gitversioned/plugins/hatchling_plugin.py](src/gitversioned/plugins/hatchling_plugin.py): Hook for Hatch builds.
 - [src/gitversioned/plugins/setuptools_plugin.py](src/gitversioned/plugins/setuptools_plugin.py): Hook for Setuptools builds.
+- [src/gitversioned/plugins/maturin_plugin.py](src/gitversioned/plugins/maturin_plugin.py): Hook wrapper for Maturin builds.
 - [src/gitversioned/utils/git.py](src/gitversioned/utils/git.py): Git repository information extraction via subprocess hooks.
 - [src/gitversioned/utils/environment.py](src/gitversioned/utils/environment.py): Target environment configuration resolver.
 - [src/gitversioned/versioning/entrypoints.py](src/gitversioned/versioning/entrypoints.py): Package endpoints for resolving and writing versions.

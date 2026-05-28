@@ -51,6 +51,17 @@ Step-by-step instructions for integrating `gitversioned` natively with the Setup
 </div>
 
 <div class="card" markdown>
+:material-puzzle-outline: **Maturin Integration**
+
+______________________________________________________________________
+
+Step-by-step instructions for integrating `gitversioned` natively with the Maturin build backend.
+
+[:octicons-arrow-right-24: Maturin Guide](maturin.md)
+
+</div>
+
+<div class="card" markdown>
 :material-brain: **Concepts & Resolution**
 
 ______________________________________________________________________

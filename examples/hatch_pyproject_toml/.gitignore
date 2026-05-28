@@ -1,0 +1,7 @@
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+src/hatch_pyproject_toml/version.py
+

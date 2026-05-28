@@ -526,7 +526,11 @@ class GitRepository:
         full_command = ["git", *arguments]
         try:
             with subprocess.Popen(  # noqa: S603
-                full_command, cwd=self.base_path, stdout=subprocess.PIPE, text=True
+                full_command,
+                cwd=self.base_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
             ) as process:
                 if process.stdout:
                     for line in process.stdout:

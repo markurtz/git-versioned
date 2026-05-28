@@ -162,18 +162,20 @@ Code coverage runs collect data during test executions and format them into huma
 
 - **Python Coverage**: Configured to output to `coverage/python/` (`PYTHON_COV_DIR`). The test suites automatically output terminal reports and compile Markdown reports (e.g., `coverage_tests-unit.md`).
 
-| Test Suite                | Python Command                    | OCI Command                   | Project Command                   | All Command                    |
-| :------------------------ | :-------------------------------- | :---------------------------- | :-------------------------------- | :----------------------------- |
-| **All Local Tests**       | N/A                               | N/A                           | N/A                               | `hatch run all:tests`          |
-| **All Tests + Coverage**  | N/A                               | N/A                           | N/A                               | `hatch run all:tests-cov`      |
-| **Functional Tests**      | `hatch run python:tests-func`     | N/A                           | N/A                               | `hatch run all:tests-func`     |
-| **Func Tests + Coverage** | `hatch run python:tests-func-cov` | N/A                           | N/A                               | `hatch run all:tests-func-cov` |
-| **Unit Tests**            | `hatch run python:tests-unit`     | N/A                           | N/A                               | `hatch run all:tests-unit`     |
-| **Unit Tests + Coverage** | `hatch run python:tests-unit-cov` | N/A                           | N/A                               | `hatch run all:tests-unit-cov` |
-| **Integration Tests**     | `hatch run python:tests-int`      | N/A                           | `hatch run project:tests-int`     | `hatch run all:tests-int`      |
-| **Int Tests + Coverage**  | `hatch run python:tests-int-cov`  | N/A                           | `hatch run project:tests-int-cov` | `hatch run all:tests-int-cov`  |
-| **End-to-End Tests**      | `hatch run python:tests-e2e`      | `hatch run oci:tests-e2e`     | `hatch run project:tests-e2e`     | `hatch run all:tests-e2e`      |
-| **E2E Tests + Coverage**  | `hatch run python:tests-e2e-cov`  | `hatch run oci:tests-e2e-cov` | `hatch run project:tests-e2e-cov` | `hatch run all:tests-e2e-cov`  |
+| Test Suite                 | Python Command                    | OCI Command                   | Project Command                     | All Command                    |
+| :------------------------- | :-------------------------------- | :---------------------------- | :---------------------------------- | :----------------------------- |
+| **All Local Tests**        | N/A                               | N/A                           | N/A                                 | `hatch run all:tests`          |
+| **All Tests + Coverage**   | N/A                               | N/A                           | N/A                                 | `hatch run all:tests-cov`      |
+| **Functional Tests**       | `hatch run python:tests-func`     | N/A                           | N/A                                 | `hatch run all:tests-func`     |
+| **Func Tests + Coverage**  | `hatch run python:tests-func-cov` | N/A                           | N/A                                 | `hatch run all:tests-func-cov` |
+| **Unit Tests**             | `hatch run python:tests-unit`     | N/A                           | N/A                                 | `hatch run all:tests-unit`     |
+| **Unit Tests + Coverage**  | `hatch run python:tests-unit-cov` | N/A                           | N/A                                 | `hatch run all:tests-unit-cov` |
+| **Integration Tests**      | `hatch run python:tests-int`      | N/A                           | `hatch run project:tests-int`       | `hatch run all:tests-int`      |
+| **Int Tests + Coverage**   | `hatch run python:tests-int-cov`  | N/A                           | `hatch run project:tests-int-cov`   | `hatch run all:tests-int-cov`  |
+| **End-to-End Tests**       | `hatch run python:tests-e2e`      | `hatch run oci:tests-e2e`     | `hatch run project:tests-e2e`       | `hatch run all:tests-e2e`      |
+| **E2E Tests + Coverage**   | `hatch run python:tests-e2e-cov`  | `hatch run oci:tests-e2e-cov` | `hatch run project:tests-e2e-cov`   | `hatch run all:tests-e2e-cov`  |
+| **Link Checks**            | N/A                               | N/A                           | `hatch run project:link-checks`     | N/A                            |
+| **Link Checks + Coverage** | N/A                               | N/A                           | `hatch run project:link-checks-cov` | N/A                            |
 
 *\* Note: While Hatch commands for `N/A` cells can technically be run (and will print a message stating that the test suite is not defined for that environment), they have no logical test targets or execution paths. They are marked `N/A` for clarity.*
 
@@ -211,10 +213,17 @@ Code coverage runs collect data during test executions and format them into huma
 - **Methodology & Rationale**:
   - **Python**: Compiles Python packages with `hatch build`, force reinstalls them via `pip`, and runs pytest against `tests/e2e` (`E2E_TESTS`) to verify CLI commands and package distribution paths in a black-box environment.
   - **OCI**: Builds the OCI image and executes Google's Container Structure Tests (`cstest` via `scripts/run_oci.py`) to confirm that the image metadata, file layouts, and execution endpoints conform to specifications.
-  - **Project**: Executes `scripts/check_links.py` to recursively crawl project documents (`MDFORMAT_TARGETS`) and verify all internal/external links resolve successfully.
+  - **Project**: Runs automated tests across the `examples/` directory using pytest to verify real-world integrations.
 - **Expected Outputs & Locations**:
   - **Python**: Outputs `coverage/python/coverage_tests-e2e.md`.
   - **OCI**: Outputs Container Structure Test results to the console.
+  - **Project**: Outputs example test execution summaries to the console.
+
+#### Link Checking (`link-checks` / `link-checks-cov`)
+
+- **Methodology & Rationale**:
+  - **Project**: Executes `scripts/check_links.py` to recursively crawl project documents (`MDFORMAT_TARGETS`) and verify all internal/external links resolve successfully.
+- **Expected Outputs & Locations**:
   - **Project**: Outputs link-checking validation summaries to the console.
 
 #### Test Categorization & Test Pathways

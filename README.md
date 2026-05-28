@@ -64,7 +64,7 @@ GitVersioned combines strict PEP 440 compliance with extreme customizability, de
 
 - **Ironclad Auditability & Metadata:** Generates rich `version.py` files packed with Git hashes, branch names, and build context to ensure every artifact is fully traceable.
 - **Predictability & Authority:** Enforces CI-driven and user-defined authority. Supports dynamic version resolution from tags, branches, commits, local files, archives (e.g., GitHub ZIP downloads), or custom Python hooks.
-- **Native Integrations & CI/CD Ready:** Offers out-of-the-box support for **Hatch** and **Setuptools** and plugs effortlessly into modern CI pipelines (e.g., GitHub Actions) without tangled configurations.
+- **Native Integrations & CI/CD Ready:** Offers out-of-the-box support for **Hatch**, **Setuptools**, and **Maturin** and plugs effortlessly into modern CI pipelines (e.g., GitHub Actions) without tangled configurations.
 - **Deep Customizability:** Features 25+ configuration settings via `pyproject.toml`, `setup.cfg`, or environment variables. Provides advanced ExStr templates and custom format strings for full control over metadata generation and release formatting.
 - **Archive Fallback:** Seamlessly resolves version data from GitHub ZIP downloads or source archives when the `.git` directory is missing.
 - **Submodule Awareness:** Intelligently handles versioning across complex Git submodule structures.
@@ -81,7 +81,7 @@ GitVersioned combines strict PEP 440 compliance with extreme customizability, de
 
 ## Quick Start
 
-GitVersioned supports multiple integration paths: as a build plugin for **Hatchling** or **Setuptools**, via a standalone **CLI**, or programmatically as a **Python API**.
+GitVersioned supports multiple integration paths: as a build plugin for **Hatchling**, **Setuptools**, or **Maturin**, via a standalone **CLI**, or programmatically as a **Python API**.
 
 ### 1. Hatchling Build Plugin
 
@@ -109,7 +109,30 @@ build-backend = "setuptools.build_meta"
 dynamic = ["version"]
 ```
 
-### 3. Command Line Interface (CLI)
+### 3. Maturin Build Plugin
+
+Declare `gitversioned` in `pyproject.toml` as a build-system requirement, specify it as the build backend wrapper, and set up a placeholder version in `Cargo.toml`:
+
+**`pyproject.toml`**
+
+```toml
+[build-system]
+requires = ["maturin>=1.0,<2.0", "gitversioned"]
+build-backend = "gitversioned.plugins.maturin_plugin"
+
+[project]
+dynamic = ["version"]
+```
+
+**`Cargo.toml`**
+
+```toml
+[package]
+name = "my_rust_package"
+version = "0.0.0"  # Will be dynamically synchronized during builds
+```
+
+### 4. Command Line Interface (CLI)
 
 Install the package to use the CLI standalone to resolve or write versions:
 
@@ -123,7 +146,7 @@ gitversioned calculate
 gitversioned write --output src/package/version.py
 ```
 
-### 4. Python API
+### 5. Python API
 
 Integrate version resolution directly inside Python scripts:
 

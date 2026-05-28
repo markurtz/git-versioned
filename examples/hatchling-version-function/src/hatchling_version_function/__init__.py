@@ -1,1 +1,0 @@
-# hatchling_version_function

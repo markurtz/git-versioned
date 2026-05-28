@@ -1,4 +1,5 @@
-"""Hatchling version source plugin for GitVersioned.
+"""
+Hatchling version source plugin for GitVersioned.
 
 This module provides the Hatchling plugin interface for GitVersioned, allowing
 Hatchling-based projects to resolve their dynamic package version directly from

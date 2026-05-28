@@ -1,36 +1,28 @@
 # Setuptools Integration Guide
 
-`gitversioned` provides seamless, native integration with [Setuptools](https://setuptools.pypa.io/) by automatically registering as a plugin via standard Python entry points. This means that once it is installed and added to your build system requirements, Setuptools will automatically invoke it during builds.
-
-This guide details how to configure `gitversioned` in a Setuptools project and highlights common usage patterns.
+`gitversioned` provides seamless, native integration with [Setuptools](https://setuptools.pypa.io/) by automatically registering as a plugin via standard Python packaging entry points. This means once it is added to your project's build requirements, Setuptools will automatically invoke it during packaging operations to resolve your project's version.
 
 ______________________________________________________________________
 
-## 1. Enabling the Plugin
+## 1. Setup Configurations
 
-To use `gitversioned` with Setuptools, simply declare it as a build requirement in your `pyproject.toml`. Because `gitversioned` uses `setup_keywords` and `finalize_distribution_options` entry points, it will activate automatically without any explicit code hooks.
+Depending on your project's layout and preference, you can configure Setuptools using modern `pyproject.toml`, declarative `setup.cfg`, or legacy `setup.py`.
+
+=== "pyproject.toml (Modern)"
+
+````
+Declare `gitversioned` under `build-system` requirements, specify `version` as dynamic, and configure it under `[tool.gitversioned]`:
 
 ```toml
+# pyproject.toml
 [build-system]
-requires = ["setuptools", "gitversioned"]
+requires = ["setuptools>=61.0", "gitversioned"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "my-package"
 dynamic = ["version"]
-```
 
-When you run `python -m build` or `pip install .`, Setuptools will call `gitversioned` to dynamically resolve the package version and inject it into the built wheel and sdist!
-
-______________________________________________________________________
-
-## 2. Configuring GitVersioned
-
-All settings for `gitversioned` are read natively from the `[tool.gitversioned]` table in your `pyproject.toml` (or `[tool:gitversioned]` in `setup.cfg`).
-
-Here is a common configuration that prioritizes tags and writes the output directly to a file inside the package:
-
-```toml
 [tool.gitversioned]
 source_type = ["tag"]
 output = "src/my_package/version.py"
@@ -39,10 +31,23 @@ output = "src/my_package/version.py"
 pre = "minor"
 dev = "patch"
 ```
+````
 
-If you prefer `setup.cfg`, the equivalent configuration looks like this:
+=== "setup.cfg (Declarative)"
+
+````
+If you define your package metadata in `setup.cfg`, ensure `gitversioned` is in `setup_requires` and declare your settings under `[tool:gitversioned]`:
 
 ```ini
+# setup.cfg
+[metadata]
+name = my-package
+
+[options]
+# Keep version dynamic so Setuptools hooks can inject it
+setup_requires =
+    gitversioned
+
 [tool:gitversioned]
 source_type = tag
 output = src/my_package/version.py
@@ -51,12 +56,50 @@ output = src/my_package/version.py
 pre = minor
 dev = patch
 ```
+````
 
-For a full list of configuration options, refer to the [Configuration Guide](configuration.md).
+=== "setup.py (Legacy/Imperative)"
+
+````
+If your project uses an imperative `setup.py` file, pass configuration overrides directly to `setup()` via the `gitversioned` dictionary keyword argument:
+
+```python
+# setup.py
+# Copyright 2026 Mark Kurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from setuptools import setup
+
+setup(
+    name="my-package",
+    setup_requires=["gitversioned"],
+    # Configure settings directly in python
+    gitversioned={
+        "source_type": ["tag"],
+        "output": "src/my_package/version.py",
+        "auto_increment": {
+            "pre": "minor",
+            "dev": "patch",
+        },
+    },
+)
+```
+````
 
 ______________________________________________________________________
 
-## 3. Common User Stories & Patterns
+## 2. Common User Stories & Patterns
 
 ### Generating Stable vs. Dev Builds
 
@@ -105,7 +148,7 @@ With this configuration:
 1. When a user runs `pip install my-package.tar.gz`, `gitversioned` fails to find `.git`, falls back to `file`, parses `version.py`, and successfully sets the version.
 
 > [!TIP]
-> "GitHub ZIP Downloads vs. sdists"
+> **GitHub ZIP Downloads vs. sdists**
 > If a user downloads your repository as a ZIP directly from GitHub, there is no `.git` directory and no pre-generated `version.py` file! For this scenario, `gitversioned` provides an **Archive Fallback** mechanism that parses a substituted `.git_archival.txt` file. See the [Quick Start](../getting-started/quickstart.md#configure-archive-support-recommended) for setup instructions.
 
 ### Excluding the Version File from Git
@@ -123,6 +166,20 @@ You can then cleanly expose this version in your package's `__init__.py`:
 
 ```python
 # src/my_package/__init__.py
+# Copyright 2026 Mark Kurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 try:
     from .version import __version__
 except ImportError:

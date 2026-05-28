@@ -13,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 name: "Project Tests"
-description: "Runs project integration (doc) tests and E2E (link checker) tests"
+description: "Runs project integration (doc) tests, E2E (examples) tests, and link checks"
 inputs:
   python-version:
     description: "Python version to set up"
     required: false
     default: "3.10"
   test-type:
-    description: "Type of tests to run: functional or e2e"
+    description: "Type of tests to run: functional, e2e, or link-checks"
     required: false
     default: "functional"
   force-run:
@@ -68,5 +68,11 @@ runs:
       if: steps.check.outputs.run == 'true' && inputs.test-type == 'e2e'
       shell: bash
       run: |-
-        echo "[INFO] Running Project E2E tests (link checking)..."
+        echo "[INFO] Running Project E2E tests (examples)..."
         hatch run project:tests-e2e
+    - name: Run Project Link Checks
+      if: steps.check.outputs.run == 'true' && inputs.test-type == 'link-checks'
+      shell: bash
+      run: |-
+        echo "[INFO] Running Project Link Checks..."
+        hatch run project:link-checks

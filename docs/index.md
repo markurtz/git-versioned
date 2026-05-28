@@ -15,7 +15,7 @@ hide:
 
 # GitVersioned
 
-**Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation.**
+**Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch, Setuptools, and Maturin support. Simple, predictable, and foolproof automation.**
 
 [Get Started](getting-started/index.md){ .md-button .md-button--primary }
 [View on GitHub](https://github.com/markurtz/git-versioned){ .md-button }
@@ -120,7 +120,7 @@ build-backend = "hatchling.build"
 source = "gitversioned"
 ```
 
-For advanced installation options, Setuptools alternatives, and step-by-step onboarding, see the [Installation Guide](getting-started/installation.md).
+For advanced installation options, Setuptools/Maturin alternatives, and step-by-step onboarding, see the [Installation Guide](getting-started/installation.md).
 
 ## Links
 
