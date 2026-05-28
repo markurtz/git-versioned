@@ -147,7 +147,7 @@ class TestSubcommandsIntegration:
             ("tagged", [], "1.0.0"),
             ("tagged_plus_commit", ["--version-type", "dev"], "1.0.0.dev"),
             ("tagged", ["--explicit-version", "2.3.4"], "2.3.4"),
-        ]
+        ],
     )
     def test_calculate_happy(
         self,

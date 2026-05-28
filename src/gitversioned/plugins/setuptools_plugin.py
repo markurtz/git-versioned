@@ -25,7 +25,7 @@ from typing import Any, cast
 from packaging.utils import canonicalize_name
 from setuptools import Distribution
 
-from gitversioned.logging import LoggingSettings, configure_logger, logger, autolog
+from gitversioned.logging import LoggingSettings, autolog, configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
 from gitversioned.versioning import resolve_version_output_to_stream
@@ -136,7 +136,6 @@ def finalize_distribution_options(distribution: Distribution) -> None:
         # Update distribution metadata
         if hasattr(distribution, "metadata"):
             distribution.metadata.version = version_string
-        distribution.version = version_string
 
         if output_path and isinstance(output_path, Path):
             _inject_output_into_distribution(

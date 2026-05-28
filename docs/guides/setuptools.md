@@ -33,7 +33,7 @@ Here is a common configuration that prioritizes tags and writes the output direc
 ```toml
 [tool.gitversioned]
 source_type = ["tag"]
-output_file = "src/my_package/version.py"
+output = "src/my_package/version.py"
 
 [tool.gitversioned.auto_increment]
 pre = "minor"
@@ -45,7 +45,7 @@ If you prefer `setup.cfg`, the equivalent configuration looks like this:
 ```ini
 [tool:gitversioned]
 source_type = tag
-output_file = src/my_package/version.py
+output = src/my_package/version.py
 
 [tool:gitversioned:auto_increment]
 pre = minor
@@ -90,7 +90,7 @@ To ensure that downstream users (or pip) can still resolve the version when inst
 # Look at tags first. If the repo is missing, fall back to the generated file!
 source_type = ["tag", "file"]
 version_source_file = "src/my_package/version.py"
-output_file = "src/my_package/version.py"
+output = "src/my_package/version.py"
 
 regex_file = [
     # Regex to extract the version string from the generated file

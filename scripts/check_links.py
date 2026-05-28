@@ -107,7 +107,7 @@ def main(
                     "--file-types",
                     ".md",
                     "--exclude-patterns",
-                    "localhost",
+                    "localhost,127.0.0.1",
                 ]
                 + extra_options,
                 check=True,

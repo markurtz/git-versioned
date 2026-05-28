@@ -11,4 +11,4 @@ where = ["src"]
 
 [tool.gitversioned]
 source_type = ["tags"]
-output_file = "version.py"
+output = "version.py"

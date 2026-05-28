@@ -14,4 +14,4 @@ source = "gitversioned"
 
 [tool.gitversioned]
 source_type = ["tag"]
-output_file = "version.py"
+output = "version.py"

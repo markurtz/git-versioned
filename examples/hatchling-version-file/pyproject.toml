@@ -14,4 +14,4 @@ source = "gitversioned"
 
 [tool.gitversioned]
 source_type = ["tag"]
-output_file = "src/hatchling_version_file/_version.py"
+output = "src/hatchling_version_file/_version.py"

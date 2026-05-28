@@ -200,6 +200,31 @@ def resolve_from_file_source(
     return version, repository.current_commit_or_fallback
 
 
+def _execute_version_function(
+    function_str: str, settings: Settings, repository: GitRepository
+) -> tuple[Version, GitReference]:
+    """Helper to dynamically import and execute the user-defined version function."""
+    module_name, function_name = function_str.split(":", 1)
+    if not all(part.isidentifier() for part in module_name.split(".")):
+        raise ValueError(f"Invalid module name: '{module_name}'")
+    # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
+    module = importlib.import_module(module_name)
+    version, reference = getattr(module, function_name)(
+        settings=settings, repo=repository
+    )
+    if not version or not isinstance(version, Version):
+        raise ValueError(
+            f"Version function '{function_str}' did not "
+            f"return a valid version. Got: {version}"
+        )
+    if not reference or not isinstance(reference, GitReference):
+        raise ValueError(
+            f"Version function '{function_str}' did not "
+            f"return a valid reference. Got: {reference}"
+        )
+    return version, reference
+
+
 @autolog(exception_log_level="INFO")
 def resolve_from_function_source(
     settings: Settings, repository: GitRepository
@@ -226,16 +251,14 @@ def resolve_from_function_source(
         logger.debug("No version_source_function configured.")
         raise VersionResolutionError("No version_source_function configured.")
 
-    if ":" not in str(settings.version_source_function):
+    function_str = str(settings.version_source_function)
+    if ":" not in function_str:
         raise VersionResolutionError(
-            f"Invalid function format: '{settings.version_source_function}'. "
+            f"Invalid function format: '{function_str}'. "
             "Must be in format 'module:function'."
         )
 
-    logger.debug(
-        f"Attempting to resolve version from function: "
-        f"{settings.version_source_function}"
-    )
+    logger.debug(f"Attempting to resolve version from function: {function_str}")
 
     # Insert into PATH to allow general importing within the package
     added_paths = []
@@ -245,30 +268,16 @@ def resolve_from_function_source(
             added_paths.append(path)
 
     try:
-        module_name, function_name = str(settings.version_source_function).split(":", 1)
-        module = importlib.import_module(module_name)
-        version, reference = getattr(module, function_name)(
-            settings=settings, repo=repository
+        version, reference = _execute_version_function(
+            function_str, settings, repository
         )
-        if not version or not isinstance(version, Version):
-            raise ValueError(
-                f"Version function '{settings.version_source_function}' did not "
-                f"return a valid version. Got: {version}"
-            )
-        if not reference or not isinstance(reference, GitReference):
-            raise ValueError(
-                f"Version function '{settings.version_source_function}' did not "
-                f"return a valid reference. Got: {reference}"
-            )
         logger.info(
             f"Resolved version and reference from function "
-            f"{settings.version_source_function}: {version} ({reference})"
+            f"{function_str}: {version} ({reference})"
         )
         return version, reference
     except Exception as error:
-        logger.exception(
-            f"Version function '{settings.version_source_function}' failed: {error}"
-        )
+        logger.exception(f"Version function '{function_str}' failed: {error}")
         raise
     finally:
         for path in added_paths:

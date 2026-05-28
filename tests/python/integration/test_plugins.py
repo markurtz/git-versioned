@@ -271,7 +271,6 @@ class TestFinalizeDistributionOptions:
         distribution.metadata.version = "1.2.3"
         finalize_distribution_options(distribution)
         assert distribution.metadata.version == "1.2.3"
-        assert distribution.version == "1.2.3"
 
     @pytest.mark.smoke
     def test_established_version_distribution(
@@ -282,7 +281,6 @@ class TestFinalizeDistributionOptions:
         distribution.version = "1.2.3"
         finalize_distribution_options(distribution)
         assert distribution.metadata.version == "1.2.3"
-        assert distribution.version == "1.2.3"
 
     @pytest.mark.smoke
     def test_established_version_pkg_info(self, temp_git_repo: GitRepoHelper) -> None:
@@ -295,7 +293,6 @@ class TestFinalizeDistributionOptions:
         distribution: Any = MockSetuptoolsDistribution(root=str(temp_git_repo.path))
         finalize_distribution_options(distribution)
         assert distribution.metadata.version == "1.2.3"
-        assert distribution.version == "1.2.3"
 
     @pytest.mark.regression
     def test_established_version_pkg_info_invalid_read(

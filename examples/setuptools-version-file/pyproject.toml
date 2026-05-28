@@ -11,4 +11,4 @@ where = ["src"]
 
 [tool.gitversioned]
 source_type = "tags"
-output_file = "src/setuptools_version_file/_version.py"
+output = "src/setuptools_version_file/_version.py"

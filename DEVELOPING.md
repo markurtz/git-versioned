@@ -402,7 +402,7 @@ Our pipelines use a highly modular and DRY architecture to avoid duplication of 
     - `pipeline-release.yml`: Release tag pushes (`v*.*.*`); packages binary builds, attests them, publishes to PyPI and GHCR, and creates releases.
     - `pipeline-weekly.yml`: Scheduled weekly checks to verify environment health.
   - **Utility Workflows**:
-    - `util-development-cleanup.yml`: Cleans up transient PR doc deployments.
+    - `util-cleanup.yml`: Cleans up transient PR doc deployments.
     - `util-pr-comment.yml`: Securely posts PR comments (build status, compiled coverage summary, documentation previews, and build packages) to avoid fork permission limits.
 
 ### Local Workflow Testing with `act`

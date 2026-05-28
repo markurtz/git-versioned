@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import Annotated, Any, Literal, cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     CliSettingsSource,
@@ -681,9 +681,23 @@ class Settings(BaseSettings):
             path = self.src_root / path
         return path if (not enforce_existence or path.exists()) else None
 
+    @field_validator("auto_increment", mode="before")
+    @classmethod
+    def _coerce_auto_increment(cls, value: Any) -> Any:
+        if isinstance(value, str) and value.lower().strip() == "none":
+            return None
+        return value
+
     @model_validator(mode="after")
     def _resolve_auto_fields(self) -> Settings:
         # Internal validator to resolve 'auto' fields after initialization.
+        if not self.project_root.exists():
+            raise ValueError(
+                f"Project root directory does not exist: {self.project_root}"
+            )
+        if not self.project_root.is_dir():
+            raise ValueError(f"Project root is not a directory: {self.project_root}")
+
         if self.package_name == "auto":
             new_pkg_name = _detect_package_name(self.project_root)
             if new_pkg_name != self.package_name:

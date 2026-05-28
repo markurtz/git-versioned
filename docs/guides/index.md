@@ -61,6 +61,28 @@ A deep dive into how `gitversioned` resolves sources, determines environments, a
 
 </div>
 
+<div class="card" markdown>
+:material-console: **Command-Line Interface (CLI)**
+
+______________________________________________________________________
+
+A task-oriented guide on how to use `gitversioned` from the command line, with examples for pre-build invocation and Docker integration.
+
+[:octicons-arrow-right-24: CLI Guide](cli.md)
+
+</div>
+
+<div class="card" markdown>
+:material-api: **Python API**
+
+______________________________________________________________________
+
+Instructions and code examples showing how to import and use the programmatic Python API of `gitversioned` in scripts.
+
+[:octicons-arrow-right-24: API Guide](api.md)
+
+</div>
+
 </div>
 
 !!! tip "Contributing a Guide"

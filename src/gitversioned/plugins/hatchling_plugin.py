@@ -21,7 +21,7 @@ from hatchling.metadata.core import ProjectMetadata
 from hatchling.plugin import hookimpl
 from hatchling.version.source.plugin.interface import VersionSourceInterface
 
-from gitversioned.logging import LoggingSettings, configure_logger, logger, autolog
+from gitversioned.logging import LoggingSettings, autolog, configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
 from gitversioned.versioning import resolve_version_output_to_stream

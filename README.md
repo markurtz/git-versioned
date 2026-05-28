@@ -81,9 +81,11 @@ GitVersioned combines strict PEP 440 compliance with extreme customizability, de
 
 ## Quick Start
 
-### Installation & Configuration
+GitVersioned supports multiple integration paths: as a build plugin for **Hatchling** or **Setuptools**, via a standalone **CLI**, or programmatically as a **Python API**.
 
-GitVersioned is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml`:
+### 1. Hatchling Build Plugin
+
+Declare `gitversioned` in `pyproject.toml` as a build-system requirement and version source:
 
 ```toml
 [build-system]
@@ -94,9 +96,55 @@ build-backend = "hatchling.build"
 source = "gitversioned"
 ```
 
-To ensure `gitversioned` can resolve the version when users download your repository as a ZIP file (e.g., from GitHub) where the `.git` directory is missing, configure **Archive Support**:
+### 2. Setuptools Build Plugin
 
-1. Create a `.git_archival.txt` file in your repository root with the following format variables:
+Enable versioning in a Setuptools project by declaring `gitversioned` in `pyproject.toml` and setting your version dynamic:
+
+```toml
+[build-system]
+requires = ["setuptools>=61.0", "gitversioned"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+```
+
+### 3. Command Line Interface (CLI)
+
+Install the package to use the CLI standalone to resolve or write versions:
+
+```bash
+pip install gitversioned
+
+# Resolve and print only the version string
+gitversioned calculate
+
+# Resolve and write a generated version file
+gitversioned write --output src/package/version.py
+```
+
+### 4. Python API
+
+Integrate version resolution directly inside Python scripts:
+
+```python
+from gitversioned import Settings
+from gitversioned.utils import GitRepository, BuildEnvironment
+from gitversioned.versioning import resolve_version
+
+settings = Settings()
+repo = GitRepository(settings.project_root)
+env = BuildEnvironment(project_root=settings.project_root)
+
+version, _, _ = resolve_version(settings, repo, env)
+print(f"Resolved version: {version}")
+```
+
+### Configure Archive Support (Recommended)
+
+To resolve the version when users download a repository ZIP file (e.g., from GitHub) where the `.git` directory is missing:
+
+1. Create a `.git_archival.txt` file in your repository root:
    ```text
    commit_sha: $Format:%H$
    short_sha: $Format:%h$
@@ -107,12 +155,12 @@ To ensure `gitversioned` can resolve the version when users download your reposi
    commit_message:
    $Format:%B$
    ```
-1. Enable variable substitution during archive creation by adding the following to your `.gitattributes` file:
+1. Enable variable substitution by adding the following to your `.gitattributes` file:
    ```text
    .git_archival.txt export-subst
    ```
 
-For full installation options, Setuptools alternatives, and step-by-step onboarding, see the **[Getting Started guide](docs/getting-started/index.md)**.
+For full options and onboarding, see the **[Getting Started guide](docs/getting-started/index.md)**.
 
 ## Core Concepts
 

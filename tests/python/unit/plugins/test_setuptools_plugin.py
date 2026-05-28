@@ -178,7 +178,7 @@ class TestFinalizeDistributionOptions:
             )
 
             assert mock_distribution.metadata.version == expected_version
-            assert mock_distribution.version == expected_version
+            assert mock_distribution.version is None
 
     @pytest.mark.smoke
     @pytest.mark.parametrize(
@@ -192,9 +192,17 @@ class TestFinalizeDistributionOptions:
         self, mock_distribution: MagicMock, version_already_set: str
     ) -> None:
         mock_distribution.version = version_already_set
-        with patch(
-            "gitversioned.plugins.setuptools_plugin.resolve_version_output_to_stream"
-        ) as mock_resolve:
+        mock_settings = MagicMock(spec=Settings)
+        mock_settings.output = None
+        with (
+            patch(
+                "gitversioned.plugins.setuptools_plugin.resolve_version_output_to_stream"
+            ) as mock_resolve,
+            patch(
+                "gitversioned.plugins.setuptools_plugin.Settings",
+                return_value=mock_settings,
+            ),
+        ):
             finalize_distribution_options(mock_distribution)
             mock_resolve.assert_not_called()
             assert mock_distribution.version == version_already_set
@@ -202,15 +210,20 @@ class TestFinalizeDistributionOptions:
     @pytest.mark.smoke
     def test_established_version_env_var(self, mock_distribution: MagicMock) -> None:
         expected_version = "2.3.4"
+        mock_settings = MagicMock(spec=Settings)
+        mock_settings.output = None
         with (
             patch.dict(os.environ, {"GITVERSIONED_RESOLVED_VERSION": expected_version}),
             patch(
                 "gitversioned.plugins.setuptools_plugin.resolve_version_output_to_stream"
             ) as mock_resolve,
+            patch(
+                "gitversioned.plugins.setuptools_plugin.Settings",
+                return_value=mock_settings,
+            ),
         ):
             finalize_distribution_options(mock_distribution)
             mock_resolve.assert_not_called()
-            assert mock_distribution.version == expected_version
             assert mock_distribution.metadata.version == expected_version
 
     @pytest.mark.sanity
@@ -241,7 +254,7 @@ class TestFinalizeDistributionOptions:
         ):
             finalize_distribution_options(mock_distribution)
             mock_resolve.assert_called_once()
-            assert mock_distribution.version == expected_version
+            assert mock_distribution.metadata.version == expected_version
 
     @pytest.mark.sanity
     @pytest.mark.parametrize(
@@ -578,7 +591,7 @@ class TestFinalizeDistributionOptions:
                 mock_resolve.assert_called_once()
             else:
                 mock_resolve.assert_not_called()
-            assert mock_distribution.version == expected_version
+            assert mock_distribution.metadata.version == expected_version
 
     @pytest.mark.regression
     @pytest.mark.parametrize(
@@ -620,7 +633,7 @@ class TestFinalizeDistributionOptions:
         ):
             finalize_distribution_options(mock_distribution)
             mock_resolve.assert_called_once()
-            assert mock_distribution.version == expected_version
+            assert mock_distribution.metadata.version == expected_version
 
     @pytest.mark.regression
     @pytest.mark.parametrize(

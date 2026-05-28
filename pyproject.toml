@@ -96,6 +96,9 @@ Documentation = "https://markurtz.github.io/git-versioned/"
 [project.entry-points.hatch]
 gitversioned = "gitversioned.plugins.hatchling_plugin"
 
+[project.entry-points."distutils.setup_keywords"]
+gitversioned = "gitversioned.plugins.setuptools_plugin:setup_keywords"
+
 [project.entry-points."setuptools.finalize_distribution_options"]
 gitversioned = "gitversioned.plugins.setuptools_plugin:finalize_distribution_options"
 
@@ -383,12 +386,14 @@ tests-e2e-cov = [
   "echo '[INFO] No coverage analysis is applicable for E2E tests in the project environment'",
 ]
 docs = [
-  "python docs/scripts/gen_ref_pages.py",
+  "python docs/scripts/gen_ref_pages.py generate",
   "python -m zensical {args:build}",
+  "python docs/scripts/gen_ref_pages.py clean",
 ]
 docs-serve = [
-  "python docs/scripts/gen_ref_pages.py",
+  "python docs/scripts/gen_ref_pages.py generate",
   "python -m zensical serve {args}",
+  "python docs/scripts/gen_ref_pages.py clean",
 ]
 
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import shutil
 import subprocess
 from collections.abc import Generator
+from functools import wraps
 from pathlib import Path
 
 import pytest
@@ -13,6 +15,7 @@ from loguru import logger
 __all__ = [
     "GitRepoHelper",
     "PropagateHandler",
+    "async_timeout",
     "caplog_loguru",
     "e2e_git_repo",
     "temp_git_repo",
@@ -189,3 +192,14 @@ def temp_git_repo(tmp_path: Path) -> GitRepoHelper:
 def e2e_git_repo(temp_git_repo: GitRepoHelper) -> GitRepoHelper:
     """Yield a temporary git repo helper configured for E2E tests."""
     return temp_git_repo
+
+
+def async_timeout(delay):
+    def decorator(func):
+        @wraps(func)
+        async def new_func(*args, **kwargs):
+            return await asyncio.wait_for(func(*args, **kwargs), timeout=delay)
+
+        return new_func
+
+    return decorator

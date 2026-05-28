@@ -95,6 +95,6 @@ at [https://www.contributor-covenant.org/translations][translations].
 
 [faq]: https://www.contributor-covenant.org/faq
 [homepage]: https://www.contributor-covenant.org
-[mozilla coc]: https://github.com/mozilla/diversity
+[mozilla coc]: https://www.mozilla.org/about/governance/policies/participation/
 [translations]: https://www.contributor-covenant.org/translations
 [v2.1]: https://www.contributor-covenant.org/version/2/1/code_of_conduct.html

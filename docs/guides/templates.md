@@ -30,33 +30,39 @@ format_dev = "dev{ref.distance_from_head}+{ref.short_sha}"
 
 ______________________________________________________________________
 
-## Output Templates
+## Output Templates and Strategies
 
-The final action `gitversioned` performs is generating an output file (by default, `version.py`). The contents of this file are entirely controlled by templates.
+The final action `gitversioned` performs is generating an output version file (by default, `version.py`). The contents and injection methods of this file are entirely controlled by `output_strategies`.
 
-There are two primary templates used, chosen based on the build state:
-
-- `template_release`: Used for stable, clean releases.
-- `template_dev`: Used when the repository is dirty, detached, or explicitly configured for development.
-
-By default, these templates generate a comprehensive module with rich metadata (such as `__VERSION_METADATA__`, `__GIT_METADATA__`, and `__BUILD_METADATA__`).
+By default, GitVersioned is pre-configured with template files that generate a comprehensive module with rich metadata (such as `__VERSION_METADATA__`, `__GIT_METADATA__`, and `__BUILD_METADATA__`) for both stable and development releases.
 
 ### Customizing Output
 
-You can override the entire template string in your configuration if you need a different file structure, specific exports, or compatibility with legacy code.
+You can customize the generation output by specifying your own templates using the `output_strategies` configuration.
+
+There are three primary strategy models:
+
+- **`template_str`**: An inline string pattern.
+- **`template_path`**: A path to an external template file.
+- **`regex`**: A pattern used to find and replace a version string in an existing file.
 
 !!! tip "Multi-line Strings in TOML"
 Use TOML's multi-line string syntax (`"""`) to clearly define your custom templates within your `pyproject.toml`.
 
-**Example:** Generating a minimal `version.py` file.
+**Example:** Overriding templates using inline string strategies.
 
 ```toml
-[tool.gitversioned]
-template_release = """
+[tool.gitversioned.output_strategies.release]
+type = "template_str"
+content = """
+# Generated release file
 __version__ = "{version}"
 """
 
-template_dev = """
+[tool.gitversioned.output_strategies.dev]
+type = "template_str"
+content = """
+# Generated dev file
 __version__ = "{version}"
 __commit__ = "{repo.current_commit.commit_sha if repo.is_available and repo.current_commit else ''}"
 """

@@ -12,4 +12,4 @@ packages = ["src/hatchling_hatch_vars"]
 [tool.hatch.version]
 source = "gitversioned"
 source_type = ["tag"]
-output_file = "version.py"
+output = "version.py"
