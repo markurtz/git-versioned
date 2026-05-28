@@ -41,7 +41,7 @@ runs:
           echo "[ERROR] src/gitversioned/__init__.py does not exist!"
           exit 1
         fi
-        VERSION=$(cat << 'EOF' | sed 's/^[[:space:]]\{8\}//' | hatch run python -
+        VERSION=$(cat << 'EOF' | sed 's/^[[:space:]]\{8\}//' | PYTHONPATH=src python -
         import os, re
         from pathlib import Path
         from gitversioned.settings import Settings
@@ -65,7 +65,7 @@ runs:
         settings = Settings(**config)
         repo = GitRepository(settings.project_root)
         env = BuildEnvironment(project_root=settings.project_root)
-        version, _ = resolve_version(settings, repo, env)
+        version, _, _ = resolve_version(settings, repo, env)
         resolved_version = str(version)
 
         # Update __init__.py

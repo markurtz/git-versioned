@@ -515,6 +515,7 @@ known-first-party = ["gitversioned", "tests"]
 [tool.pytest.ini_options]
 addopts = "-s -vvv --cache-clear"
 asyncio_mode = "auto"
+log_level = "WARNING"
 markers = [
   "smoke: quick tests to check basic functionality",
   "sanity: detailed tests to ensure major functions work correctly",
@@ -528,4 +529,3 @@ sequence_style = "block_style"
 preserve_quotes = true
 
 [tool.coverage.run]
-patch = ["subprocess"]

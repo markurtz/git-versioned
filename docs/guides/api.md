@@ -21,7 +21,7 @@ repository = GitRepository(settings.project_root)
 environment = BuildEnvironment(project_root=settings.project_root)
 
 # 3. Resolve the version components
-version, git_ref, resolved_type = resolve_version(
+version, resolved_type, git_ref = resolve_version(
     settings=settings,
     repository=repository,
     environment=environment
@@ -48,7 +48,7 @@ repository = GitRepository(settings.project_root)
 environment = BuildEnvironment(project_root=settings.project_root)
 
 # Resolve and format the strategy template
-content, version, git_ref, resolved_type = resolve_version_output(
+content, version, resolved_type, git_ref = resolve_version_output(
     settings=settings,
     repository=repository,
     environment=environment
@@ -70,7 +70,7 @@ repository = GitRepository(settings.project_root)
 environment = BuildEnvironment(project_root=settings.project_root)
 
 # Resolves, formats, writes to settings.output, and returns written path
-output_path, content, version, git_ref, resolved_type = resolve_version_output_to_stream(
+output_path, content, version, resolved_type, git_ref = resolve_version_output_to_stream(
     settings=settings,
     repository=repository,
     environment=environment

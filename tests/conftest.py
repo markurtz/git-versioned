@@ -12,6 +12,8 @@ from pathlib import Path
 import pytest
 from loguru import logger
 
+from gitversioned.logging import _state
+
 __all__ = [
     "GitRepoHelper",
     "PropagateHandler",
@@ -36,7 +38,9 @@ class PropagateHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         """Route loguru record to standard logging."""
-        logging.getLogger(record.name).handle(record)
+        log_logger = logging.getLogger(record.name)
+        if log_logger.isEnabledFor(record.levelno):
+            log_logger.handle(record)
 
 
 @pytest.fixture(autouse=True)
@@ -49,9 +53,15 @@ def caplog_loguru(
     This ensures that assertions like `assert "foo" in caplog.text` work
     seamlessly with Loguru output.
     """
-    handler_id = logger.add(PropagateHandler(), format="{message}")
+    logger.remove()
+    _state["handler_id"] = None
+    logger.enable("gitversioned")
+
+    logger.add(PropagateHandler(), format="{message}")
     yield caplog
-    logger.remove(handler_id)
+    logger.remove()
+    _state["handler_id"] = None
+    logger.disable("gitversioned")
 
 
 class GitRepoHelper:

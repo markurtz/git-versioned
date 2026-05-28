@@ -69,6 +69,11 @@ runs:
       shell: bash
       run: |-
         hatch run oci:format
+    - name: Build OCI Image
+      if: steps.check.outputs.run == 'true'
+      shell: bash
+      run: |-
+        hatch run oci:build
     - name: Run OCI Security Scan
       if: steps.check.outputs.run == 'true'
       shell: bash
