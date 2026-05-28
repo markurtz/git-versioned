@@ -253,3 +253,54 @@ class TestBuildEnvironment:
 
         validated_instance = BuildEnvironment.model_validate(dumped_data)
         assert validated_instance == instance
+
+    @pytest.mark.sanity
+    def test_str(
+        self,
+        valid_instances: tuple[BuildEnvironment, dict[str, typing.Any]],
+    ) -> None:
+        """Test BuildEnvironment __str__ representation."""
+        instance, constructor_args = valid_instances
+        string_representation = str(instance)
+
+        expected_suffix = (
+            f" [CI: {instance.ci_provider}]" if instance.is_ci else " [Local]"
+        )
+        assert string_representation.endswith(expected_suffix)
+        assert f"project={instance.project_root.name}" in string_representation
+        assert f"id={instance.build_id}" in string_representation
+        assert instance.os_system in string_representation
+        assert instance.os_release in string_representation
+        assert instance.cpu_arch in string_representation
+        assert instance.python_version in string_representation
+
+    @pytest.mark.sanity
+    def test_repr(
+        self,
+        valid_instances: tuple[BuildEnvironment, dict[str, typing.Any]],
+    ) -> None:
+        """Test BuildEnvironment __repr__ representation."""
+        instance, constructor_args = valid_instances
+        repr_representation = repr(instance)
+
+        assert repr_representation.startswith("BuildEnvironment(")
+        assert repr_representation.endswith(")")
+        assert f"hostname={instance.hostname!r}" in repr_representation
+        assert f"user={instance.user!r}" in repr_representation
+        assert f"os_system={instance.os_system!r}" in repr_representation
+        assert f"os_release={instance.os_release!r}" in repr_representation
+        assert f"os_version={instance.os_version!r}" in repr_representation
+        assert f"cpu_arch={instance.cpu_arch!r}" in repr_representation
+        assert f"cpu_cores={instance.cpu_cores!r}" in repr_representation
+        assert f"total_ram_gb={instance.total_ram_gb!r}" in repr_representation
+        assert f"python_version={instance.python_version!r}" in repr_representation
+        assert (
+            f"python_implementation={instance.python_implementation!r}"
+            in repr_representation
+        )
+        assert f"python_compiler={instance.python_compiler!r}" in repr_representation
+        assert f"timestamp={instance.timestamp!r}" in repr_representation
+        assert f"is_ci={instance.is_ci!r}" in repr_representation
+        assert f"ci_provider={instance.ci_provider!r}" in repr_representation
+        assert f"project_root={instance.project_root!r}" in repr_representation
+        assert f"build_id={instance.build_id!r}" in repr_representation

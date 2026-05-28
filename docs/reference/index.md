@@ -10,7 +10,7 @@ The Reference section contains the complete technical documentation for `gitvers
 
     Command-line usage and subcommands.
 
--   **[:material-api: Python API](python_api.md)**
+-   **[:material-api: Python API](python_api/index.md)**
 
     Complete public Python API documentation.
 

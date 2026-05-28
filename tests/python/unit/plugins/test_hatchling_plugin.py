@@ -49,9 +49,26 @@ class TestGitVersionedVersionSource:
         assert valid_instances is not None
         assert hasattr(valid_instances, "root")
         assert hasattr(valid_instances, "config")
+        expected_posix = valid_instances.get_project_root().as_posix()
+        expected_str = str(valid_instances.get_project_root())
+        assert valid_instances.root in {expected_posix, expected_str}
+        assert isinstance(valid_instances.config, dict)
 
     @pytest.mark.sanity
-    @patch("gitversioned.plugins.hatchling_plugin.resolve_and_generate_version")
+    def test_invalid_initialization_values(self) -> None:
+        instance = GitVersionedVersionSource(root=123, config={})  # type: ignore
+        with pytest.raises((TypeError, ValueError)):
+            instance.get_project_root()
+
+    @pytest.mark.sanity
+    def test_invalid_initialization_missing(self) -> None:
+        with pytest.raises(TypeError):
+            GitVersionedVersionSource(root="/some/path")  # type: ignore
+        with pytest.raises(TypeError):
+            GitVersionedVersionSource(config={})  # type: ignore
+
+    @pytest.mark.sanity
+    @patch("gitversioned.plugins.hatchling_plugin.resolve_version_output_to_stream")
     @patch("gitversioned.plugins.hatchling_plugin.BuildEnvironment")
     @patch("gitversioned.plugins.hatchling_plugin.GitRepository")
     @patch("gitversioned.plugins.hatchling_plugin.Settings")
@@ -62,15 +79,18 @@ class TestGitVersionedVersionSource:
         mock_settings_cls: MagicMock,
         mock_git_repo_cls: MagicMock,
         mock_build_env_cls: MagicMock,
-        mock_resolve_generate: MagicMock,
+        mock_resolve_stream: MagicMock,
         valid_instances: GitVersionedVersionSource,
     ) -> None:
         mock_settings = MagicMock()
         mock_settings.project_root = Path("/mock/mock_root")
         mock_settings_cls.return_value = mock_settings
-        mock_resolve_generate.return_value = (
-            "1.2.3",
+        mock_resolve_stream.return_value = (
             Path("/mock/mock_root/version.py"),
+            "mock_content",
+            "1.2.3",
+            "mock_type",
+            "mock_ref",
         )
 
         with patch.object(
@@ -85,11 +105,20 @@ class TestGitVersionedVersionSource:
         mock_build_env_cls.assert_called_once_with(
             project_root=mock_settings.project_root
         )
-        mock_resolve_generate.assert_called_once_with(
+        mock_resolve_stream.assert_called_once_with(
             settings=mock_settings,
             repository=mock_git_repo_cls.return_value,
             environment=mock_build_env_cls.return_value,
         )
+
+    @pytest.mark.smoke
+    def test_get_version_data_from_env(
+        self, valid_instances: GitVersionedVersionSource
+    ) -> None:
+        env_vars = {"GITVERSIONED_RESOLVED_VERSION": "2.0.0-beta.1"}
+        with patch.dict("os.environ", env_vars):
+            result = valid_instances.get_version_data()
+        assert result == {"version": "2.0.0-beta.1"}
 
     @pytest.mark.sanity
     @pytest.mark.parametrize(

@@ -1,39 +1,64 @@
 """
-Setuptools integration for GitVersioned.
+Setuptools build integration plugin for GitVersioned.
 
-This module provides entry points for Setuptools to automatically compute and
-inject versions resolved from Git metadata into package distribution objects.
+This module implements the integration layer between GitVersioned and the
+Setuptools build system. It exposes hook entry points that Setuptools calls
+during distribution configuration, allowing packaging configuration to
+dynamically query and apply resolved Git-based versions.
+
+The plugin functions by registering setup keyword arguments and finalizer
+hooks. It extracts the package distribution options, resolves project
+context, extracts any pre-existing or environment-specified versions,
+executes the Git versioning resolution, and updates the distribution
+metadata version dynamically. If configured, it also injects the generated
+version file into the distribution's package_data or py_modules.
 """
 
 from __future__ import annotations
 
 import email
+import os
 from distutils.errors import DistutilsSetupError
 from pathlib import Path
 from typing import Any, cast
 
-from loguru import logger
 from packaging.utils import canonicalize_name
 from setuptools import Distribution
 
-from gitversioned.logging import LoggingSettings, configure_logger
+from gitversioned.logging import LoggingSettings, configure_logger, logger, autolog
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
-from gitversioned.versioning import resolve_and_generate_version
+from gitversioned.versioning import resolve_version_output_to_stream
 
 __all__ = ["finalize_distribution_options", "setup_keywords"]
 
 # Constants for internal validation
-INVALID_VERSIONS: set[str] = {"None", "0.0.0", "UNKNOWN"}
+_INVALID_VERSIONS: set[str] = {"None", "0.0.0", "UNKNOWN"}
 
 
 def setup_keywords(distribution: Distribution, attribute: str, value: Any) -> None:
     """
-    Validates and stores the GitVersioned configuration dictionary.
+    Validate and store the GitVersioned configuration dictionary.
 
-    :param distribution: The Setuptools distribution object.
-    :param attribute: The keyword attribute name.
-    :param value: The configuration dictionary provided by the user.
+    Registers the `gitversioned` configuration dictionary on the distribution object.
+    This configuration is subsequently retrieved during option finalization to customize
+    the version resolution process.
+
+    .. code-block:: python
+
+        # Example usage inside setup.py:
+        setup(
+            gitversioned={
+                "version_source_file": "version.txt",
+                "source_type": ["tag", "file"],
+            },
+        )
+
+    :param distribution: The Setuptools distribution object being configured.
+    :param attribute: The name of the setup keyword (must be "gitversioned").
+    :param value: The configuration settings dictionary provided in the setup call.
+    :raises DistutilsSetupError: If the keyword attribute is invalid or the
+        value is not a dict.
     """
     configure_logger(LoggingSettings(enabled=True))
     logger.debug(f"setup_keywords called with attribute='{attribute}'")
@@ -51,11 +76,25 @@ def setup_keywords(distribution: Distribution, attribute: str, value: Any) -> No
 
 def finalize_distribution_options(distribution: Distribution) -> None:
     """
-    Computes the package version and updates the distribution metadata.
+    Compute the package version and update the distribution metadata.
 
-    This is the primary entry point triggered during the Setuptools lifecycle.
+    This is the primary entry point triggered during the Setuptools distribution
+    finalization lifecycle. It resolves the package name, extracts any established or
+    environment-provided version, reads configuration overrides, calculates the dynamic
+    version using Git metadata, and applies the version to the distribution metadata.
+    If a version file is generated, it is automatically injected into the distribution's
+    package data or module list.
+
+    .. code-block:: python
+
+        # Hook is registered as a Setuptools entry point:
+        # entry_point = "gitversioned.plugins.setuptools_plugin"
+        # func = "finalize_distribution_options"
+
+    :param distribution: The Setuptools distribution object to finalize.
+    :raises DistutilsSetupError: If the package name is unresolved or if version
+        resolution encounters an unexpected failure.
     """
-
     configure_logger(LoggingSettings(enabled=True))
     logger.debug("Finalizing distribution options for GitVersioned.")
 
@@ -65,6 +104,11 @@ def finalize_distribution_options(distribution: Distribution) -> None:
 
     # Check for an established version to avoid redundant Git resolution
     established_version = _extract_established_version(distribution, project_root)
+
+    resolved = os.environ.get("GITVERSIONED_RESOLVED_VERSION")
+    if resolved and not established_version:
+        established_version = resolved
+
     config_overrides = getattr(distribution, "gitversioned_config", {})
 
     try:
@@ -84,7 +128,7 @@ def finalize_distribution_options(distribution: Distribution) -> None:
         else:
             repository = GitRepository(settings.project_root)
             environment = BuildEnvironment(project_root=settings.project_root)
-            version, output_path = resolve_and_generate_version(
+            output_path, _, version, _, _ = resolve_version_output_to_stream(
                 settings=settings, repository=repository, environment=environment
             )
             version_string = str(version)
@@ -94,7 +138,7 @@ def finalize_distribution_options(distribution: Distribution) -> None:
             distribution.metadata.version = version_string
         distribution.version = version_string
 
-        if output_path:
+        if output_path and isinstance(output_path, Path):
             _inject_output_into_distribution(
                 distribution=distribution,
                 output_path=output_path,
@@ -109,10 +153,11 @@ def finalize_distribution_options(distribution: Distribution) -> None:
         raise DistutilsSetupError(f"Failed to resolve version: {error}") from error
 
 
+@autolog
 def _extract_established_version(
     distribution: Distribution, project_root: Path
 ) -> str | None:
-    """Check metadata, distribution, and PKG-INFO for an existing valid version."""
+    # Check metadata, distribution, and PKG-INFO for an existing valid version.
     candidates = [
         getattr(distribution.metadata, "version", None),
         getattr(distribution, "version", None),
@@ -131,25 +176,28 @@ def _extract_established_version(
         if (
             isinstance(version, str)
             and version.strip()
-            and version not in INVALID_VERSIONS
+            and version not in _INVALID_VERSIONS
         ):
             return version.strip()
     return None
 
 
+@autolog
 def _find_existing_version_file(settings: Settings) -> Path | None:
-    """Locate the existing version file if resolution is skipped."""
-    if not settings.output or settings.output in ("sys.stdout", "sys.stderr"):
+    # Locate the existing version file if resolution is skipped.
+    if not settings.output:
         return None
-    path = Path(settings.output)
-    output_path = path if path.is_absolute() else settings.src_root / path
+    output_path = Path(settings.output)
+    if not output_path.is_absolute():
+        output_path = settings.src_root / output_path
     return output_path if output_path.exists() else None
 
 
+@autolog
 def _resolve_project_context(
     distribution: Distribution,
 ) -> tuple[Path, Path, str | None]:
-    """Determines project root, source root, and package name via waterfall logic."""
+    # Determines project root, source root, and package name via waterfall logic.
     project_root = Path(getattr(distribution, "src_root", None) or Path.cwd())
     package_name = None
 
@@ -180,7 +228,7 @@ def _resolve_project_context(
 def _get_source_root(
     project_root: Path, distribution: Distribution, package_name: str
 ) -> Path:
-    """Maps the package name to its source directory using package_dir configuration."""
+    # Maps the package name to its source directory using package_dir configuration.
     package_dir = getattr(distribution, "package_dir", None) or {}
 
     relative_source = package_dir.get(package_name)
@@ -197,7 +245,7 @@ def _get_source_root(
 
 
 def _probe_filesystem_context(project_root: Path) -> tuple[Path, str] | None:
-    """Probes the filesystem for a package directory containing an __init__.py."""
+    # Probes the filesystem for a package directory containing an __init__.py.
     for search_path in (project_root / "src", project_root):
         if not search_path.is_dir():
             continue
@@ -207,13 +255,14 @@ def _probe_filesystem_context(project_root: Path) -> tuple[Path, str] | None:
     return None
 
 
+@autolog
 def _inject_output_into_distribution(
     distribution: Distribution,
     output_path: Path,
     source_root: Path,
     package_name: str,
 ) -> None:
-    """Registers the generated file in the distribution's package_data or py_modules."""
+    # Registers the generated file in the distribution's package_data or py_modules.
     # Attempt 1: Package data (internal file)
     package_folder = (
         source_root if source_root.name == package_name else source_root / package_name

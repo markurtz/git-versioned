@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess
 from collections.abc import Generator
@@ -16,6 +17,13 @@ __all__ = [
     "e2e_git_repo",
     "temp_git_repo",
 ]
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Apply TEST_FILTER env var as a pytest keyword expression."""
+    test_filter = os.environ.get("TEST_FILTER")
+    if test_filter and not config.option.keyword:
+        config.option.keyword = test_filter
 
 
 class PropagateHandler(logging.Handler):

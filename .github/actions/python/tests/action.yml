@@ -20,38 +20,23 @@ inputs:
     description: "Python version to run checks against"
     required: false
     default: "3.10"
-  run-functional:
-    description: "Whether to run functional (unit & integration) tests"
+  test-type:
+    description: "Type of tests to run: functional or e2e"
     required: false
-    default: "true"
-  run-e2e:
-    description: "Whether to run end-to-end (e2e) tests"
-    required: false
-    default: "true"
+    default: "functional"
   test-category:
     description: "Test category: smoke, sanity, regression, or all (supports combinations\
       \ like 'smoke or sanity')"
     required: false
     default: "all"
-  generate-coverage:
-    description: "Generate test coverage report"
-    required: false
-    default: "false"
-  extra-args:
-    description: "Extra arguments to pass to pytest"
-    required: false
-    default: ""
   force-run:
     description: "Always run even if no changes are detected"
     required: false
     default: "false"
 outputs:
-  coverage-generated:
-    description: "Whether a coverage report was generated"
-    value: ${{ steps.coverage-outputs.outputs.coverage-generated }}
   coverage-reports:
     description: "Paths to the generated coverage report(s)"
-    value: ${{ steps.coverage-outputs.outputs.coverage-reports }}
+    value: ${{ steps.func-tests.outputs.coverage-reports || steps.e2e-tests.outputs.coverage-reports || '' }}
 runs:
   using: "composite"
   steps:
@@ -64,15 +49,33 @@ runs:
     - name: Evaluate changes
       id: check
       shell: bash
+      env:
+        FORCE_RUN: ${{ inputs.force-run }}
+        GITHUB_CHANGES: ${{ steps.filter.outputs.github_changes }}
+        SRC_CHANGES: ${{ steps.filter.outputs.src_changes }}
+        TESTS_CHANGES: ${{ steps.filter.outputs.tests_changes }}
+        PYPROJECT_CHANGES: ${{ steps.filter.outputs.pyproject_changes }}
       run: |
-        if [[ "${{ inputs.force-run }}" == "true" || \
-              "${{ steps.filter.outputs.github_changes }}" == "true" || \
-              "${{ steps.filter.outputs.src_changes }}" == "true" || \
-              "${{ steps.filter.outputs.tests_changes }}" == "true" || \
-              "${{ steps.filter.outputs.pyproject_changes }}" == "true" ]]; then
+        if [[ "$FORCE_RUN" == "true" || \
+              "$GITHUB_CHANGES" == "true" || \
+              "$SRC_CHANGES" == "true" || \
+              "$TESTS_CHANGES" == "true" || \
+              "$PYPROJECT_CHANGES" == "true" ]]; then
           echo "run=true" >> "$GITHUB_OUTPUT"
         else
           echo "run=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Evaluate test arguments
+      id: args
+      if: steps.check.outputs.run == 'true'
+      shell: bash
+      env:
+        TEST_CATEGORY: ${{ inputs.test-category }}
+      run: |-
+        if [ "$TEST_CATEGORY" != "all" ] && [ -n "$TEST_CATEGORY" ]; then
+          echo "args=-m \"$TEST_CATEGORY\"" >> "$GITHUB_OUTPUT"
+        else
+          echo "args=" >> "$GITHUB_OUTPUT"
         fi
     - name: Set up Python & Hatch
       if: steps.check.outputs.run == 'true'
@@ -80,81 +83,22 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
     - name: Run Python Functional Tests
-      if: steps.check.outputs.run == 'true' && inputs.run-functional == 'true'
+      id: func-tests
+      if: steps.check.outputs.run == 'true' && inputs.test-type == 'functional'
       shell: bash
       run: |-
-        CATEGORY="${{ inputs.test-category }}"
-        COV="${{ inputs.generate-coverage }}"
-        EXTRA="${{ inputs.extra-args }}"
-        ARGS="$EXTRA"
-        if [ "$CATEGORY" != "all" ] && [ -n "$CATEGORY" ]; then
-          ARGS="-m \"$CATEGORY\" $EXTRA"
-        fi
-        echo "[INFO] Running Python functional tests..."
-        if [ "$COV" = "true" ]; then
-          hatch run python:tests-func-cov $ARGS
-        else
-          hatch run python:tests-func $ARGS
-        fi
+        hatch run python:tests-func-cov ${{ steps.args.outputs.args }}
+        {
+          echo "coverage-reports<<EOF"
+          echo "coverage/python/coverage_tests-func.md"
+          echo "coverage/python/coverage_tests-unit.md"
+          echo "coverage/python/coverage_tests-int.md"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
     - name: Run Python E2E Tests
-      if: steps.check.outputs.run == 'true' && inputs.run-e2e == 'true'
+      id: e2e-tests
+      if: steps.check.outputs.run == 'true' && inputs.test-type == 'e2e'
       shell: bash
       run: |-
-        CATEGORY="${{ inputs.test-category }}"
-        COV="${{ inputs.generate-coverage }}"
-        EXTRA="${{ inputs.extra-args }}"
-        ARGS="$EXTRA"
-        if [ "$CATEGORY" != "all" ] && [ -n "$CATEGORY" ]; then
-          ARGS="-m \"$CATEGORY\" $EXTRA"
-        fi
-
-        # Check if a pre-built wheel is present in dist/
-        if [ -d "dist" ] && [ "$(find dist -name '*.whl' | wc -l)" -gt 0 ]; then
-          echo "[INFO] Found pre-built wheel in dist/. Installing and running E2E tests..."
-          hatch run -e python pip install --force-reinstall --no-deps --no-index --find-links=dist gitversioned
-          if [ "$COV" = "true" ]; then
-            hatch run -e python pytest --cov=gitversioned --cov-report=term --cov-report=markdown:coverage/python/coverage_tests-e2e.md tests/e2e $ARGS
-          else
-            hatch run -e python pytest tests/e2e $ARGS
-          fi
-        else
-          echo "[INFO] No pre-built wheel found in dist/. Building and running E2E tests locally..."
-          if [ "$COV" = "true" ]; then
-            hatch run python:tests-e2e-cov $ARGS
-          else
-            hatch run python:tests-e2e $ARGS
-          fi
-        fi
-    - name: Determine Coverage Outputs
-      id: coverage-outputs
-      shell: bash
-      run: |-
-        COV="${{ inputs.generate-coverage }}"
-        RUN_FUNC="${{ inputs.run-functional }}"
-        RUN_E2E="${{ inputs.run-e2e }}"
-        WAS_RUN="${{ steps.check.outputs.run }}"
-        if [ "$WAS_RUN" = "true" ] && [ "$COV" = "true" ]; then
-          echo "coverage-generated=true" >> "$GITHUB_OUTPUT"
-          REPORTS=""
-          if [ "$RUN_FUNC" = "true" ]; then
-            REPORTS="coverage/python/coverage_tests-func.md
-        coverage/python/coverage_tests-unit.md
-        coverage/python/coverage_tests-int.md"
-          fi
-          if [ "$RUN_E2E" = "true" ]; then
-            if [ -n "$REPORTS" ]; then
-              REPORTS="$REPORTS
-        coverage/python/coverage_tests-e2e.md"
-            else
-              REPORTS="coverage/python/coverage_tests-e2e.md"
-            fi
-          fi
-          {
-            echo "coverage-reports<<EOF"
-            echo "$REPORTS"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-        else
-          echo "coverage-generated=false" >> "$GITHUB_OUTPUT"
-          echo "coverage-reports=" >> "$GITHUB_OUTPUT"
-        fi
+        hatch run python:tests-e2e-cov ${{ steps.args.outputs.args }}
+        echo "coverage-reports=coverage/python/coverage_tests-e2e.md" >> "$GITHUB_OUTPUT"

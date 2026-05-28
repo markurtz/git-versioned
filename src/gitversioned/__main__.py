@@ -1,21 +1,23 @@
 """
-CLI entry point for GitVersioned.
+CLI entry point for GitVersioned version resolution.
 
-This module provides the standalone CLI for GitVersioned, allowing users to run
-version resolution outside of the build backend context, for instance, in pre-commit
-hooks or before a Cargo build.
+This module provides a standalone command-line interface for GitVersioned,
+allowing developers and CI/CD pipelines to calculate versions, format output
+strategies, and write version metadata to disk. It handles dynamic CLI parsing
+by inspecting the Pydantic configuration schemas and maps subcommands directly
+to version resolution workflows.
 
-Example:
-    ::
-
-        python -m gitversioned --output-format=cargo
-        gitversioned --output-format=cargo
+The main interface is the Typer application `app`, which exposes three primary
+commands: `calculate`, `format`, and `write`. These commands dynamically adjust
+their accepted parameters based on the `Settings` model fields, allowing
+command-line overrides of any project-level configuration options.
 """
 
 from __future__ import annotations
 
 import contextlib
 import inspect
+import json
 import sys
 import typing
 from typing import Annotated, Any
@@ -28,68 +30,142 @@ from gitversioned import __version__
 from gitversioned.logging import LoggingSettings, configure_logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
-from gitversioned.versioning import resolve_and_generate_version
+from gitversioned.versioning import (
+    resolve_version,
+    resolve_version_output,
+    resolve_version_output_to_stream,
+)
 
-__all__ = ["app", "main", "run_cli"]
+__all__ = [
+    "app",
+    "calculate",
+    "format_cmd",
+    "main",
+    "main_callback",
+    "write",
+]
 
 app: Annotated[
     typer.Typer,
-    "The Typer application instance for the gitversioned CLI.",
+    (
+        "The Typer application instance serving as the primary command-line "
+        "entry point. Manages global options, subcommand routing, and "
+        "auto-generates help text."
+    ),
 ] = typer.Typer(
     add_completion=False,
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     help="Opinionated PEP 440 Python versioning for Git repos and submodules.",
 )
 
 
+def main() -> None:
+    """
+    Run the Typer command-line application.
+
+    .. code-block:: python
+
+        from gitversioned.__main__ import main
+        main()
+
+    :returns: None.
+    """
+    app()
+
+
 @app.callback(invoke_without_command=True)
 def main_callback(
-    version: bool | None = typer.Option(
-        None,
-        "--version",
-        is_eager=True,
-        help="Show the version and exit.",
-    ),
+    ctx: typer.Context,
+    version: Annotated[
+        bool | None,
+        typer.Option(
+            "--version",
+            "-v",
+            is_eager=True,
+            help="Show the version and exit.",
+        ),
+    ] = None,
 ) -> None:
     """
-    Opinionated PEP 440 Python versioning for Git repos and submodules.
+    Handle global command-line options and subcommand routing.
+
+    :param ctx: Context object representing the current Typer execution flow.
+    :param version: Flag to display the GitVersioned version and exit.
+    :returns: None.
+    :raises typer.Exit: When displaying version or printing help.
     """
     if version:
         typer.echo(f"gitversioned v{__version__}")
         raise typer.Exit
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit
 
 
-@app.command()
-def run_cli(**kwargs: Any) -> None:
+@app.command(name="calculate")
+def calculate(**kwargs: Any) -> None:
     """
-    Main entry point for the gitversioned CLI.
+    Resolve and output only the PEP 440 version string.
 
-    Initializes configuration from pyproject.toml, setup.cfg, environment variables,
-    and CLI arguments. It then resolves the version, generates the version.py file,
-    and optionally executes file injections.
+    This command runs version resolution and prints the final calculated version
+    string directly to stdout. It excludes output target and strategy settings.
 
-    Example:
-        ::
-
-            run_cli(output_format="cargo")
-
-    :param kwargs: CLI arguments passed dynamically from the Typer signature.
-    :raises SystemExit: If version resolution or file injection fails.
+    :param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
+    :returns: None.
     """
-    try:
-        # Filter out None values so Pydantic uses its native priority system
-        cli_args = {key: value for key, value in kwargs.items() if value is not None}
-        settings = Settings(**typing.cast("Any", cli_args))
+    with _cli_execution_context("calculate", kwargs) as (
+        settings,
+        repository,
+        environment,
+    ):
+        version, _, _ = resolve_version(
+            settings=settings,
+            repository=repository,
+            environment=environment,
+        )
+        typer.echo(str(version))
 
-        # Redirect log output to stderr if output is stdout
-        logging_sink = sys.stderr if settings.output == "sys.stdout" else sys.stdout
-        configure_logger(LoggingSettings(enabled=True, sink=logging_sink))
-        logger.debug("Starting gitversioned CLI...")
 
-        repository = GitRepository(settings.project_root)
-        environment = BuildEnvironment(project_root=settings.project_root)
+@app.command(name="format")
+def format_cmd(**kwargs: Any) -> None:
+    """
+    Resolve the version and output the formatted strategy templates.
 
-        version, output_path = resolve_and_generate_version(
+    This command prints the rendered content from the configured version output
+    strategies to stdout. It excludes final file write targets from the options.
+
+    :param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
+    :returns: None.
+    """
+    with _cli_execution_context("format", kwargs) as (
+        settings,
+        repository,
+        environment,
+    ):
+        content, _, _, _ = resolve_version_output(
+            settings=settings,
+            repository=repository,
+            environment=environment,
+        )
+        typer.echo(content, nl=False)
+
+
+@app.command(name="write")
+def write(**kwargs: Any) -> None:
+    """
+    Resolve the version and write output files.
+
+    This command writes the rendered version templates to the configured file
+    paths and prints a confirmation of the successfully written path to stdout.
+
+    :param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
+    :returns: None.
+    """
+    with _cli_execution_context("write", kwargs) as (
+        settings,
+        repository,
+        environment,
+    ):
+        output_path, _, version, _, _ = resolve_version_output_to_stream(
             settings=settings,
             repository=repository,
             environment=environment,
@@ -97,45 +173,74 @@ def run_cli(**kwargs: Any) -> None:
 
         logger.info(f"Successfully resolved version: {version}")
         if output_path:
-            logger.info(f"Version file written to: {output_path}")
+            typer.echo(f"Version successfully written to {output_path}")
 
+
+def _parse_cli_args(kwargs: dict[str, Any]) -> Settings:
+    # Filter out None values and deserialize JSON strings for list/dict/model fields.
+    cli_args = {key: value for key, value in kwargs.items() if value is not None}
+    for field, value in cli_args.items():
+        if isinstance(value, str):
+            stripped = value.strip()
+            if (stripped.startswith("[") and stripped.endswith("]")) or (
+                stripped.startswith("{") and stripped.endswith("}")
+            ):
+                with contextlib.suppress(Exception):
+                    cli_args[field] = json.loads(stripped)
+    return Settings(**typing.cast("Any", cli_args))
+
+
+@contextlib.contextmanager
+def _cli_execution_context(
+    command_name: str,
+    kwargs: dict[str, Any],
+) -> typing.Iterator[tuple[Settings, GitRepository, BuildEnvironment]]:
+    # Provide a unified execution context for CLI subcommands.
+    # Parses configuration, configures logging (ensuring stdout logger sinks are routed
+    # to stderr to prevent interference with command output), initializes repo and build
+    # environments, and handles all standard or unexpected errors/exits consistently.
+    #
+    # :param command_name: The name of the subcommand (for logging/errors).
+    # :param kwargs: Raw CLI argument dictionary matching Settings schema.
+    # :yields: A tuple of (Settings, GitRepository, BuildEnvironment) instances.
+    try:
+        settings = _parse_cli_args(kwargs)
+
+        logging_settings = LoggingSettings()
+        if logging_settings.sink is sys.stdout:
+            logging_settings.sink = sys.stderr
+        configure_logger(logging_settings)
+        logger.debug(f"Starting gitversioned CLI {command_name}...")
+
+        repository = GitRepository(settings.project_root)
+        environment = BuildEnvironment(project_root=settings.project_root)
+        yield settings, repository, environment
+
+    except (typer.Exit, typer.Abort) as exit_exc:
+        raise exit_exc
     except Exception as error:
         with contextlib.suppress(Exception):
             configure_logger(LoggingSettings(enabled=True, sink=sys.stderr))
-        logger.exception("Failed to execute gitversioned CLI")
+        logger.exception(f"Failed to execute gitversioned CLI {command_name}")
         raise SystemExit(1) from error
 
 
-def main() -> None:
-    """
-    Invokes the Typer app.
-    """
-    # If no subcommand is specified, and --version / --help are not present,
-    # default to the "run-cli" command.
-    args = sys.argv[1:]
-    subcommands = ["run-cli"]
-    has_subcommand = any(arg in subcommands for arg in args)
-    has_global = any(arg in ["--version", "-v", "--help", "-h"] for arg in args)
-
-    if not has_subcommand and not has_global:
-        sys.argv.insert(1, "run-cli")
-
-    app()
-
-
-def _build_cli_signature() -> inspect.Signature:
-    """Dynamically builds a CLI signature from the Settings model fields."""
+def _build_cli_signature(exclude_fields: set[str] | None = None) -> inspect.Signature:
+    # Dynamically build a CLI signature from the Settings model fields.
+    exclude = exclude_fields or set()
     parameters = []
     for name, field in Settings.model_fields.items():
+        if name in exclude:
+            continue
+
         # Use None as default so kwargs only contains explicitly provided arguments.
         # This prevents Typer from overriding environment variables or config files
         # with Pydantic default values.
         default_val_repr: bool | str = False
         if field.default not in (..., PydanticUndefined, None):
-            if isinstance(field.default, bool):
-                default_val_repr = field.default
-            else:
-                default_val_repr = str(field.default)
+            default_val_repr = (
+                field.default if isinstance(field.default, bool) else str(field.default)
+            )
 
         flag_name = f"--{name.replace('_', '-')}"
         if name == "version":
@@ -163,10 +268,15 @@ def _build_cli_signature() -> inspect.Signature:
     return inspect.Signature(parameters)
 
 
-# Patch the function signature dynamically to expose Settings fields as
-# CLI parameters to Typer. This prevents duplicating Settings fields in the
-# CLI parameters while ensuring --help and CLI argument parsing work correctly.
-setattr(run_cli, "__signature__", _build_cli_signature())  # noqa: B010
+# Patch function signatures dynamically to expose Settings fields as
+# CLI parameters to Typer.
+typing.cast("Any", calculate).__signature__ = _build_cli_signature(
+    exclude_fields={"output", "output_strategies"}
+)
+typing.cast("Any", format_cmd).__signature__ = _build_cli_signature(
+    exclude_fields={"output"}
+)
+typing.cast("Any", write).__signature__ = _build_cli_signature()
 
 
 if __name__ == "__main__":

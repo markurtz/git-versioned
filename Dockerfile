@@ -35,7 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir uv hatch
 
-ARG VERSION=0.2.0
+ARG VERSION=0.1.3.dev10+9eea393
 
 # Copy package manifests (utilizing optional copy for Cargo files to be robust)
 COPY pyproject.toml README.md LICENSE NOTICE ./
@@ -57,7 +57,7 @@ FROM python:3.10-slim-bookworm
 # Define standard OCI build parameters
 ARG BUILD_DATE
 ARG GIT_SHA
-ARG VERSION=0.2.0
+ARG VERSION=0.1.3.dev10+9eea393
 
 # OCI Metadata Labels
 LABEL org.opencontainers.image.created=$BUILD_DATE \

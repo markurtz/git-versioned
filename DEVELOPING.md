@@ -13,7 +13,7 @@ Ensure your system meets the requirements below to establish a consistent local 
 
 ### Development Environment Container (.devcontainer)
 
-- **Requirements**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) and [VS Code](https://code.visualstudio.com/) with the **Dev Containers** extension installed.
+- **Requirements**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) and [VS Code](https://code.visualstudio.com/) with the **[Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers)** extension installed.
 - **Usage**:
   1. Clone this repository: `git clone https://github.com/markurtz/git-versioned.git`
   1. Open the project folder in VS Code.
@@ -22,7 +22,7 @@ Ensure your system meets the requirements below to establish a consistent local 
 
 > [!NOTE]
 > **Local `.venv` vs. Hatch Environments**:
-> The `uv sync` command creates a local `.venv` in the project root solely to provide VS Code extensions (like Pylance and Ruff) with a standard environment for editor autocomplete, hover information, and in-editor diagnostics. All command-line and automated task execution (formatting, linting, testing, building) is managed via **Hatch** isolated environments (`hatch run ...`). Do not activate or modify this root `.venv` directly for running tasks.
+> The `uv sync` command creates a local `.venv` in the project root solely to provide VS Code extensions (like [Pylance](https://github.com/microsoft/pylance-release) and [Ruff](https://astral.sh/ruff)) with a standard environment for editor autocomplete, hover information, and in-editor diagnostics. All command-line and automated task execution (formatting, linting, testing, building) is managed via **[Hatch](https://hatch.pypa.io/)** isolated environments (`hatch run ...`). Do not activate or modify this root `.venv` directly for running tasks.
 
 ### Local Setup
 
@@ -38,7 +38,7 @@ Ensure your system meets the requirements below to establish a consistent local 
 
 > [!TIP]
 > **Editor Autocomplete Setup (Local)**:
-> For local development outside of the Dev Container, if you want your editor (VS Code, PyCharm, etc.) to resolve imports and provide autocomplete/diagnostics, run `uv sync --all-groups --all-extras` once to create the local `.venv`.
+> For local development outside of the Dev Container, if you want your editor (VS Code, [PyCharm](https://www.jetbrains.com/pycharm/), etc.) to resolve imports and provide autocomplete/diagnostics, run `uv sync --all-groups --all-extras` once to create the local `.venv`.
 
 ## Developer Quickstart
 
@@ -78,9 +78,9 @@ Our build, verification, and execution pipelines are partitioned into target-spe
 
 - **`default`**: The base environment template. It configures shared environment variables (such as target paths, directory structures, and script file paths) and installs the core dependency groups.
 - **`all`**: The orchestrator environment. It defines cascading workflows to run formatting, linting, typing, security scanning, testing, and documentation generation across all components sequentially or concurrently.
-- **`python`**: Encompasses Python-specific verification tools including Ruff for linting/formatting, Ty for type-checking, Pytest for testing, and Typer for CLI documentation generation.
-- **`oci`**: Manages OCI container builds (`docker build`), compose verification (`docker compose config`), linting (`hadolint`), security auditing (`trivy`, `dockle`), and container structure tests (`cstest`).
-- **`project`**: Targets repository-wide configuration and file standards, including Markdown formatting (`mdformat`), configuration checkouts (`yamlfix`, `yamllint`, `taplo`), security baselines (`detect-secrets`, `checkov`), link checkers, and site compilation (using the **Zensical** static site generator/documentation compiler).
+- **`python`**: Encompasses Python-specific verification tools including [Ruff](https://astral.sh/ruff) for linting/formatting, [Ty](https://github.com/astral-sh/ty) for type-checking, [Pytest](https://docs.pytest.org/) for testing, and [Typer](https://typer.tiangolo.com/) for CLI documentation generation.
+- **`oci`**: Manages OCI container builds (`docker build`), compose verification (`docker compose config`), linting ([hadolint](https://github.com/hadolint/hadolint)), security auditing ([trivy](https://trivy.dev/), [dockle](https://github.com/goodwithtech/dockle)), and container structure tests ([cstest](https://github.com/GoogleContainerTools/container-structure-test)).
+- **`project`**: Targets repository-wide configuration and file standards, including Markdown formatting (`[mdformat](https://github.com/executablebooks/mdformat)`), configuration checkouts (`[yamlfix](https://github.com/lyz-code/yamlfix)`, `[yamllint](https://github.com/adrienverge/yamllint)`, `[taplo](https://taplo.tamasfe.dev/)`), security baselines (`[detect-secrets](https://github.com/Yelp/detect-secrets)`, `[checkov](https://www.checkov.io/)`), link checkers, and site compilation (using the **[Zensical](https://zensical.org)** static site generator/documentation compiler).
 
 ## Coding Workflows
 
@@ -120,34 +120,34 @@ This workflow enforces code quality, style conventions, static type correctness,
 #### Code Formatting
 
 - **Tools / Methodology / Rationale**:
-  - **Python**: Uses `ruff` to automatically check/fix imports and format code layout. This delivers high-performance style standardization.
-  - **OCI**: Uses `dclint` (via a helper script) to auto-format Docker Compose files. While `dclint` is primarily a compose linter, the format step (`hatch run oci:format`) executes it with the `--fix` flag to automatically correct lint errors and standard style issues in place. (Dockerfile linting/validation is handled separately by `hadolint`).
-  - **Project**: Employs `mdformat` for Markdown, `yamlfix` for YAML files, and `taplo` for TOML file formatting to maintain a uniform structure for all configuration and documentation files.
+  - **Python**: Uses `[ruff](https://astral.sh/ruff)` to automatically check/fix imports and format code layout. This delivers high-performance style standardization.
+  - **OCI**: Uses `[dclint](https://github.com/zavoloklom/docker-compose-linter)` (via a helper script) to auto-format Docker Compose files. While `dclint` is primarily a compose linter, the format step (`hatch run oci:format`) executes it with the `--fix` flag to automatically correct lint errors and standard style issues in place. (Dockerfile linting/validation is handled separately by `[hadolint](https://github.com/hadolint/hadolint)`).
+  - **Project**: Employs `[mdformat](https://github.com/executablebooks/mdformat)` for Markdown, `[yamlfix](https://github.com/lyz-code/yamlfix)` for YAML files, and `[taplo](https://taplo.tamasfe.dev/)` for TOML file formatting to maintain a uniform structure for all configuration and documentation files.
 - **Expected Outputs & Locations**:
   - In-place modifications applied directly to the files targeted by the respective environment variables: `PYTHON_TARGETS`, `MDFORMAT_TARGETS` (Markdown targets), `YAML_TARGETS`, and `TOML_TARGETS`.
 
 #### Linting & Verification
 
 - **Tools / Methodology / Rationale**:
-  - **Python**: Runs `ruff check` and `ruff format --check` to verify compliance with PEP 8 and project style guidelines without modifying files.
-  - **OCI**: Uses `hadolint` to validate Dockerfile syntax and standard practices, and runs `docker compose config` to verify the syntactic and semantic validity of compose files.
-  - **Project**: Runs `mdformat --check` to check Markdown formatting, `yamlfix --check` and `yamllint` for YAML files, and `taplo check` for TOML configuration syntax.
+  - **Python**: Runs `[ruff](https://astral.sh/ruff) check` and `[ruff](https://astral.sh/ruff) format --check` to verify compliance with PEP 8 and project style guidelines without modifying files.
+  - **OCI**: Uses `[hadolint](https://github.com/hadolint/hadolint)` to validate Dockerfile syntax and standard practices, and runs `docker compose config` to verify the syntactic and semantic validity of compose files.
+  - **Project**: Runs `[mdformat](https://github.com/executablebooks/mdformat) --check` to check Markdown formatting, `[yamlfix](https://github.com/lyz-code/yamlfix) --check` and `[yamllint](https://github.com/adrienverge/yamllint)` for YAML files, and `[taplo](https://taplo.tamasfe.dev/) check` for TOML configuration syntax.
 - **Expected Outputs & Locations**:
   - Summary reports, warnings, and errors output directly to the terminal stdout/stderr. Standard exit codes (non-zero on failures) are used to gate CI pipelines.
 
 #### Static Type Checking
 
 - **Tools / Methodology / Rationale**:
-  - **Python**: Employs Astral's `ty check` frontend to statically analyze and verify Python type annotations.
+  - **Python**: Employs Astral's `[ty check](https://github.com/astral-sh/ty)` frontend to statically analyze and verify Python type annotations.
 - **Expected Outputs & Locations**:
   - Type checker error listings and tracebacks are printed to the terminal console.
 
 #### Security & Vulnerability Auditing
 
 - **Tools / Methodology / Rationale**:
-  - **Python**: Employs `semgrep` for semantic pattern matching, `pip-audit` to detect known vulnerabilities in Python packages, and `ruff check --select S` to check for security vulnerabilities.
-  - **OCI**: Scans built containers using `dockle` (verifies image best practices/secrets) and `trivy` (scans OS-level packages for CVEs).
-  - **Project**: Employs `detect-secrets` to scan for accidentally committed secrets against a baseline, and `checkov` to scan infrastructure-as-code files and development configurations.
+  - **Python**: Employs `[semgrep](https://semgrep.dev/)` for semantic pattern matching, `[pip-audit](https://github.com/pypa/pip-audit)` to detect known vulnerabilities in Python packages, and `[ruff](https://astral.sh/ruff) check --select S` to check for security vulnerabilities.
+  - **OCI**: Scans built containers using `[dockle](https://github.com/goodwithtech/dockle)` (verifies image best practices/secrets) and `[trivy](https://trivy.dev/)` (scans OS-level packages for CVEs).
+  - **Project**: Employs `[detect-secrets](https://github.com/Yelp/detect-secrets)` to scan for accidentally committed secrets against a baseline, and `[checkov](https://www.checkov.io/)` to scan infrastructure-as-code files and development configurations.
 - **Expected Outputs & Locations**:
   - Standard reports output to the console.
   - Project environment updates and validates the secrets baseline file located at `.detect-secrets.scan.json`. Run `hatch run project:security-update` to update this baseline file.
@@ -217,61 +217,81 @@ Code coverage runs collect data during test executions and format them into huma
   - **OCI**: Outputs Container Structure Test results to the console.
   - **Project**: Outputs link-checking validation summaries to the console.
 
-#### Test Categorization & Custom Markers
+#### Test Categorization & Test Pathways
 
-To manage test execution speed and pipeline efficiency, every Python test must be decorated with one of our three custom pytest markers. These markers directly govern how frequently and in which environments those tests are executed in CI/CD pipelines.
+To manage test execution speed and pipeline efficiency, every Python test is categorized into one of our three test pathways: **smoke**, **sanity**, or **regression**. These pathways directly govern how frequently and in which environments those tests are executed in CI/CD pipelines.
 
-##### Test Categories
+##### Pathway Specification & Filtering
 
-- **`@pytest.mark.smoke`**:
+A test's pathway can be specified and detected in one of two ways:
+
+1. **By Marker**: Decorating the test function or class with a custom pytest marker (e.g., `@pytest.mark.smoke`, `@pytest.mark.sanity`, `@pytest.mark.regression`).
+1. **By Name**: Including the pathway name in the test function or class name (e.g., `def test_smoke_initialization()`, `class TestSanityCore`, `def test_regression_bug_fix()`).
+
+##### Test Pathways Breakdown
+
+- **`smoke`**:
   - **Encapsulation & Scope**: Extremely fast, non-flaky, critical-path verification checks. These confirm that the fundamental, basic logic of the application functions correctly (e.g., orchestrator bootstrap, CLI command recognition).
   - **Execution Frequency**: Run on **every commit and Pull Request** (e.g., `development.yml`) as a quick health gate.
-- **`@pytest.mark.sanity`**:
+- **`sanity`**:
   - **Encapsulation & Scope**: Detailed, comprehensive tests of core system behaviors, APIs, and edge cases. These verify that the main business logic functions robustly but may take slightly longer than smoke tests.
   - **Execution Frequency**: Run on **pushes to the main branch** (e.g., `main.yml`) and release branches to ensure overall stability of the codebase.
-- **`@pytest.mark.regression`**:
+- **`regression`**:
   - **Encapsulation & Scope**: Deep, system-wide, and heavy integration/E2E regression verification checks. These ensure that complex interactions, edge cases, and past bugs do not reappear.
   - **Execution Frequency**: Run on **nightly, weekly, and release schedule pipelines** due to their longer execution time.
 
-> [!IMPORTANT]
-> **Mandatory Tagging Policy**:
-> Every Python test MUST be decorated with at least one of these markers. Unmarked tests will not align with our CI scheduling patterns and may be skipped or cause checks to fail.
->
-> **Pytest Registration Rule**:
-> Any new custom markers must be explicitly registered under `[tool.pytest.ini_options]` in [pyproject.toml](./pyproject.toml). Unregistered markers will trigger warnings and fail CI/CD gating pipelines.
+##### Default Pathway Execution
 
-##### Filtering Tests by Marker (Passing Arguments)
+If no specific filtering arguments, markers, or keyword flags are provided, pytest assumes a **regression** pathway by default.
 
-Hatch dynamically passes CLI arguments through to the underlying `pytest` execution via the `{args}` placeholder configured in [pyproject.toml](./pyproject.toml). You can target specific markers using the `-m` flag.
+Running the test suite without any arguments executes a full regression run. This is because a default regression run executes:
+
+- All smoke tests
+- All sanity tests
+- All regression tests
+- Any tests not marked or named under a specific category
+
+##### Filtering Python Tests
+
+Hatch dynamically passes CLI arguments through to the underlying `pytest` execution via the `{args}` placeholder configured in [pyproject.toml](./pyproject.toml). To filter by test pathways (`smoke`, `sanity`, or `regression`), use pytest's keyword option (`-k`). This correctly matches both annotated markers and naming patterns (e.g., pathway keywords in the function or class name).
 
 - **Run only smoke tests**:
   ```bash
-  hatch run python:tests-unit -m smoke
+  hatch run python:tests-unit -k smoke
   ```
 - **Run sanity and smoke tests**:
   ```bash
-  hatch run python:tests-unit -m "sanity or smoke"
+  hatch run python:tests-unit -k "sanity or smoke"
   ```
-- **Exclude regression tests**:
+
+##### Testing a Specific Sub-Package or File
+
+Hatch environments make it easy to target a specific test directory, sub-package, or single file by appending the path to your `hatch run` command. The provided path will override the default directories configured in `pyproject.toml`.
+
+- **Run all tests in a specific file**:
   ```bash
-  hatch run python:tests-func -m "not regression"
+  hatch run python:tests-unit tests/python/unit/test_settings.py
   ```
-- **Orchestrate across all environments using args**:
+- **Run tests in a specific sub-package / directory**:
   ```bash
-  hatch run all:tests-func -m smoke
+  hatch run python:tests-unit tests/python/unit/compat/
+  ```
+- **Run functional tests for a specific integration file**:
+  ```bash
+  hatch run python:tests-func tests/python/integration/test_utils.py
   ```
 
 ### Documentation Workflows
 
-Our documentation is managed as code. It includes auto-generated CLI references and a unified project site built using **Zensical**.
+Our documentation is managed as code. It includes auto-generated CLI references and a unified project site built using **[Zensical](https://zensical.org)**.
 
 > [!NOTE]
 > **Zensical Documentation Tool**:
-> Zensical is a static site generator and documentation compiler configured via `zensical.toml` that integrates MkDocs and its plugin ecosystem (such as `mkdocstrings` and macros) under a simplified configuration structure.
+> [Zensical](https://zensical.org) is a static site generator and documentation compiler configured via `zensical.toml` that integrates [MkDocs](https://www.mkdocs.org/) and its plugin ecosystem (such as [mkdocstrings](https://github.com/mkdocstrings/mkdocstrings) and [macros](https://mkdocs-macros-plugin.readthedocs.io/)) under a simplified configuration structure.
 
 #### CLI Documentation Generation
 
-- **Tools / Methodology / Rationale**: Uses the `typer` utility to compile and output reference docs directly from the Python entrypoint `src/gitversioned/__main__.py`.
+- **Tools / Methodology / Rationale**: Uses the `[typer](https://typer.tiangolo.com/)` utility to compile and output reference docs directly from the Python entrypoint `src/gitversioned/__main__.py`.
 - **Command**: `hatch run python:docs`
 - **Expected Outputs & Locations**: A generated Markdown reference file at `.docs/cli.md`.
 
@@ -299,7 +319,7 @@ These workflows handle compiling code and building containerized runtimes for di
 
 #### Python Package Build
 
-- **Tools / Methodology / Rationale**: Uses Hatchling (configured under `[build-system]` in `pyproject.toml`) to bundle Python distribution wheel and source packages.
+- **Tools / Methodology / Rationale**: Uses [Hatchling](https://pypi.org/project/hatchling/) (configured under `[build-system]` in `pyproject.toml`) to bundle Python distribution wheel and source packages.
 - **Command**: `hatch build`
 - **Expected Outputs & Locations**: Built source distributions and `.whl` files output to the `dist/` directory.
 
@@ -311,7 +331,7 @@ These workflows handle compiling code and building containerized runtimes for di
 
 ## CI/CD Workflows
 
-We maintain high quality gates using git workflows, automated reviews, and GitHub Actions pipelines.
+We maintain high quality gates using git workflows, automated reviews, and [GitHub Actions](https://github.com/features/actions) pipelines.
 
 ### Version Control Standards
 
@@ -336,7 +356,7 @@ We maintain high quality gates using git workflows, automated reviews, and GitHu
 
 Our pipelines use a highly modular and DRY architecture to avoid duplication of setup steps:
 
-- **Tools**: GitHub Actions
+- **Tools**: [GitHub Actions](https://github.com/features/actions)
 
 - **Configuration / Manifest Files**: Reusable actions under `.github/actions/...` and triggers under `.github/workflows/...`
 
@@ -344,12 +364,12 @@ Our pipelines use a highly modular and DRY architecture to avoid duplication of 
 
   - All composite actions (Python, OCI, and Project) support an optional `python-version` parameter.
   - If omitted, actions standardize on the oldest supported version (default: `"3.10"`).
-  - All composite actions using change detection (`dorny/paths-filter`) support a `force-run` parameter (default: `"false"`). When set to `"true"`, it bypasses path-filtering check gates and executes the steps unconditionally (used in scheduled and release workflows).
+  - All composite actions using change detection (`[dorny/paths-filter](https://github.com/dorny/paths-filter)`) support a `force-run` parameter (default: `"false"`). When set to `"true"`, it bypasses path-filtering check gates and executes the steps unconditionally (used in scheduled and release workflows).
 
 - **OCI Tools Native Execution**:
 
   - The repository utilizes unified platform-agnostic OCI runner logic (`scripts/run_oci.py`).
-  - When running in CI under `.github/actions/oci/`, the actions natively install OCI scanning and linting tools (`hadolint`, `dclint`, `dockle`, `trivy`, and `container-structure-test`) on the runner.
+  - When running in CI under `.github/actions/oci/`, the actions natively install OCI scanning and linting tools (`[hadolint](https://github.com/hadolint/hadolint)`, `[dclint](https://github.com/zavoloklom/docker-compose-linter)`, `[dockle](https://github.com/goodwithtech/dockle)`, `[trivy](https://trivy.dev/)`, and `[container-structure-test](https://github.com/GoogleContainerTools/container-structure-test)`) on the runner.
   - This native pre-installation ensures that `run_oci.py` executes these binaries directly on the host machine, bypassing the performance overhead and Docker socket mounting requirements of containerized container-in-container execution.
 
   > [!WARNING]
@@ -371,7 +391,7 @@ Our pipelines use a highly modular and DRY architecture to avoid duplication of 
     - `security`: Runs dependency audits, secrets checks, and security linters.
     - `tests`: Runs unit, integration, and E2E tests, accepting `test-level`, `test-category`, and `generate-coverage` inputs.
     - `build`: Compiles wheels (Python), container images (OCI), or all elements (Project).
-    - `publish`: Publishes release packages to PyPI (Python) or container images to GHCR (OCI).
+    - `publish`: Publishes release packages to [PyPI](https://pypi.org/) (Python) or container images to [GHCR](https://github.com/features/packages) (OCI).
 
 - **Workflows (`.github/workflows/...`)**: Triggered pipelines separated into:
 
@@ -387,13 +407,13 @@ Our pipelines use a highly modular and DRY architecture to avoid duplication of 
 
 ### Local Workflow Testing with `act`
 
-You can test and validate GitHub Actions workflows locally on your development machine using [`nektos/act`](https://github.com/nektos/act). This ensures that workflows run correctly before you push changes to GitHub.
+You can test and validate [GitHub Actions](https://github.com/features/actions) workflows locally on your development machine using [nektos/act](https://github.com/nektos/act). This ensures that workflows run correctly before you push changes to GitHub.
 
 #### Prerequisites
 
-1. Install **Docker** (required by `act` to spin up runner containers).
+1. Install **[Docker](https://www.docker.com/)** (required by `act` to spin up runner containers).
 1. Install `act` using your package manager:
-   - macOS (Homebrew): `brew install act`
+   - macOS ([Homebrew](https://brew.sh/)): `brew install act`
    - Linux (curl): `curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash`
 
 > [!IMPORTANT]
@@ -450,10 +470,10 @@ Because composite actions use `dorny/paths-filter` to detect path-level changes,
 
 ### Security & Code Scanning Gates
 
-- **Tools**: `detect-secrets` (secret scanning), `checkov` (infrastructure auditing), `semgrep` (semantic scanning), `pip-audit` (Python package audits), and `trivy` / `dockle` (OCI image scanning).
+- **Tools**: [detect-secrets](https://github.com/Yelp/detect-secrets) (secret scanning), [checkov](https://www.checkov.io/) (infrastructure auditing), [semgrep](https://semgrep.dev/) (semantic scanning), [pip-audit](https://github.com/pypa/pip-audit) (Python package audits), and [trivy](https://trivy.dev/) / [dockle](https://github.com/goodwithtech/dockle) (OCI image scanning).
 - **Workflow & Rationale**:
-  - **Secret Gating**: `detect-secrets` runs locally and in PR gates against the committed `.detect-secrets.scan.json` baseline to prevent credential leaks.
-  - **Static Analysis & CVE Auditing**: Semgrep, Trivy, Checkov, and pip-audit run automatically as background checks on every pull request to guarantee compliance with our security baseline.
+  - **Secret Gating**: [detect-secrets](https://github.com/Yelp/detect-secrets) runs locally and in PR gates against the committed `.detect-secrets.scan.json` baseline to prevent credential leaks.
+  - **Static Analysis & CVE Auditing**: [Semgrep](https://semgrep.dev/), [Trivy](https://trivy.dev/), [Checkov](https://www.checkov.io/), and [pip-audit](https://github.com/pypa/pip-audit) run automatically as background checks on every pull request to guarantee compliance with our security baseline.
 
 ______________________________________________________________________
 

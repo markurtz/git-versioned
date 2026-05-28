@@ -392,3 +392,7 @@ cdk.out/
 
 # Generated reference documentation
 /.docs/
+/docs/reference/python_api/
+
+# Generated version.py files
+version.py

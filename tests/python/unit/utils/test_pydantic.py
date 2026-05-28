@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import typing
+import inspect
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any, get_args, get_origin
 
 import pytest
 from pydantic import BaseModel, ValidationError
+from pydantic_core import CoreSchema, core_schema
 
 from gitversioned.utils.pydantic import (
     EnsureBool,
@@ -19,10 +20,54 @@ from gitversioned.utils.pydantic import (
 )
 
 
-class TestCoerceBool:
-    """Test the coerce_bool module level function."""
+class MockHandler:
+    """Mock handler for Pydantic core schema generation."""
 
-    @pytest.mark.sanity
+    def generate_schema(self, schema_type: Any) -> CoreSchema:
+        """Generate a basic core schema for testing."""
+        return core_schema.any_schema()
+
+
+class IntListModel(BaseModel):
+    """Pydantic model containing EnsureList[int]."""
+
+    items: EnsureList[int]
+
+
+class StrListModel(BaseModel):
+    """Pydantic model containing EnsureList[str]."""
+
+    items: EnsureList[str]
+
+
+class BoolListModel(BaseModel):
+    """Pydantic model containing EnsureList[bool]."""
+
+    items: EnsureList[bool]
+
+
+class PathListModel(BaseModel):
+    """Pydantic model containing EnsureList[Path]."""
+
+    items: EnsureList[Path]
+
+
+class EnsureBoolModel(BaseModel):
+    """Pydantic model containing EnsureBool."""
+
+    flag: EnsureBool
+
+
+class EnsurePathModel(BaseModel):
+    """Pydantic model containing EnsurePath."""
+
+    path: EnsurePath
+
+
+class TestCoerceBool:
+    """Test suite for the coerce_bool function."""
+
+    @pytest.mark.smoke
     @pytest.mark.parametrize(
         ("input_value", "expected_value"),
         [
@@ -32,209 +77,273 @@ class TestCoerceBool:
             ("t", True),
             ("y", True),
             ("TRUE ", True),
+            (True, True),
+        ],
+    )
+    def test_invocation(self, input_value: Any, expected_value: Any) -> None:
+        """Test truthy values with coerce_bool."""
+        assert coerce_bool(input_value) == expected_value
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("input_value", "expected_value"),
+        [
             ("false", False),
             ("0", False),
             ("no", False),
             ("f", False),
             ("n", False),
             (" FALSE", False),
-            (True, True),
             (False, False),
+        ],
+    )
+    def test_invocation_falsy(self, input_value: Any, expected_value: Any) -> None:
+        """Test falsy values with coerce_bool."""
+        assert coerce_bool(input_value) == expected_value
+
+    @pytest.mark.regression
+    @pytest.mark.parametrize(
+        ("input_value", "expected_value"),
+        [
             (5, 5),
             ("other", "other"),
             (None, None),
         ],
     )
-    def test_invocation(self, input_value: Any, expected_value: Any) -> None:
-        """Test coerce_bool behavior across common input structures."""
+    def test_invocation_fallback(self, input_value: Any, expected_value: Any) -> None:
+        """Test untransformed fallback cases with coerce_bool."""
         assert coerce_bool(input_value) == expected_value
 
 
 class TestCoercePath:
-    """Test the coerce_path module level function."""
+    """Test suite for the coerce_path function."""
 
-    @pytest.mark.sanity
+    @pytest.mark.smoke
     @pytest.mark.parametrize(
         ("input_value", "expected_value"),
         [
             ("/my/path", Path("/my/path")),
             (" /my/path ", Path("/my/path")),
+        ],
+    )
+    def test_invocation(self, input_value: Any, expected_value: Any) -> None:
+        """Test standard string paths with coerce_path."""
+        assert coerce_path(input_value) == expected_value
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("input_value", "expected_value"),
+        [
             (Path("/my/path"), Path("/my/path")),
             (123, 123),
             (None, None),
         ],
     )
-    def test_invocation(self, input_value: Any, expected_value: Any) -> None:
-        """Test coerce_path behavior across common input structures."""
+    def test_invocation_fallback(self, input_value: Any, expected_value: Any) -> None:
+        """Test fallback behavior for coerce_path."""
         assert coerce_path(input_value) == expected_value
 
 
 class TestCoerceList:
-    """Test the coerce_list module level function."""
+    """Test suite for the coerce_list function."""
 
-    @pytest.mark.sanity
+    @pytest.mark.smoke
     @pytest.mark.parametrize(
         ("input_value", "expected_value"),
         [
-            ("a, b, c", ["a", "b", "c"]),
-            ("a", ["a"]),
-            (["a", "b"], ["a", "b"]),
-            (("a", "b"), ["a", "b"]),
-            ({"a"}, ["a"]),
-            (123, [123]),
-            (None, []),
+            ("val_a, val_b, val_c", ["val_a", "val_b", "val_c"]),
+            ("val_a", ["val_a"]),
+            (["val_a", "val_b"], ["val_a", "val_b"]),
+            (("val_a", "val_b"), ["val_a", "val_b"]),
+            ({"val_a"}, ["val_a"]),
         ],
     )
-    def test_invocation(self, input_value: Any, expected_value: Any) -> None:
-        """Test coerce_list behavior across common input structures."""
+    def test_invocation(self, input_value: Any, expected_value: list[Any]) -> None:
+        """Test standard iterables and comma-separated inputs with coerce_list."""
         assert coerce_list(input_value) == expected_value
 
     @pytest.mark.sanity
     @pytest.mark.parametrize(
-        ("input_value", "coercer", "expected_value"),
+        ("input_value", "expected_value"),
         [
-            ("yes, no", coerce_bool, [True, False]),
-            (["1", "0"], coerce_bool, [True, False]),
-            ([["yes", "no"]], coerce_bool, [[True, False]]),
+            (123, [123]),
+            (None, []),
+        ],
+    )
+    def test_invocation_single(
+        self, input_value: Any, expected_value: list[Any]
+    ) -> None:
+        """Test single-item and empty list fallbacks with coerce_list."""
+        assert coerce_list(input_value) == expected_value
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        ("input_value", "expected_value"),
+        [
+            ("yes, no", [True, False]),
+            (["1", "0"], [True, False]),
         ],
     )
     def test_invocation_with_coercer(
-        self, input_value: Any, coercer: Any, expected_value: Any
+        self, input_value: Any, expected_value: list[Any]
     ) -> None:
-        """Test coerce_list behavior with a custom item coercer."""
-        assert coerce_list(input_value, item_pre_coercer=coercer) == expected_value
+        """Test coerce_list with item_pre_coercer set to coerce_bool."""
+        assert coerce_list(input_value, item_pre_coercer=coerce_bool) == expected_value
+
+    @pytest.mark.regression
+    @pytest.mark.parametrize(
+        ("input_value", "expected_value"),
+        [
+            ([["yes", "no"]], [[True, False]]),
+        ],
+    )
+    def test_invocation_nested(
+        self, input_value: Any, expected_value: list[Any]
+    ) -> None:
+        """Test nested list structures with coerce_list."""
+        assert coerce_list(input_value, item_pre_coercer=coerce_bool) == expected_value
+
+    @pytest.mark.regression
+    def test_invalid(self) -> None:
+        """Test handling of exception-throwing coercers in coerce_list."""
+
+        def raising_coercer(val: Any) -> Any:
+            raise ValueError("Invalid item")
+
+        with pytest.raises(ValueError, match="Invalid item"):
+            coerce_list("item1, item2", item_pre_coercer=raising_coercer)
 
 
 class TestEnsureList:
-    """Test the EnsureList Pydantic generic list class."""
+    """Test suite for the EnsureList type wrapper."""
 
     @pytest.fixture(
         params=[
-            ([1, 2, 3], [1, 2, 3]),
-            (["a", "b"], ["a", "b"]),
-            ((1, 2), [1, 2]),
+            [1, 2, 3],
+            ["val_a", "val_b"],
+            [True, False],
         ]
     )
-    def valid_instances(self, request: pytest.FixtureRequest) -> tuple[Any, list[Any]]:
-        """Return valid parameters for initializing the class."""
-        return typing.cast("tuple[Any, list[Any]]", request.param)
+    def valid_instances(self, request: pytest.FixtureRequest) -> EnsureList[Any]:
+        """Return valid instances of EnsureList."""
+        return EnsureList(request.param)
 
     @pytest.mark.sanity
     def test_signature(self) -> None:
-        """Test the class signature and inheritance."""
+        """Test EnsureList class signature and method definition."""
         assert issubclass(EnsureList, list)
-        assert hasattr(EnsureList, "__get_pydantic_core_schema__")
+        sig = inspect.signature(EnsureList.__get_pydantic_core_schema__)
+        assert "source_type" in sig.parameters
+        assert "handler" in sig.parameters
 
     @pytest.mark.smoke
-    def test_initialization(self, valid_instances: tuple[Any, list[Any]]) -> None:
-        """Test basic native Python list initialization behavior."""
-        input_value, expected_value = valid_instances
-        instance = EnsureList(input_value)
-        assert instance == expected_value
+    def test_initialization(self, valid_instances: EnsureList[Any]) -> None:
+        """Test initialization of EnsureList with valid inputs."""
+        assert isinstance(valid_instances, EnsureList)
+        assert isinstance(valid_instances, list)
+        assert list(valid_instances) == valid_instances
 
-    @pytest.mark.smoke
-    def test_marshalling(self) -> None:
-        """Test the Pydantic integration for model schema processing."""
-
-        class IntModel(BaseModel):
-            items: EnsureList[int]
-
-        class StrModel(BaseModel):
-            items: EnsureList[str]
-
-        class BoolModel(BaseModel):
-            items: EnsureList[bool]
-
-        class PathModel(BaseModel):
-            items: EnsureList[Path]
-
-        def as_any(val: Any) -> Any:
-            return val
-
-        assert IntModel(items=as_any("1, 2, 3")).items == [1, 2, 3]
-        assert IntModel(items=as_any(["1", 2, "3"])).items == [1, 2, 3]
-        assert StrModel(items=as_any("a, b")).items == ["a", "b"]
-        assert BoolModel(items=as_any("yes, no")).items == [True, False]
-        assert PathModel(items=as_any("/a, /b")).items == [Path("/a"), Path("/b")]
-
-        parsed_int_model = IntModel.model_validate({"items": "1, 2, 3"})
-        assert parsed_int_model.items == [1, 2, 3]
+    @pytest.mark.regression
+    def test_invalid_initialization_values(self) -> None:
+        """Test initialization of EnsureList with invalid values."""
+        with pytest.raises(TypeError):
+            EnsureList(123)  # type: ignore
 
     @pytest.mark.sanity
+    def test_invalid_initialization_missing(self) -> None:
+        """Test empty initialization of EnsureList."""
+        instance = EnsureList()
+        assert len(instance) == 0
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        "source_type",
+        [
+            EnsureList[int],
+            EnsureList,
+            Annotated[EnsureList[bool], "meta"],
+            Annotated[list[Path], "meta"],
+        ],
+    )
+    def test___get_pydantic_core_schema__(self, source_type: Any) -> None:
+        """Test generation of Pydantic core schema."""
+        handler: Any = MockHandler()
+        schema = EnsureList.__get_pydantic_core_schema__(source_type, handler)
+        assert isinstance(schema, dict)
+        assert schema["type"] == "function-before"
+
+    @pytest.mark.smoke
+    def test_marshalling(self, valid_instances: EnsureList[Any]) -> None:
+        """Test validation and serialization of EnsureList in models."""
+        if all(isinstance(item, int) for item in valid_instances) and valid_instances:
+            model_class: type[BaseModel] = IntListModel
+        elif (
+            all(isinstance(item, bool) for item in valid_instances) and valid_instances
+        ):
+            model_class = BoolListModel
+        else:
+            model_class = StrListModel
+
+        model = model_class.model_validate({"items": valid_instances})
+        assert model.items == valid_instances
+
+        dumped = model.model_dump()
+        assert dumped["items"] == valid_instances
+
+        json_data = model.model_dump_json()
+        assert isinstance(json_data, str)
+        assert json_data is not None
+
+        model_int = IntListModel.model_validate({"items": "1, 2, 3"})
+        assert model_int.items == [1, 2, 3]
+
+        model_bool = BoolListModel.model_validate({"items": "yes, no, true, false"})
+        assert model_bool.items == [True, False, True, False]
+
+        model_path = PathListModel.model_validate({"items": "/path1, /path2"})
+        assert model_path.items == [Path("/path1"), Path("/path2")]
+
+    @pytest.mark.regression
     def test_invalid_marshalling(self) -> None:
-        """Test failure points during Pydantic schema validation."""
-
-        class DummyModel(BaseModel):
-            items: EnsureList[int]
-
+        """Test model validation failures with invalid formats."""
         with pytest.raises(ValidationError):
-            DummyModel(items=typing.cast("typing.Any", "a, b, c"))
+            IntListModel.model_validate({"items": "val_a, val_b, val_c"})
 
 
-class TestEnsureBool:
-    """Test the EnsureBool Pydantic type."""
+@pytest.mark.smoke
+def test_ensure_bool() -> None:
+    """Validate metadata and happy paths for EnsureBool."""
+    assert get_origin(EnsureBool) is Annotated
+    args = get_args(EnsureBool)
+    assert args[0] is bool
 
-    @pytest.mark.smoke
-    @pytest.mark.parametrize(
-        ("input_value", "expected_value"),
-        [
-            ("yes", True),
-            ("no", False),
-            (True, True),
-            (False, False),
-            ("1", True),
-            ("0", False),
-        ],
-    )
-    def test_param_ensure_bool(self, input_value: Any, expected_value: bool) -> None:
-        """Test param correctly parses acceptable truthy and falsy values."""
-
-        class DummyModel(BaseModel):
-            flag: EnsureBool
-
-        assert DummyModel(flag=input_value).flag is expected_value
-        assert DummyModel.model_validate({"flag": input_value}).flag is expected_value
-
-    @pytest.mark.sanity
-    @pytest.mark.parametrize("invalid_value", ["not_a_bool", []])
-    def test_param_ensure_bool_invalid(self, invalid_value: Any) -> None:
-        """Test failure instances when assigning invalid values."""
-
-        class DummyModel(BaseModel):
-            flag: EnsureBool
-
-        with pytest.raises(ValidationError):
-            DummyModel(flag=invalid_value)
+    assert EnsureBoolModel(flag="yes").flag is True
+    assert EnsureBoolModel(flag="0").flag is False
+    assert EnsureBoolModel(flag=True).flag is True
 
 
-class TestEnsurePath:
-    """Test the EnsurePath Pydantic type."""
+@pytest.mark.regression
+@pytest.mark.parametrize("invalid_value", ["not_a_bool", [123]])
+def test_ensure_bool_invalid(invalid_value: Any) -> None:
+    """Validate failure pathways for EnsureBool."""
+    with pytest.raises(ValidationError):
+        EnsureBoolModel(flag=invalid_value)
 
-    @pytest.mark.smoke
-    @pytest.mark.parametrize(
-        ("input_value", "expected_value"),
-        [
-            ("/my/path", Path("/my/path")),
-            (" /my/path ", Path("/my/path")),
-            (Path("/my/path"), Path("/my/path")),
-        ],
-    )
-    def test_param_ensure_path(self, input_value: Any, expected_value: Path) -> None:
-        """Test param correctly parses acceptable string inputs into Paths."""
 
-        class DummyModel(BaseModel):
-            path: EnsurePath
+@pytest.mark.smoke
+def test_ensure_path() -> None:
+    """Validate metadata and happy paths for EnsurePath."""
+    assert get_origin(EnsurePath) is Annotated
+    args = get_args(EnsurePath)
+    assert args[0] is Path
 
-        assert DummyModel(path=input_value).path == expected_value
-        assert DummyModel.model_validate({"path": input_value}).path == expected_value
+    assert EnsurePathModel(path="/my/path").path == Path("/my/path")
+    assert EnsurePathModel(path=Path("/my/path")).path == Path("/my/path")
 
-    @pytest.mark.sanity
-    @pytest.mark.parametrize("invalid_value", [123, []])
-    def test_param_ensure_path_invalid(self, invalid_value: Any) -> None:
-        """Test failure instances when assigning invalid values."""
 
-        class DummyModel(BaseModel):
-            path: EnsurePath
-
-        with pytest.raises(ValidationError):
-            DummyModel(path=invalid_value)
+@pytest.mark.regression
+@pytest.mark.parametrize("invalid_value", [123, [456]])
+def test_ensure_path_invalid(invalid_value: Any) -> None:
+    """Validate failure pathways for EnsurePath."""
+    with pytest.raises(ValidationError):
+        EnsurePathModel(path=invalid_value)

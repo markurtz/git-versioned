@@ -13,25 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 name: "Project Docs Builder"
-description: "Builds project documentation using Zensical and optionally deploys to GitHub\
-  \ Pages"
+description: "Builds project documentation using Zensical and mike versioning"
 inputs:
-  build-type:
-    description: "Deploy target type: dev-branch, dev, nightly, release, or post"
+  version-name:
+    description: "The version or folder name of the docs to build"
     required: true
-  alias:
-    description: "The alias to use for the documentation version (e.g., latest, nightly)"
-    required: true
-  include-coverage:
-    description: "Whether to download and include unit test coverage in the docs"
-    required: false
-    default: "false"
-  deploy:
-    description: "Whether to commit and deploy the built docs to the gh-pages branch"
-    required: false
-    default: "false"
   python-version:
-    description: "Python version to set up"
+    description: "Python version to set up for tooling"
     required: false
     default: "3.10"
   force-run:
@@ -39,9 +27,9 @@ inputs:
     required: false
     default: "false"
 outputs:
-  deployed-url:
-    description: "Path where the docs were deployed"
-    value: ${{ steps.dest.outputs.path }}
+  docs-url:
+    description: "The URL where the deployed docs will be accessible"
+    value: ${{ steps.url-step.outputs.docs-url }}
 runs:
   using: "composite"
   steps:
@@ -70,93 +58,102 @@ runs:
         else
           echo "run=false" >> "$GITHUB_OUTPUT"
         fi
+    - name: Evaluate docs arguments
+      id: docs-args
+      if: steps.check.outputs.run == 'true'
+      shell: bash
+      env:
+        VERSION_NAME: ${{ inputs.version-name }}
+      run: |
+        BUILD_TYPE=""
+        ALIAS=""
+        if [[ "$VERSION_NAME" =~ ^pr-[0-9]+$ ]]; then
+          BUILD_TYPE="pr"
+        elif [[ "$VERSION_NAME" =~ ^main- ]]; then
+          BUILD_TYPE="main"
+          ALIAS="dev"
+        elif [[ "$VERSION_NAME" =~ ^nightly- ]]; then
+          BUILD_TYPE="nightly"
+          ALIAS="nightly"
+        elif [[ "$VERSION_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+          BUILD_TYPE="release"
+          git fetch --tags --force 2>/dev/null || true
+          LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
+          if [ "$VERSION_NAME" = "$LATEST_TAG" ]; then
+            ALIAS="latest"
+          else
+            ALIAS=""
+          fi
+        else
+          BUILD_TYPE="release"
+          ALIAS=""
+        fi
+        echo "build-type=$BUILD_TYPE" >> "$GITHUB_OUTPUT"
+        echo "alias=$ALIAS" >> "$GITHUB_OUTPUT"
+        echo "[INFO] Evaluated build-type: $BUILD_TYPE, alias: $ALIAS for version: $VERSION_NAME"
     - name: Set up Python & Hatch
       if: steps.check.outputs.run == 'true'
       uses: ./.github/actions/utility/setup-python
       with:
         python-version: ${{ inputs.python-version }}
-    - name: Configure Git Credentials
-      if: steps.check.outputs.run == 'true' && inputs.deploy == 'true'
+    - name: Build PR documentation
+      if: steps.check.outputs.run == 'true' && steps.docs-args.outputs.build-type == 'pr'
       shell: bash
-      run: |
-        git config user.name github-actions[bot]
-        git config user.email github-actions[bot]@users.noreply.github.com
-    - name: Download Python test coverage
-      if: steps.check.outputs.run == 'true' && inputs.include-coverage == 'true'
-      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372ec801d16  # v4.1.8
-      with:
-        pattern: coverage-report-*-python-py${{ inputs.python-version }}-*
-        path: coverage/python
-        merge-multiple: true
-      continue-on-error: true
-    - name: Compute deployment destination path
-      if: steps.check.outputs.run == 'true'
-      id: dest
-      shell: bash
-      env:
-        BUILD_TYPE: ${{ inputs.build-type }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        REF_NAME: ${{ github.ref_name }}
-        ALIAS: ${{ inputs.alias }}
-      run: |
-        case "$BUILD_TYPE" in
-          dev-branch) echo "path=pr-$PR_NUMBER" >> "$GITHUB_OUTPUT" ;;
-          dev)        echo "path=dev"           >> "$GITHUB_OUTPUT" ;;
-          nightly)    echo "path=nightly"       >> "$GITHUB_OUTPUT" ;;
-          release)    echo "path=$REF_NAME"     >> "$GITHUB_OUTPUT" ;;
-          post)       echo "path=post"          >> "$GITHUB_OUTPUT" ;;
-          *)          echo "path=$ALIAS"        >> "$GITHUB_OUTPUT" ;;
-        esac
-    - name: Build and deploy using Git
-      if: steps.check.outputs.run == 'true'
-      shell: bash
-      env:
-        VERSION_PATH: ${{ steps.dest.outputs.path }}
-        ALIAS: ${{ inputs.alias }}
-        BUILD_TYPE: ${{ inputs.build-type }}
-        DEPLOY: ${{ inputs.deploy }}
       run: |-
-        # Build documentation
+        echo "[INFO] Building PR docs using Zensical..."
         hatch run project:docs
-        if [ "$DEPLOY" = "true" ]; then
-          # Save built site files outside repo
-          mv site ../site-temp
-
-          # Checkout gh-pages branch
-          git fetch origin gh-pages:gh-pages || true
-          git checkout gh-pages || git checkout --orphan gh-pages
-
-          # Clean target directory and copy new files
-          rm -rf "$VERSION_PATH"
-          mkdir -p "$VERSION_PATH"
-          cp -r ../site-temp/* "$VERSION_PATH"/
-
-          # Deploy to alias path if alias is configured
-          if [ "$ALIAS" != "" ] && [ "$ALIAS" != "$VERSION_PATH" ]; then
-            rm -rf "$ALIAS"
-            mkdir -p "$ALIAS"
-            cp -r ../site-temp/* "$ALIAS"/
-          fi
-
-          # Set default redirect if release build
-          if [ "$BUILD_TYPE" == "release" ]; then
-            printf '%s\n' \
-              '<!DOCTYPE html>' \
-              '<html>' \
-              '<head>' \
-              "  <meta http-equiv=\"refresh\" content=\"0; url=${ALIAS}/\" />" \
-              '  <script>' \
-              "    window.location.replace(\"${ALIAS}/\" + window.location.search + window.location.hash);" \
-              '  </script>' \
-              '</head>' \
-              '<body>' \
-              "  <p>Redirecting to <a href=\"${ALIAS}/\">latest documentation</a>...</p>" \
-              '</body>' \
-              '</html>' > index.html
-          fi
-
-          # Commit changes and push
-          git add -A
-          git commit -m "docs: deploy documentation for $VERSION_PATH" || echo "No changes to commit"
-          git push origin gh-pages
+    - name: Deploy PR documentation preview
+      if: steps.check.outputs.run == 'true' && steps.docs-args.outputs.build-type == 'pr'
+      uses: peaceiris/actions-gh-pages@373f7f263a76c20808c831209c920827a82a2847  # v4.0.0
+      with:
+        github_token: ${{ github.token }}
+        publish_branch: gh-pages
+        publish_dir: ./site
+        destination_dir: review/${{ inputs.version-name }}
+        keep_files: true
+        user_name: "github-actions[bot]"
+        user_email: "github-actions[bot]@users.noreply.github.com"
+    - name: Set up Git credentials
+      if: steps.check.outputs.run == 'true' && steps.docs-args.outputs.build-type != 'pr'
+      uses: ./.github/actions/utility/setup-git
+    - name: Deploy versioned documentation using mike
+      if: steps.check.outputs.run == 'true' && steps.docs-args.outputs.build-type != 'pr'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        VERSION_NAME: ${{ inputs.version-name }}
+        ALIAS: ${{ steps.docs-args.outputs.alias }}
+        BUILD_TYPE: ${{ steps.docs-args.outputs.build-type }}
+      run: |-
+        echo "[INFO] Deploying version $VERSION_NAME using mike..."
+        if [ -n "$ALIAS" ]; then
+          hatch run mike deploy -F zensical.toml --push --update-aliases "$VERSION_NAME" "$ALIAS"
+        else
+          hatch run mike deploy -F zensical.toml --push "$VERSION_NAME"
         fi
+        if [ "$BUILD_TYPE" = "release" ] && [ "$ALIAS" = "latest" ]; then
+          echo "[INFO] Setting default version to latest..."
+          hatch run mike set-default -F zensical.toml --push latest
+        fi
+    - name: Compute documentation URL
+      id: url-step
+      if: steps.check.outputs.run == 'true'
+      shell: bash
+      env:
+        REPO_OWNER: ${{ github.repository_owner }}
+        REPO: ${{ github.repository }}
+        BUILD_TYPE: ${{ steps.docs-args.outputs.build-type }}
+        VERSION_NAME: ${{ inputs.version-name }}
+        ALIAS: ${{ steps.docs-args.outputs.alias }}
+      run: |-
+        OWNER_LOWER=$(echo "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
+        REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+        BASE_URL="https://${OWNER_LOWER}.github.io/${REPO_NAME}"
+        if [ "$BUILD_TYPE" = "pr" ]; then
+          DOCS_URL="${BASE_URL}/review/${VERSION_NAME}/"
+        elif [ -n "$ALIAS" ]; then
+          DOCS_URL="${BASE_URL}/${ALIAS}/"
+        else
+          DOCS_URL="${BASE_URL}/${VERSION_NAME}/"
+        fi
+        echo "docs-url=$DOCS_URL" >> "$GITHUB_OUTPUT"

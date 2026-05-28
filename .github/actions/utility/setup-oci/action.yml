@@ -25,3 +25,12 @@ runs:
     - name: Install DCLint
       shell: bash
       run: npm install -g dclint@3.1.0
+    - name: Install container-structure-test
+      shell: bash
+      run: |-
+        mkdir -p "$HOME/.local/bin"
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/')
+        curl -sSL -o "$HOME/.local/bin/container-structure-test" "https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.1/container-structure-test-${OS}-${ARCH}"
+        chmod +x "$HOME/.local/bin/container-structure-test"
+        echo "$HOME/.local/bin" >> $GITHUB_PATH

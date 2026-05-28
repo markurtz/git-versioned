@@ -1,10 +1,10 @@
-"""
-Git repository utility module.
+"""Git repository utility module.
 
-This module provides a robust interface for interacting with Git repositories.
-It uses a combination of subprocess calls and Pydantic models to safely and
-efficiently retrieve and represent Git metadata such as commits, tags, and branches.
+This module exposes a Pydantic-based interface to extract Git repository
+metadata (commits, tags, and branches) via command-line subprocesses.
 
+Example
+-------
 .. code-block:: python
 
     from gitversioned.utils.git import GitRepository
@@ -20,7 +20,7 @@ import shlex
 import subprocess
 import sys
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -38,93 +38,87 @@ _EXPECTED_LOG_PARTS_COUNT = 7
 
 
 class NotAGitRepositoryError(Exception):
-    """
-    Raised when the directory is not a valid Git repository.
+    """Exception raised when a directory is not a valid Git repository.
 
-    This exception is raised when Git operations are attempted on a directory that
-    is not part of a valid Git work tree.
+    This error is raised when Git operations are performed on a directory
+    that is not inside a valid Git work tree.
+
+    Example
+    -------
+    .. code-block:: python
+
+        try:
+            root = GitRepository("/tmp").root_directory
+        except NotAGitRepositoryError:
+            pass
     """
 
 
 class GitReference(BaseModel):
-    """
-    Pydantic model representing a Git reference (commit, tag, or branch).
+    """Pydantic model representing a Git reference (commit, tag, or branch).
 
-    Provides the foundational metadata fields for Git objects and includes
-    optional fields for specific types like author information for commits,
-    or names for tags and branches.
+    Provides the core metadata fields representing a Git reference in a repository
+    with details for tag, branch, or commit types.
 
+    Example
+    -------
     .. code-block:: python
 
-        def print_metadata(metadata: GitReference):
-            print(f"SHA: {metadata.short_sha}, HEAD: {metadata.is_head_commit}")
+        from gitversioned.utils.git import GitReference
+
+        ref = GitReference(short_sha="a1b2c3d", distance_from_head=0)
+        print(ref.short_sha)
     """
 
     commit_sha: str = Field(
-        description="The full, un-abbreviated SHA hash of the commit.",
+        description="Full Git commit SHA-1 hash to identify the object.",
         default="",
     )
     short_sha: str = Field(
-        description="The abbreviated SHA hash of the commit for display purposes.",
+        description="Abbreviated Git commit SHA hash for short display.",
         default="",
     )
     timestamp: datetime = Field(
-        description="The creation or commit timestamp of the Git object.",
+        description="Creation or commit timestamp of the Git object.",
         default=datetime.min,
     )
     distance_from_head: int = Field(
-        description="The number of commits between this object and the current HEAD.",
+        description="Commit distance from the current HEAD.",
         default=sys.maxsize,
     )
     is_head_commit: bool = Field(
-        description="Indicates whether this object represents the current HEAD commit.",
+        description="True if this is the HEAD commit.",
         default=False,
     )
     total_commits: int = Field(
-        description="Total number of commits in the repository.",
+        description="Total commit count of the repository.",
         default=0,
     )
-    author_name: str = Field(
-        description="The name of the author who created the commit.", default=""
-    )
+    author_name: str = Field(description="Name of the commit author.", default="")
     author_email: str = Field(
-        description="The email address of the author who created the commit.",
+        description="Email of the commit author.",
         default="",
     )
     commit_message: str = Field(
-        description="The full message associated with the commit.", default=""
+        description="Full commit message body and subject.", default=""
     )
-    tag_name: str = Field(description="The name of the Git tag.", default="")
-    branch_name: str = Field(description="The name of the Git branch.", default="")
+    tag_name: str = Field(description="Name of the Git tag.", default="")
+    branch_name: str = Field(description="Name of the Git branch.", default="")
     is_current_branch: bool = Field(
-        description="Indicates whether this branch is currently checked out.",
+        description="True if the branch is currently checked out.",
         default=False,
     )
-
-    def __str__(self) -> str:
-        if self.tag_name:
-            return f"{self.tag_name} -> {self.short_sha} ({self.timestamp.isoformat()})"
-        if self.branch_name:
-            marker = "*" if self.is_current_branch else " "
-            return (
-                f"{marker} {self.branch_name} -> {self.short_sha} "
-                f"({self.timestamp.isoformat()})"
-            )
-        if self.commit_message:
-            return (
-                f"{self.short_sha} {self.commit_message} - {self.author_name} "
-                f"({self.timestamp.isoformat()})"
-            )
-        return f"{self.short_sha} ({self.timestamp.isoformat()})"
 
     @model_validator(mode="before")
     @classmethod
     def parse_git_references(cls, data: Any) -> Any:
-        """
-        Extracts branch and tag metadata from the 'refs' input string.
+        """Extract branch and tag metadata from input dictionary ref strings.
 
-        Logic identifies the current branch via 'HEAD ->' and extracts
-        the most recent tags.
+        This validator parses command output references to identify current
+        branches and tags.
+
+        :param data: The input dictionary or raw data to validate.
+        :return: The parsed and normalized dictionary.
         """
         if not isinstance(data, dict):
             return data
@@ -160,31 +154,46 @@ class GitReference(BaseModel):
 
         return data
 
+    def __str__(self) -> str:
+        time_str = self.timestamp.isoformat()
+        if self.tag_name:
+            return f"{self.tag_name} -> {self.short_sha} ({time_str})"
+        if self.branch_name:
+            marker = "*" if self.is_current_branch else " "
+            return f"{marker} {self.branch_name} -> {self.short_sha} ({time_str})"
+        if self.commit_message:
+            return (
+                f"{self.short_sha} {self.commit_message} - {self.author_name} "
+                f"({time_str})"
+            )
+        return f"{self.short_sha} ({time_str})"
+
 
 class GitRepository:
-    """
-    Refined interface for Git operations using Pydantic and safe execution.
+    """Interface for querying Git repository status and references.
 
-    Provides properties and methods to query a Git repository's status, branches, tags,
-    and commits. It encapsulates subprocess calls to Git and returns typed
-    Pydantic models.
+    Provides properties and methods to interact with a Git repository using typed
+    Pydantic models for commits, tags, and branches.
 
+    Example
+    -------
     .. code-block:: python
+
+        from gitversioned.utils.git import GitRepository
 
         repo = GitRepository()
         if repo.is_available:
-            print(repo.last_tag.tag_name if repo.last_tag else "No tags found")
+            print(repo.head_name)
     """
 
     def __init__(
         self,
         repository_path: Path | str | None = None,
     ) -> None:
-        """
-        Initializes the GitRepository instance.
+        """Initialize the GitRepository instance.
 
-        :param repository_path: The base path to the Git repository.
-            Defaults to the current working directory.
+        :param repository_path: Base directory of the repository,
+            defaults to Path.cwd().
         """
         self.base_path = Path(repository_path or Path.cwd()).resolve()
 
@@ -193,21 +202,25 @@ class GitRepository:
         if not self.is_available:
             return f"GitRepository({self.base_path}) - Unavailable"
 
-        status = "*" if self.is_dirty else ""
-        head = self.head_name or "detached"
-
+        dirty_files = self.dirty_files
         current = self.current_commit
         tag = self.last_tag
         branch = self.current_branch
 
+        head = "detached"
+        if branch:
+            head = branch.branch_name
+        elif current:
+            head = current.short_sha
+
         return (
-            f"GitRepository(path={self.base_path!r}, is_available={self.is_available}, "
-            f"commit_count={self.commit_count}, is_dirty={self.is_dirty}, "
-            f"dirty_files={self.dirty_files}, "
+            f"GitRepository(path={self.base_path!r}, is_available=True, "
+            f"commit_count={self.commit_count}, is_dirty={bool(dirty_files)}, "
+            f"dirty_files={dirty_files}, "
             f"current_commit={current.short_sha if current else None}, "
             f"last_tag={tag.tag_name if tag else None}, "
             f"current_branch={branch.branch_name if branch else None}"
-            f") - {head}{status}"
+            f") - {head}{'*' if dirty_files else ''}"
         )
 
     def __repr__(self) -> str:
@@ -216,34 +229,30 @@ class GitRepository:
 
     @property
     def is_available(self) -> bool:
-        """
-        Checks if the path is inside a valid git work tree.
+        """Check if the base path is within a valid Git work tree.
 
-        :return: True if the base path is a valid Git repository work tree,
-            False otherwise.
+        :return: True if the repository path is a valid Git work tree, False otherwise.
         """
         return self._execute_command(["rev-parse", "--is-inside-work-tree"]) == "true"
 
     @property
     def root_directory(self) -> Path:
-        """
-        Gets the root directory of the Git repository.
+        """Get the root directory of the Git repository.
 
-        :return: The absolute path to the root directory of the Git repository.
-        :raises NotAGitRepositoryError: If the repository is not valid.
+        :return: Absolute path to the Git repository root.
+        :raises NotAGitRepositoryError: If the path is not a valid Git repository.
         """
         self._ensure_valid_repository()
         return Path(self._execute_command(["rev-parse", "--show-toplevel"]))
 
     @property
     def repository_name(self) -> str:
-        """
-        Gets the name of the Git repository.
+        """Get the name of the Git repository.
 
-        Extracts the repository name from the remote origin URL if available; otherwise,
-        falls back to the name of the root directory.
+        Attempts to parse the name from the remote origin URL, falling back
+        to the root directory name.
 
-        :return: The string name of the Git repository.
+        :return: The repository name.
         """
         if remote_url := self.remote_origin_url:
             name = remote_url.split("/")[-1]
@@ -252,19 +261,17 @@ class GitRepository:
 
     @property
     def remote_origin_url(self) -> str:
-        """
-        Gets the remote origin URL.
+        """Get the remote origin URL.
 
-        :return: The URL of the remote origin, or an empty string if not configured.
+        :return: Remote origin URL, or empty string if not set.
         """
         return self._execute_command(["config", "--get", "remote.origin.url"])
 
     @property
     def commit_count(self) -> int:
-        """
-        Gets the total number of commits in the repository.
+        """Get the total commit count on the current branch.
 
-        :return: The total number of commits.
+        :return: Total number of commits, or 0 if unavailable.
         """
         if not self.is_available:
             return 0
@@ -275,48 +282,65 @@ class GitRepository:
 
     @property
     def is_dirty(self) -> bool:
-        """
-        Checks if the repository has uncommitted changes.
+        """Check if the repository has uncommitted modifications.
 
-        :return: True if there are uncommitted changes, False otherwise.
+        :return: True if dirty changes exist, False otherwise.
         """
         return bool(self.dirty_files)
 
     @property
-    def dirty_files(self) -> list[str]:
-        """
-        Gets a list of modified files.
+    def dirty_files(self) -> list[Path]:
+        """Get a list of all modified and untracked file paths.
 
-        :return: A list of file paths that have uncommitted changes.
+        :return: List of paths with uncommitted changes.
         """
         output = self._execute_command(["status", "--porcelain"])
-        return [line[3:] for line in output.splitlines() if line]
+        dirty = []
+        for line in output.splitlines():
+            if line:
+                path = line[3:]
+                if " -> " in path:
+                    path = path.split(" -> ")[-1]
+                dirty.append((self.base_path / path).resolve())
+        return dirty
 
     @property
     def current_commit(self) -> GitReference | None:
-        """
-        Gets the most recent commit.
+        """Get the most recent commit.
 
-        :return: The most recent GitReference object, or None if no commits exist.
+        :return: Most recent commit reference, or None if empty.
         """
         return next(self.commits, None)
 
     @property
-    def last_tag(self) -> GitReference | None:
-        """
-        Gets the most recent tag.
+    def current_commit_or_fallback(self) -> GitReference:
+        """Get the most recent commit or a generated fallback reference.
 
-        :return: The most recent GitReference object, or None if no tags exist.
+        :return: Current commit reference, or a dummy reference if unavailable.
+        """
+        return (
+            self.current_commit
+            if self.is_available and self.current_commit
+            else GitReference(
+                timestamp=datetime.now(timezone.utc),
+                distance_from_head=0,
+                is_head_commit=True,
+            )
+        )
+
+    @property
+    def last_tag(self) -> GitReference | None:
+        """Get the most recent tag.
+
+        :return: Most recent tag reference, or None if no tags exist.
         """
         return next(self.tags, None)
 
     @property
     def current_branch(self) -> GitReference | None:
-        """
-        Gets the currently checked-out branch.
+        """Get the currently checked-out branch.
 
-        :return: The GitReference object representing the current branch,
-            or None if detached.
+        :return: Current branch reference, or None if in detached HEAD.
         """
         return next(
             (branch for branch in self.branches if branch.is_current_branch),
@@ -325,10 +349,9 @@ class GitRepository:
 
     @property
     def head_name(self) -> str:
-        """
-        Gets the branch name or short sha of HEAD.
+        """Get the branch name or the short commit SHA of HEAD.
 
-        :return: The current branch name, or the short SHA if in a detached HEAD state.
+        :return: Current branch name, or short SHA if detached.
         """
         if branch := self.current_branch:
             return branch.branch_name
@@ -338,11 +361,10 @@ class GitRepository:
 
     @property
     def commits(self) -> Iterator[GitReference]:
-        """
-        Yields all commits in the repository.
+        """Yield all commits in the repository history.
 
-        :return: An iterator of GitReference objects.
-        :raises NotAGitRepositoryError: If the repository is not valid.
+        :return: Iterator of commit reference objects.
+        :raises NotAGitRepositoryError: If the path is not a valid Git repository.
         """
         self._ensure_valid_repository()
         total_commits = self.commit_count
@@ -388,11 +410,10 @@ class GitRepository:
 
     @property
     def tags(self) -> Iterator[GitReference]:
-        """
-        Yields all tags in the repository.
+        """Yield all tags in the repository sorted by creation date.
 
-        :return: An iterator of GitReference objects.
-        :raises NotAGitRepositoryError: If the repository is not valid.
+        :return: Iterator of tag reference objects.
+        :raises NotAGitRepositoryError: If the path is not a valid Git repository.
         """
         self._ensure_valid_repository()
         current = self.current_commit
@@ -426,11 +447,10 @@ class GitRepository:
 
     @property
     def branches(self) -> Iterator[GitReference]:
-        """
-        Yields all branches in the repository.
+        """Yield all branches in the repository.
 
-        :return: An iterator of GitReference objects.
-        :raises NotAGitRepositoryError: If the repository is not valid.
+        :return: Iterator of branch reference objects.
+        :raises NotAGitRepositoryError: If the path is not a valid Git repository.
         """
         self._ensure_valid_repository()
         current = self.current_commit
@@ -462,8 +482,47 @@ class GitRepository:
                 total_commits=total_commits,
             )
 
+    def filtered_dirty_files(
+        self, ignore_paths: list[Path] | None = None, fail_on_unavailable: bool = False
+    ) -> list[str]:
+        """Filter modified files excluding the specified ignore paths.
+
+        Example
+        -------
+        .. code-block:: python
+
+            dirty = repo.filtered_dirty_files(ignore_paths=[Path("tmp")])
+
+        :param ignore_paths: List of file/directory paths to exclude from results.
+        :param fail_on_unavailable: If True, raise exception if Git is missing.
+        :return: List of filtered dirty file paths as strings.
+        :raises NotAGitRepositoryError: If repository is missing and
+            fail_on_unavailable is True.
+        """
+        if not self.is_available:
+            if fail_on_unavailable:
+                raise NotAGitRepositoryError(
+                    f"Path '{self.base_path}' is not a Git repository."
+                )
+            return []
+
+        unfiltered_files = []
+        ignore_paths_abs = [
+            path.resolve() if path.is_absolute() else (self.base_path / path).resolve()
+            for path in ignore_paths or []
+        ]
+
+        for dirty_file in self.dirty_files:
+            if not any(
+                dirty_file == ignored or ignored in dirty_file.parents
+                for ignored in ignore_paths_abs
+            ):
+                unfiltered_files.append(str(dirty_file))
+
+        return unfiltered_files
+
     def _stream_command(self, arguments: list[str]) -> Iterator[str]:
-        """Executes a git command and streams output line by line."""
+        # Stream the output of a Git command line by line.
         full_command = ["git", *arguments]
         try:
             with subprocess.Popen(  # noqa: S603
@@ -477,7 +536,7 @@ class GitRepository:
             logger.debug(f"Command '{shlex.join(full_command)}' failed: {error}")
 
     def _execute_command(self, arguments: list[str]) -> str:
-        """Executes a git command with standardized error handling."""
+        # Execute a Git command and return stdout as a stripped string.
         full_command = ["git", *arguments]
         try:
             return subprocess.run(  # noqa: S603
@@ -486,13 +545,13 @@ class GitRepository:
                 capture_output=True,
                 text=True,
                 check=True,
-            ).stdout.strip()
+            ).stdout.rstrip()
         except (subprocess.CalledProcessError, FileNotFoundError, OSError) as error:
             logger.debug(f"Command '{shlex.join(full_command)}' failed: {error}")
             return ""
 
     def _ensure_valid_repository(self) -> None:
-        """Raises an error if the directory is not a Git repository."""
+        # Ensure the repository is available, raising NotAGitRepositoryError if not.
         if not self.is_available:
             raise NotAGitRepositoryError(
                 f"Path '{self.base_path}' is not a Git repository."

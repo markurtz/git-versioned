@@ -19,38 +19,14 @@ inputs:
     description: "Python version to set up"
     required: false
     default: "3.10"
-  run-functional:
-    description: "Whether to run functional (integration doc) tests"
+  test-type:
+    description: "Type of tests to run: functional or e2e"
     required: false
-    default: "true"
-  run-e2e:
-    description: "Whether to run end-to-end (e2e link check) tests"
-    required: false
-    default: "true"
-  test-category:
-    description: "Test category: smoke, sanity, regression, or all (supports combinations\
-      \ like 'smoke or sanity')"
-    required: false
-    default: "all"
-  generate-coverage:
-    description: "Generate test coverage report (not applicable for project env)"
-    required: false
-    default: "false"
-  extra-args:
-    description: "Extra arguments to pass to the tests"
-    required: false
-    default: ""
+    default: "functional"
   force-run:
     description: "Always run even if no changes are detected"
     required: false
     default: "false"
-outputs:
-  coverage-generated:
-    description: "Whether a coverage report was generated"
-    value: "false"
-  coverage-reports:
-    description: "Paths to the generated coverage report(s)"
-    value: ""
 runs:
   using: "composite"
   steps:
@@ -63,11 +39,16 @@ runs:
     - name: Evaluate changes
       id: check
       shell: bash
+      env:
+        FORCE_RUN: ${{ inputs.force-run }}
+        GITHUB_CHANGES: ${{ steps.filter.outputs.github_changes }}
+        PYPROJECT_CHANGES: ${{ steps.filter.outputs.pyproject_changes }}
+        PROJECT_CHANGES: ${{ steps.filter.outputs.project_changes }}
       run: |
-        if [[ "${{ inputs.force-run }}" == "true" || \
-              "${{ steps.filter.outputs.github_changes }}" == "true" || \
-              "${{ steps.filter.outputs.pyproject_changes }}" == "true" || \
-              "${{ steps.filter.outputs.project_changes }}" == "true" ]]; then
+        if [[ "$FORCE_RUN" == "true" || \
+              "$GITHUB_CHANGES" == "true" || \
+              "$PYPROJECT_CHANGES" == "true" || \
+              "$PROJECT_CHANGES" == "true" ]]; then
           echo "run=true" >> "$GITHUB_OUTPUT"
         else
           echo "run=false" >> "$GITHUB_OUTPUT"
@@ -78,22 +59,14 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
     - name: Run Project Functional Tests
-      if: steps.check.outputs.run == 'true' && inputs.run-functional == 'true'
+      if: steps.check.outputs.run == 'true' && inputs.test-type == 'functional'
       shell: bash
       run: |-
-        CATEGORY="${{ inputs.test-category }}"
-        EXTRA="${{ inputs.extra-args }}"
-        ARGS="$EXTRA"
-        if [ "$CATEGORY" != "all" ] && [ -n "$CATEGORY" ]; then
-          ARGS="-m \"$CATEGORY\" $EXTRA"
-        fi
         echo "[INFO] Running Project integration tests (doc tests)..."
-        hatch run -e project python scripts/generate_doc_tests.py
-        hatch run -e python pytest .tests/docs $ARGS
+        hatch run project:tests-func
     - name: Run Project E2E Tests
-      if: steps.check.outputs.run == 'true' && inputs.run-e2e == 'true'
+      if: steps.check.outputs.run == 'true' && inputs.test-type == 'e2e'
       shell: bash
       run: |-
-        EXTRA="${{ inputs.extra-args }}"
         echo "[INFO] Running Project E2E tests (link checking)..."
-        hatch run project:tests-e2e $EXTRA
+        hatch run project:tests-e2e

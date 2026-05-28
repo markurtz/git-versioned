@@ -12,23 +12,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 name: "OCI Builder"
-description: "Builds container image and optionally saves it as a tarball"
+description: "Builds container image and saves it as a tarball"
 inputs:
-  save-image:
-    description: "Whether to save the built image to a tarball archive (for using in later\
-      \ jobs)"
-    required: false
-    default: "false"
   python-version:
-    description: "Python version to set up"
+    description: "Python version to set up for tooling"
     required: false
     default: "3.10"
   force-run:
     description: "Always run even if no changes are detected"
     required: false
     default: "false"
+  build-version:
+    description: "The version string to build"
+    required: true
+outputs:
+  image-path:
+    description: "The path to the saved OCI image tarball"
+    value: "gitversioned-latest.tar"
 runs:
   using: "composite"
   steps:
@@ -41,12 +42,18 @@ runs:
     - name: Evaluate changes
       id: check
       shell: bash
+      env:
+        FORCE_RUN: ${{ inputs.force-run }}
+        GITHUB_CHANGES: ${{ steps.filter.outputs.github_changes }}
+        OCI_CHANGES: ${{ steps.filter.outputs.oci_changes }}
+        SRC_CHANGES: ${{ steps.filter.outputs.src_changes }}
+        PYPROJECT_CHANGES: ${{ steps.filter.outputs.pyproject_changes }}
       run: |
-        if [[ "${{ inputs.force-run }}" == "true" || \
-              "${{ steps.filter.outputs.github_changes }}" == "true" || \
-              "${{ steps.filter.outputs.oci_changes }}" == "true" || \
-              "${{ steps.filter.outputs.src_changes }}" == "true" || \
-              "${{ steps.filter.outputs.pyproject_changes }}" == "true" ]]; then
+        if [[ "$FORCE_RUN" == "true" || \
+              "$GITHUB_CHANGES" == "true" || \
+              "$OCI_CHANGES" == "true" || \
+              "$SRC_CHANGES" == "true" || \
+              "$PYPROJECT_CHANGES" == "true" ]]; then
           echo "run=true" >> "$GITHUB_OUTPUT"
         else
           echo "run=false" >> "$GITHUB_OUTPUT"
@@ -59,10 +66,13 @@ runs:
     - name: Build OCI Image
       if: steps.check.outputs.run == 'true'
       shell: bash
+      env:
+        BUILD_VERSION: ${{ inputs.build-version }}
+        GIT_SHA: ${{ github.sha }}
       run: |
-        hatch run oci:build
+        hatch run oci:build --build-arg VERSION="$BUILD_VERSION" --build-arg GIT_SHA="$GIT_SHA" --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
     - name: Save OCI Image to Tarball
-      if: steps.check.outputs.run == 'true' && inputs.save-image == 'true'
+      if: steps.check.outputs.run == 'true'
       shell: bash
       run: |-
         echo "[INFO] Serializing OCI image to tarball..."

@@ -15,43 +15,46 @@
 name: "OCI Publisher"
 description: "Tags and pushes container image to GHCR, optionally loading it from a tar archive"
 inputs:
-  image-tag:
-    description: "The tag to use for pushing"
-    required: false
-    default: "latest"
-  github-token:
-    description: "GitHub token for authentication"
+  image-tar:
+    description: "The path to the built image tarball to load"
     required: true
-  load-image:
-    description: "Whether to load the image from a tarball archive first"
+  image-tag:
+    description: "The primary tag to use for pushing"
+    required: true
+  alias-tag:
+    description: "An optional alias tag to use for pushing"
     required: false
-    default: "false"
+    default: ""
 runs:
   using: "composite"
   steps:
-    - name: Load OCI Image from Tarball
-      if: inputs.load-image == 'true'
-      shell: bash
-      run: |
-        if [ -f "gitversioned-latest.tar" ]; then
-          echo "[INFO] Loading OCI image from gitversioned-latest.tar..."
-          docker load -i gitversioned-latest.tar
-        else
-          echo "[WARNING] gitversioned-latest.tar not found! Proceeding without loading."
-        fi
     - name: Log in to GHCR
       uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567  # v3.3.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ inputs.github-token }}
-    - name: Tag and Push Image
+        password: ${{ github.token }}
+    - name: Load, Tag, and Push Image
       shell: bash
       env:
         GITHUB_REPOSITORY: ${{ github.repository }}
+        IMAGE_TAR: ${{ inputs.image-tar }}
         IMAGE_TAG: ${{ inputs.image-tag }}
+        ALIAS_TAG: ${{ inputs.alias-tag }}
       run: |-
-        docker tag gitversioned:latest ghcr.io/"$GITHUB_REPOSITORY":"$IMAGE_TAG"
-        docker tag gitversioned:latest ghcr.io/"$GITHUB_REPOSITORY":latest
-        docker push ghcr.io/"$GITHUB_REPOSITORY":"$IMAGE_TAG"
-        docker push ghcr.io/"$GITHUB_REPOSITORY":latest
+        # Registry namespaces must be strictly lowercase
+        REPO_LOWER=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+        if [[ "$IMAGE_TAG" == nightly-* ]] && docker manifest inspect ghcr.io/"$REPO_LOWER":"$IMAGE_TAG" >/dev/null 2>&1; then
+          echo "[INFO] Nightly image tag $IMAGE_TAG already exists in GHCR. Skipping push."
+        else
+          echo "[INFO] Loading OCI image from $IMAGE_TAR..."
+          docker load -i "$IMAGE_TAR"
+          echo "[INFO] Tagging and pushing primary tag $IMAGE_TAG..."
+          docker tag gitversioned:latest ghcr.io/"$REPO_LOWER":"$IMAGE_TAG"
+          docker push ghcr.io/"$REPO_LOWER":"$IMAGE_TAG"
+          if [ -n "$ALIAS_TAG" ]; then
+            echo "[INFO] Tagging and pushing alias tag $ALIAS_TAG..."
+            docker tag gitversioned:latest ghcr.io/"$REPO_LOWER":"$ALIAS_TAG"
+            docker push ghcr.io/"$REPO_LOWER":"$ALIAS_TAG"
+          fi
+        fi

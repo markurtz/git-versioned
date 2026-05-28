@@ -33,6 +33,9 @@ Below is a curated list of available examples, categorized by complexity:
 | **`[hatchling-version-tags/](hatchling-version-tags/)`**           | ⭐ Beginner | Hatchling configuration using Git tags as the version source.         |
 | **`[hatchling-version-branch/](hatchling-version-branch/)`**       | ⭐ Beginner | Hatchling configuration using Git branch as the version source.       |
 | **`[hatchling-version-commits/](hatchling-version-commits/)`**     | ⭐ Beginner | Hatchling configuration using Git commits as the version source.      |
+| **`[cli-stdout-injection/](cli-stdout-injection/)`**               | ⭐ Beginner | CLI version resolution outputting to stdout for Docker injection.     |
+| **`[cli-file-injection/](cli-file-injection/)`**                   | ⭐ Beginner | CLI version resolution injecting into Cargo.toml & pyproject.toml.    |
+| **`[python-api/](python-api/)`**                                   | ⭐ Beginner | Programmatic usage of the GitVersioned Python API.                    |
 
 <!-- Add new examples to the table above as they are created. -->
 

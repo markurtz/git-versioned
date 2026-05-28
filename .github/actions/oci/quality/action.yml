@@ -16,7 +16,7 @@ name: "OCI Quality"
 description: "Runs Dockerfile and Docker Compose linters and security checks"
 inputs:
   python-version:
-    description: "Python version to set up"
+    description: "Python version to set up for tooling"
     required: false
     default: "3.10"
   force-run:

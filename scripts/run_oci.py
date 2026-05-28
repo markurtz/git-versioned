@@ -489,10 +489,8 @@ def run_cstest(extra_args: list[str]) -> None:
         return
 
     if not check_image_exists(IMAGE_NAME):
-        logger.error(
-            f"Image {IMAGE_NAME} not found. Build it first (e.g. hatch run oci:build)."
-        )
-        sys.exit(1)
+        logger.info(f"Image {IMAGE_NAME} not found. Building it first...")
+        subprocess.run(["docker", "build", "-t", IMAGE_NAME, "."], check=True)
 
     logger.info(
         f"Running container-structure-test via Docker with args {extra_args}..."

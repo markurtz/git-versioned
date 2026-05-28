@@ -16,36 +16,16 @@ name: "OCI Tests"
 description: "Runs OCI container structure tests (E2E) and no-op functional tests"
 inputs:
   python-version:
-    description: "Python version to set up"
+    description: "Python version to set up for tooling"
     required: false
     default: "3.10"
-  run-functional:
-    description: "Whether to run functional (unit & integration) tests"
-    required: false
-    default: "true"
-  run-e2e:
-    description: "Whether to run end-to-end (e2e structure) tests"
-    required: false
-    default: "true"
-  test-category:
-    description: "Test category (not applicable for OCI tests)"
-    required: false
-    default: "all"
-  generate-coverage:
-    description: "Generate test coverage report (not applicable for OCI tests)"
-    required: false
-    default: "false"
+  image-tar:
+    description: "The path to a pre-built image tarball to load"
+    required: true
   force-run:
     description: "Always run even if no changes are detected"
     required: false
     default: "false"
-outputs:
-  coverage-generated:
-    description: "Whether a coverage report was generated"
-    value: "false"
-  coverage-reports:
-    description: "Paths to the generated coverage report(s)"
-    value: ""
 runs:
   using: "composite"
   steps:
@@ -58,12 +38,18 @@ runs:
     - name: Evaluate changes
       id: check
       shell: bash
+      env:
+        FORCE_RUN: ${{ inputs.force-run }}
+        GITHUB_CHANGES: ${{ steps.filter.outputs.github_changes }}
+        OCI_CHANGES: ${{ steps.filter.outputs.oci_changes }}
+        SRC_CHANGES: ${{ steps.filter.outputs.src_changes }}
+        PYPROJECT_CHANGES: ${{ steps.filter.outputs.pyproject_changes }}
       run: |
-        if [[ "${{ inputs.force-run }}" == "true" || \
-              "${{ steps.filter.outputs.github_changes }}" == "true" || \
-              "${{ steps.filter.outputs.oci_changes }}" == "true" || \
-              "${{ steps.filter.outputs.src_changes }}" == "true" || \
-              "${{ steps.filter.outputs.pyproject_changes }}" == "true" ]]; then
+        if [[ "$FORCE_RUN" == "true" || \
+              "$GITHUB_CHANGES" == "true" || \
+              "$OCI_CHANGES" == "true" || \
+              "$SRC_CHANGES" == "true" || \
+              "$PYPROJECT_CHANGES" == "true" ]]; then
           echo "run=true" >> "$GITHUB_OUTPUT"
         else
           echo "run=false" >> "$GITHUB_OUTPUT"
@@ -73,33 +59,19 @@ runs:
       uses: ./.github/actions/utility/setup-python
       with:
         python-version: ${{ inputs.python-version }}
-    - name: Install container-structure-test
-      if: steps.check.outputs.run == 'true' && inputs.run-e2e == 'true'
-      shell: bash
-      run: |-
-        OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-        ARCH="$(uname -m)"
-        if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi
-        if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ARCH="arm64"; fi
-        curl -LO "https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.1/container-structure-test-${OS}-${ARCH}"
-        chmod +x "container-structure-test-${OS}-${ARCH}"
-        sudo mv "container-structure-test-${OS}-${ARCH}" /usr/local/bin/container-structure-test
-    - name: Run OCI Functional Tests
-      if: steps.check.outputs.run == 'true' && inputs.run-functional == 'true'
-      shell: bash
-      run: |-
-        echo "[INFO] Running OCI functional tests (unit/integration)..."
-        hatch run oci:tests-unit
-        hatch run oci:tests-int
+    - name: Set up OCI Tools
+      if: steps.check.outputs.run == 'true'
+      uses: ./.github/actions/utility/setup-oci
     - name: Run OCI E2E Tests
-      if: steps.check.outputs.run == 'true' && inputs.run-e2e == 'true'
+      if: steps.check.outputs.run == 'true'
       shell: bash
+      env:
+        IMAGE_TAR: ${{ inputs.image-tar }}
       run: |-
-        # Optimize: check if image is already built/loaded by build job
-        if docker image inspect gitversioned:latest >/dev/null 2>&1; then
-          echo "[INFO] OCI image gitversioned:latest is already loaded. Running structure tests directly..."
-          hatch run -e oci python scripts/run_oci.py cstest
-        else
-          echo "[INFO] OCI image gitversioned:latest not found. Building and running E2E tests..."
-          hatch run oci:tests-e2e
+        if [ ! -f "$IMAGE_TAR" ]; then
+          echo "[ERROR] Pre-built image tarball not found at: $IMAGE_TAR"
+          exit 1
         fi
+        echo "[INFO] Loading OCI image from $IMAGE_TAR..."
+        docker load -i "$IMAGE_TAR"
+        hatch run oci:tests-e2e
