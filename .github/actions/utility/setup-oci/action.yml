@@ -18,10 +18,25 @@ description: "Utility action to install OCI quality and security tools (hadolint
 runs:
   using: "composite"
   steps:
-    - name: Install Hadolint and Trivy
+    - name: Install Trivy
       uses: taiki-e/install-action@d9be7d8cda89035c9c843f78bd44d4f72d8403d4  # v2.79.7
       with:
-        tool: hadolint,trivy
+        tool: trivy
+    - name: Install Hadolint
+      shell: bash
+      run: |-
+        mkdir -p "$HOME/.local/bin"
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m | sed -e 's/aarch64/arm64/')
+        if [ "$OS" = "darwin" ]; then
+          OS="macos"
+        elif [ "$OS" = "linux" ] && [ "$ARCH" = "x86_64" ]; then
+          OS="Linux"
+        fi
+        HADOLINT_VERSION="v2.12.0"
+        curl -sSL -o "$HOME/.local/bin/hadolint" "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-${OS}-${ARCH}"
+        chmod +x "$HOME/.local/bin/hadolint"
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
     - name: Install Dockle
       shell: bash
       run: |-

@@ -264,34 +264,34 @@ quality = [
   "hatch run python:types {args}",
   "hatch run python:security {args}",
 ]
-tests-func = "pytest {args:{env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS}}"
+tests-func = "pytest {args} {env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS}"
 tests-func-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
-  "pytest --cov={env:PYTHON_SRC} --cov-context=test --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-func.md {args:{env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS}}",
+  "pytest --cov={env:PYTHON_SRC} --cov-context=test --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-func.md {args} {env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS}",
   "coverage report --contexts=\".*tests/python/unit/.*|^$\" --format=markdown > {env:PYTHON_COV_DIR}/coverage_tests-unit.md",
   "coverage report --contexts=\".*tests/python/integration/.*|^$\" --format=markdown > {env:PYTHON_COV_DIR}/coverage_tests-int.md",
   "python -c \"import pathlib; [p.write_text('\\n'.join(line for line in p.read_text().splitlines() if not line.startswith('Combined'))) for p in (pathlib.Path('{env:PYTHON_COV_DIR}/coverage_tests-unit.md'), pathlib.Path('{env:PYTHON_COV_DIR}/coverage_tests-int.md')) if p.exists()]\"",
 ]
-tests-unit = "pytest {args:{env:PYTHON_UNIT_TESTS}}"
+tests-unit = "pytest {args} {env:PYTHON_UNIT_TESTS}"
 tests-unit-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
-  "pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-unit.md {args:{env:PYTHON_UNIT_TESTS}}",
+  "pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-unit.md {args} {env:PYTHON_UNIT_TESTS}",
 ]
-tests-int = "pytest {args:{env:PYTHON_INT_TESTS}}"
+tests-int = "pytest {args} {env:PYTHON_INT_TESTS}"
 tests-int-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
-  "pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-int.md {args:{env:PYTHON_INT_TESTS}}",
+  "pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-int.md {args} {env:PYTHON_INT_TESTS}",
 ]
 tests-e2e = [
   "hatch build",
   "pip install --force-reinstall --no-deps --no-index --find-links=dist gitversioned",
-  "pytest {args:{env:E2E_TESTS}}",
+  "pytest {args} {env:E2E_TESTS}",
 ]
 tests-e2e-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
   "hatch build",
   "pip install --force-reinstall --no-deps --no-index --find-links=dist gitversioned",
-  "pytest --cov=gitversioned --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-e2e.md {args:{env:E2E_TESTS}}",
+  "pytest --cov=gitversioned --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-e2e.md {args} {env:E2E_TESTS}",
 ]
 docs = [
   "python -c \"import pathlib; pathlib.Path('.docs').mkdir(exist_ok=True)\"",
@@ -550,7 +550,7 @@ markers = [
   "sanity: detailed tests to ensure major functions work correctly",
   "regression: tests to ensure that new changes do not break existing functionality",
 ]
-testpaths = ["tests", "examples"]
+testpaths = ["tests"]
 
 [tool.yamlfix]
 line_length = 88
