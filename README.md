@@ -13,7 +13,7 @@
 <p align="center">
   <!-- Package & Release Status -->
   <a href="https://github.com/markurtz/git-versioned/releases">
-    <img src="https://img.shields.io/github/v/release/markurtz/git-versioned?label=Release" alt="GitHub Release">
+    <img src="https://badgen.net/github/release/markurtz/git-versioned?label=Release" alt="GitHub Release">
   </a>
   <a href="https://pypi.org/project/gitversioned/">
     <img src="https://img.shields.io/pypi/v/gitversioned?label=PyPI" alt="PyPI Release">
@@ -24,15 +24,12 @@
   <br/>
   <!-- CI/CD & Build Status -->
   <a href="https://github.com/markurtz/git-versioned/actions/workflows/pipeline-main.yml">
-    <img src="https://github.com/markurtz/git-versioned/actions/workflows/pipeline-main.yml/badge.svg" alt="CI Status">
+    <img src="https://github.com/markurtz/git-versioned/actions/workflows/pipeline-main.yml/badge.svg?branch=main" alt="CI Status">
   </a>
-  <br/>
-  <!-- Issues & Support -->
   <a href="https://github.com/markurtz/git-versioned/issues?q=is%3Aissue+is%3Aopen">
     <img src="https://img.shields.io/github/issues/markurtz/git-versioned?label=Issues%20Open" alt="Open Issues">
   </a>
-
-<a href="https://opensource.org/licenses/Apache-2.0">
+  <a href="https://opensource.org/licenses/Apache-2.0">
     <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License">
   </a>
 </p>

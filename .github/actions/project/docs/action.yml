@@ -101,7 +101,7 @@ runs:
       shell: bash
       run: |-
         echo "[INFO] Building PR docs using Zensical..."
-        hatch run project:docs
+        hatch run all:docs
     - name: Deploy PR documentation preview
       if: steps.check.outputs.run == 'true' && steps.docs-args.outputs.build-type == 'pr'
       uses: peaceiris/actions-gh-pages@373f7f263a76c20808c831209c920827a82a2847  # v4.0.0
