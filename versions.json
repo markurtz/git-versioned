@@ -1,10 +1,15 @@
 [
   {
-    "version": "main-6e4ccfd",
-    "title": "main-6e4ccfd",
+    "version": "main-6428ed1",
+    "title": "main-6428ed1",
     "aliases": [
       "dev"
     ]
+  },
+  {
+    "version": "main-6e4ccfd",
+    "title": "main-6e4ccfd",
+    "aliases": []
   },
   {
     "version": "v0.1.2",
