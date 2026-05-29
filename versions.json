@@ -1,25 +1,10 @@
 [
   {
-    "version": "main-2014a8d",
-    "title": "main-2014a8d",
-    "aliases": []
-  },
-  {
     "version": "main-6e4ccfd",
     "title": "main-6e4ccfd",
     "aliases": [
       "dev"
     ]
-  },
-  {
-    "version": "main-b873a8b",
-    "title": "main-b873a8b",
-    "aliases": []
-  },
-  {
-    "version": "main-b82fb20",
-    "title": "main-b82fb20",
-    "aliases": []
   },
   {
     "version": "v0.1.2",
