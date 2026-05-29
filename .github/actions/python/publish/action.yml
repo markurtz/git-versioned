@@ -31,6 +31,9 @@ runs:
       uses: docker://ghcr.io/pypa/gh-action-pypi-publish:v1.14.0
       with:
         packages-dir: dist/
+        user: __token__
+        password: ""
+        verbose: true
     - name: Create GitHub Release
       if: inputs.create-release == 'true'
       uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191  # v2.0.8
