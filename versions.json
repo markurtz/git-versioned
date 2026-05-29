@@ -1,5 +1,12 @@
 [
   {
+    "version": "main-b873a8b",
+    "title": "main-b873a8b",
+    "aliases": [
+      "dev"
+    ]
+  },
+  {
     "version": "v0.1.2",
     "title": "v0.1.2",
     "aliases": [
