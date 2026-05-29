@@ -96,11 +96,11 @@ runs:
       uses: ./.github/actions/utility/setup-python
       with:
         python-version: ${{ inputs.python-version }}
-    - name: Build PR documentation
-      if: steps.check.outputs.run == 'true' && steps.docs-args.outputs.build-type == 'pr'
+    - name: Build documentation source
+      if: steps.check.outputs.run == 'true'
       shell: bash
       run: |-
-        echo "[INFO] Building PR docs using Zensical..."
+        echo "[INFO] Building documentation source..."
         hatch run all:docs
     - name: Deploy PR documentation preview
       if: steps.check.outputs.run == 'true' && steps.docs-args.outputs.build-type == 'pr'
