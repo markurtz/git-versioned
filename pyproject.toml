@@ -130,6 +130,7 @@ nightly = "minor"
 dependency-groups = ["dev"]
 
 [tool.hatch.envs.default.env-vars]
+COVERAGE_CORE = "sys"
 PYTHONPATH = "."
 PYTHON_TARGETS = "docs examples scripts src tests"
 GITVERSIONED__LOGGING__LEVEL = "ERROR"
@@ -285,11 +286,7 @@ tests-int-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
   "python -m pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-int.md {env:PYTHON_INT_TESTS} {args}",
 ]
-tests-e2e = [
-  "hatch build",
-  "pip install --force-reinstall --no-index --find-links=dist gitversioned",
-  "python -m pytest {env:E2E_TESTS} {args}",
-]
+tests-e2e = ["python -m pytest {env:E2E_TESTS} {args}"]
 tests-e2e-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
   "python -m pytest --cov=gitversioned --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-e2e.md {env:E2E_TESTS} {args}",
