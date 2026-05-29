@@ -35,7 +35,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/markurtz/git-versioned/tree/main/docs">Documentation</a> |
+  <a href="https://markurtz.github.io/git-versioned/">Documentation</a> |
   <a href="https://github.com/markurtz/git-versioned/milestones">Roadmap</a> |
   <a href="https://github.com/markurtz/git-versioned/issues">Issues</a> |
   <a href="https://github.com/markurtz/git-versioned/discussions">Discussions</a>
