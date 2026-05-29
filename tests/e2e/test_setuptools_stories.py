@@ -80,9 +80,6 @@ def verify_wheel_contents(
         )
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestSetuptoolsPyprojectToml:
     """E2E Test Class for US-1.
 
@@ -493,9 +490,6 @@ class TestSetuptoolsPyprojectToml:
         assert strategy_obj.path == Path("templates/release.py.template")
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestSetuptoolsSetupCfg:
     """E2E Test Class for US-2.
 
@@ -750,9 +744,6 @@ class TestSetuptoolsSetupCfg:
         assert len(settings_obj.source_type) > 0
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestSetuptoolsSetupPy:
     """E2E Test Class for US-3: Setuptools + Dynamic setup.py Script Interception."""
 

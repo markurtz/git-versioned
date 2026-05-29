@@ -91,9 +91,6 @@ def verify_artifacts(repo_path: Path, package_name: str, expected_version: str) 
         assert expected_version in file_content
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestHatchlingBuildBackendDeclarativeMetadataHooks:
     """E2E Test Class for US-1: Hatchling Build Backend Declarative Metadata Hooks."""
 
@@ -610,9 +607,6 @@ class TestHatchlingBuildBackendDeclarativeMetadataHooks:
         assert wheel_version == "0.1.0"
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestHatchlingVersionOutputTypeEnforcementAndCoercion:
     """E2E Test Class for US-2: Hatchling Version Output Type Enforcement & Coercion."""
 
@@ -945,9 +939,6 @@ class TestHatchlingVersionOutputTypeEnforcementAndCoercion:
         assert regex_strategy.pattern == r'__version__ = "(?P<version>.*?)"'
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestHatchlingGranularAutoIncrementScoping:
     """E2E Test Class for US-3: Hatchling Granular Auto-Increment Scoping."""
 
@@ -1258,6 +1249,7 @@ class TestHatchlingPluginDirectCoverage:
     for coverage.
     """
 
+    @pytest.mark.regression
     def test_direct_plugin_coverage(self, temp_git_repo: GitRepoHelper) -> None:
         assert hatch_register_version_source() is GitVersionedVersionSource
 

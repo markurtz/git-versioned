@@ -107,9 +107,6 @@ def resolve_version_output_to_stream_wrapper(
         raise GitVersionedStreamError(f"Streaming execution failed: {error}") from error
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestCoreInMemoryVersionResolution:
     """E2E Test Class for US-1: Core In-Memory Version Resolution."""
 
@@ -347,9 +344,6 @@ class TestCoreInMemoryVersionResolution:
         assert str(version) == "0.1.0"
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestDirectInMemoryTargetManipulation:
     """E2E Test Class for US-2: Direct In-Memory Target Manipulation."""
 
@@ -582,9 +576,6 @@ class TestDirectInMemoryTargetManipulation:
         assert len(settings.source_type) > 0
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestProgrammaticStreamInjection:
     """E2E Test Class for US-3: Programmatic Stream Injection."""
 
@@ -783,9 +774,6 @@ class TestProgrammaticStreamInjection:
         assert "tag" in settings.source_type
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestAdvancedProgrammaticExtension:
     """E2E Test Class for US-4: Advanced Programmatic Extension & Hook Processing."""
 

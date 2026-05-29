@@ -192,9 +192,6 @@ class MockMaturinModule:
         return f"mock_package-{self._get_resolved_version()}.dist-info"
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestMaturinWrapperBuildBackendPipelineOrchestration:
     """E2E Test Class for US-1: Maturin Wrapper Build Backend Pipeline Orchestration."""
 
@@ -322,9 +319,6 @@ class TestMaturinWrapperBuildBackendPipelineOrchestration:
         assert strategy_obj.path == Path("templates/release.py.template")
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestMaturinCargoWorkspaceAndInputSurfaceMatrix:
     """E2E Test Class for US-2: Maturin Cargo Workspace and Input Surface Matrix."""
 
@@ -660,9 +654,6 @@ class TestMaturinCargoWorkspaceAndInputSurfaceMatrix:
             maturin_plugin.build_wheel("dist_dir")
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestMaturinTargetedPEP440SemVerOutputCoercionIncrements:
     """E2E Test Class for US-3: Maturin Output Coercion & Increments."""
 
@@ -890,9 +881,6 @@ class TestMaturinTargetedPEP440SemVerOutputCoercionIncrements:
         assert 'version = "1.4.1"' in cargo_content
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestMultipleMultiLanguageLayoutTestingConfigurations:
     """E2E Test Class for US-4: Multi-Language Layout Configurations."""
 

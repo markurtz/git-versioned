@@ -41,7 +41,6 @@ test = [
   "pytest-cov>=7.1.0,<8",
   "pytest-mock>=3.15.1,<4",
   "respx>=0.23.1,<1",
-  "pytest-xdist>=3.8.0,<4",
   "build",
   "wheel",
   "maturin>=1.0,<2.0",
@@ -268,34 +267,34 @@ quality = [
   "hatch run python:types {args}",
   "hatch run python:security {args}",
 ]
-tests-func = "python -m pytest {args} {env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS}"
+tests-func = "python -m pytest {env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS} {args}"
 tests-func-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
-  "python -m pytest --cov={env:PYTHON_SRC} --cov-context=test --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-func.md {args} {env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS}",
+  "python -m pytest --cov={env:PYTHON_SRC} --cov-context=test --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-func.md {env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS} {args}",
   "coverage report --contexts=\".*tests/python/unit/.*|^$\" --format=markdown > {env:PYTHON_COV_DIR}/coverage_tests-unit.md",
   "coverage report --contexts=\".*tests/python/integration/.*|^$\" --format=markdown > {env:PYTHON_COV_DIR}/coverage_tests-int.md",
   "python -c \"import pathlib; [p.write_text('\\n'.join(line for line in p.read_text().splitlines() if not line.startswith('Combined'))) for p in (pathlib.Path('{env:PYTHON_COV_DIR}/coverage_tests-unit.md'), pathlib.Path('{env:PYTHON_COV_DIR}/coverage_tests-int.md')) if p.exists()]\"",
 ]
-tests-unit = "python -m pytest {args} {env:PYTHON_UNIT_TESTS}"
+tests-unit = "python -m pytest {env:PYTHON_UNIT_TESTS} {args}"
 tests-unit-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
-  "python -m pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-unit.md {args} {env:PYTHON_UNIT_TESTS}",
+  "python -m pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-unit.md {env:PYTHON_UNIT_TESTS} {args}",
 ]
-tests-int = "python -m pytest {args} {env:PYTHON_INT_TESTS}"
+tests-int = "python -m pytest {env:PYTHON_INT_TESTS} {args}"
 tests-int-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
-  "python -m pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-int.md {args} {env:PYTHON_INT_TESTS}",
+  "python -m pytest --cov={env:PYTHON_SRC} --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-int.md {env:PYTHON_INT_TESTS} {args}",
 ]
 tests-e2e = [
   "hatch build",
   "pip install --force-reinstall --no-deps --no-index --find-links=dist gitversioned",
-  "python -m pytest {args} {env:E2E_TESTS}",
+  "python -m pytest {env:E2E_TESTS} {args}",
 ]
 tests-e2e-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
   "hatch build",
   "pip install --force-reinstall --no-deps --no-index --find-links=dist gitversioned",
-  "python -m pytest --cov=gitversioned --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-e2e.md {args} {env:E2E_TESTS}",
+  "python -m pytest --cov=gitversioned --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-e2e.md {env:E2E_TESTS} {args}",
 ]
 docs = [
   "python -c \"import pathlib; pathlib.Path('.docs').mkdir(exist_ok=True)\"",
@@ -397,7 +396,7 @@ tests-unit-cov = [
 ]
 tests-int = [
   "python {env:GENERATE_DOC_TESTS_SCRIPT} {args:{env:PYTHON_TARGETS}}",
-  "hatch -e python run pytest {env:DOC_TESTS_PATH} {args}",
+  "python -m pytest {env:DOC_TESTS_PATH} {args}",
 ]
 tests-int-cov = [
   "hatch run project:tests-int {args}",
@@ -408,9 +407,7 @@ link-checks-cov = [
   "hatch run project:link-checks {args}",
   "echo '[INFO] No coverage analysis is applicable for link checks in the project environment'",
 ]
-tests-e2e = [
-  "hatch -e python run pytest --import-mode=importlib examples {args}",
-]
+tests-e2e = ["python -m pytest --import-mode=importlib examples {args}"]
 tests-e2e-cov = [
   "hatch run project:tests-e2e {args}",
   "echo '[INFO] No coverage analysis is applicable for E2E tests in the project environment'",

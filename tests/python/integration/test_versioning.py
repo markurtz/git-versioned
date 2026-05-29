@@ -36,6 +36,7 @@ from gitversioned.versioning.sources import (
 from tests.conftest import GitRepoHelper
 
 
+@pytest.mark.sanity
 def test_versioning_exports() -> None:
     """Validate public variables, constants, and module-level exports."""
     assert hasattr(versioning_mod, "__all__")
@@ -78,9 +79,6 @@ def test_interface_signature_validation() -> None:
     assert "environment" in res_stream_sig.parameters
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestFormattedVersion:
     """Integration test suite for FormattedVersion class."""
 
@@ -159,9 +157,6 @@ class TestFormattedVersion:
         assert repr(version_obj) == "'1.0.0'"
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestResolveVersion:
     """Integration test suite for resolve_version orchestrator."""
 
@@ -356,9 +351,6 @@ class TestResolveVersion:
             resolve_version(settings)
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestResolveVersionOutput:
     """Integration test suite for resolve_version_output orchestrator."""
 
@@ -450,9 +442,6 @@ class TestResolveVersionOutput:
             resolve_version_output(settings)
 
 
-@pytest.mark.smoke
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestResolveVersionOutputToStream:
     """Integration test suite for resolve_version_output_to_stream orchestrator."""
 
@@ -560,8 +549,6 @@ def test_strategy_marshalling(temp_git_repo: GitRepoHelper) -> None:
     assert output_content.startswith("Dev: 1.0.0.dev")
 
 
-@pytest.mark.sanity
-@pytest.mark.regression
 class TestCoverageEdgeCases:
     """Test cases to ensure complete code path coverage in versioning package."""
 
