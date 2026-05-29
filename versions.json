@@ -1,10 +1,15 @@
 [
   {
-    "version": "main-b38c071",
-    "title": "main-b38c071",
+    "version": "main-f1044f5",
+    "title": "main-f1044f5",
     "aliases": [
       "dev"
     ]
+  },
+  {
+    "version": "main-b38c071",
+    "title": "main-b38c071",
+    "aliases": []
   },
   {
     "version": "v0.1.2",
