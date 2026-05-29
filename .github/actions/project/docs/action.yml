@@ -135,6 +135,16 @@ runs:
           echo "[INFO] Setting default version to latest..."
           hatch run mike set-default -F zensical.toml --push latest
         fi
+        if [ "$BUILD_TYPE" = "main" ] || [ "$BUILD_TYPE" = "nightly" ]; then
+          echo "[INFO] Cleaning up older versions of type: $BUILD_TYPE..."
+          TO_DELETE=$(hatch run mike list -F zensical.toml | awk '{print $1}' | grep "^${BUILD_TYPE}-" | grep -v "^${VERSION_NAME}$" || true)
+          if [ -n "$TO_DELETE" ]; then
+            echo "[INFO] Deleting old versions: $TO_DELETE"
+            hatch run mike delete -F zensical.toml --push $TO_DELETE
+          else
+            echo "[INFO] No old versions of type $BUILD_TYPE found to delete."
+          fi
+        fi
     - name: Compute documentation URL
       id: url-step
       if: steps.check.outputs.run == 'true'
