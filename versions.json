@@ -2,6 +2,11 @@
   {
     "version": "main-2014a8d",
     "title": "main-2014a8d",
+    "aliases": []
+  },
+  {
+    "version": "main-6e4ccfd",
+    "title": "main-6e4ccfd",
     "aliases": [
       "dev"
     ]
