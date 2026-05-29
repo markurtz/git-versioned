@@ -2,6 +2,11 @@
   {
     "version": "main-9ccdaff",
     "title": "main-9ccdaff",
+    "aliases": []
+  },
+  {
+    "version": "main-e3ee39e",
+    "title": "main-e3ee39e",
     "aliases": [
       "dev"
     ]
