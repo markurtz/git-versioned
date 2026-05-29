@@ -7,11 +7,8 @@ hide:
 <div class="hero" markdown>
 <div class="hero-content" markdown>
 
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="assets/branding/logo-dark.svg">
-  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logo-light.svg">
-  <img alt="GitVersioned Logo" src="assets/branding/logo-light.svg" width="400">
-</picture>
+<img alt="GitVersioned Logo" src="assets/branding/logo-light.svg#only-light" width="400">
+<img alt="GitVersioned Logo" src="assets/branding/logo-dark.svg#only-dark" width="400">
 
 # GitVersioned
 
@@ -26,11 +23,8 @@ hide:
 ## Overview
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="assets/branding/user-flow-dark.svg">
-    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/user-flow-light.svg">
-    <img alt="User Flow Diagram" src="assets/branding/user-flow-light.svg" width="800">
-  </picture>
+  <img alt="User Flow Diagram" src="assets/branding/user-flow-light.svg#only-light" width="800">
+  <img alt="User Flow Diagram" src="assets/branding/user-flow-dark.svg#only-dark" width="800">
 </p>
 
 ## What's Included
