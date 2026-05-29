@@ -1,0 +1,12 @@
+[package]
+name = "maturin_polyglot_overrides"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+name = "maturin_polyglot_overrides"
+crate-type = ["cdylib"]
+
+[dependencies.pyo3]
+version = "0.21.0"
+features = ["extension-module"]

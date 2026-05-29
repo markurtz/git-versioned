@@ -28,8 +28,8 @@ jobs:
           # Or optionally using uv: uv pip install gitversioned
           pip install gitversioned
 
-      - name: Generate version metadata
-        run: gitversioned generate
+      - name: Write version metadata
+        run: gitversioned write
 
 ```
 

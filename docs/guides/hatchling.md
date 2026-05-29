@@ -36,7 +36,7 @@ Here is an example configuring it to read from tags, output a `version.py` file,
 ```toml
 [tool.gitversioned]
 source_type = ["tag"]
-output_file = "src/my_package/version.py"
+output = "src/my_package/version.py"
 
 [tool.gitversioned.auto_increment]
 dev = "patch"
@@ -71,7 +71,7 @@ dev = "patch"
 
 ### Differentiated Dev Versions
 
-Sometimes you want local builds (with dirty files) to look different from CI builds. While `gitversioned` handles this dynamically via the `template_dev` setting (see [Templates](templates.md)), you can also enforce a strict format for all development builds.
+Sometimes you want local builds (with dirty files) to look different from CI builds. While `gitversioned` handles this dynamically via the `output_strategies` configuration (see [Templates](templates.md)), you can also enforce a strict format for all development builds.
 
 **Goal:** Ensure local dirty builds always append a `+dirty` metadata tag, while clean pre-releases do not.
 
@@ -86,7 +86,7 @@ If a user installs your package from a source distribution (sdist) rather than a
 # Try tags first, then fall back to reading the generated file.
 source_type = ["tag", "file"]
 version_source_file = "src/my_package/version.py"
-output_file = "src/my_package/version.py"
+output = "src/my_package/version.py"
 
 regex_file = [
     # Match the __version__ assignment inside version.py
@@ -96,7 +96,8 @@ regex_file = [
 
 This ensures `hatch build` works perfectly in both local clones and downstream source installations.
 
-> [!TIP] "GitHub ZIP Downloads vs. sdists"
+> [!TIP]
+> "GitHub ZIP Downloads vs. sdists"
 > If a user downloads your repository as a ZIP directly from GitHub, there is no `.git` directory and no pre-generated `version.py` file! For this scenario, `gitversioned` provides an **Archive Fallback** mechanism that parses a substituted `.git_archival.txt` file. See the [Quick Start](../getting-started/quickstart.md#configure-archive-support-recommended) for setup instructions.
 
 ### Excluding the Version File from Git

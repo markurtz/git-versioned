@@ -15,12 +15,13 @@ Before installing, ensure your system meets the following prerequisites:
 
 ## Build Setup (Core Workflow)
 
-`gitversioned` is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml` utilizing Hatchling or Setuptools.
+`gitversioned` is primarily used as a build plugin. The preferred pathway is to configure it in your build configuration:
 
 === "Hatchling (Preferred)"
 
 ````
 ```toml
+# pyproject.toml
 [build-system]
 requires = ["hatchling", "gitversioned"]
 build-backend = "hatchling.build"
@@ -34,6 +35,7 @@ source = "gitversioned"
 
 ````
 ```toml
+# pyproject.toml
 [build-system]
 requires = ["setuptools>=61.0", "gitversioned"]
 build-backend = "setuptools.build_meta"
@@ -42,6 +44,31 @@ build-backend = "setuptools.build_meta"
 dynamic = ["version"]
 ```
 ````
+
+=== "Maturin (PEP 517/660)"
+
+````
+Configure the Maturin build wrapper backend in `pyproject.toml` and ensure a placeholder version is defined in `Cargo.toml`:
+
+**`pyproject.toml`**
+```toml
+[build-system]
+requires = ["maturin>=1.0,<2.0", "gitversioned"]
+build-backend = "gitversioned.plugins.maturin_plugin"
+
+[project]
+dynamic = ["version"]
+```
+
+**`Cargo.toml`**
+```toml
+[package]
+name = "my_rust_package"
+version = "0.0.0"  # Will be dynamically updated on build
+```
+````
+
+______________________________________________________________________
 
 ## Standard Installation
 
@@ -74,8 +101,10 @@ python -c "import gitversioned; print(gitversioned.__version__)"
 You should see output similar to:
 
 ```console
-0.1.0
+0.2.0
 ```
+
+______________________________________________________________________
 
 ## Install from Source
 
@@ -95,6 +124,8 @@ uv sync --group dev --extra some_extra
 > [!TIP]
 > This is the recommended setup for contributors looking to make changes to the source code.
 
+______________________________________________________________________
+
 ## Docker Installation
 
 A pre-built Docker image is available for containerized environments:
@@ -108,6 +139,8 @@ docker run --rm ghcr.io/markurtz/git-versioned:latest python -c "import gitversi
 ```
 
 For a persistent, volume-mounted setup using Docker Compose, see the `docker-compose.yml` in the root of the repository.
+
+______________________________________________________________________
 
 ## Platform-Specific Notes
 
@@ -129,6 +162,8 @@ Use your distribution's package manager to install Python 3.10+ (e.g., `sudo apt
 Ensure Python is added to your PATH during the Windows installer setup.
 ```
 
+______________________________________________________________________
+
 ## Upgrading
 
 To upgrade an existing installation to the latest release:
@@ -149,6 +184,8 @@ uv pip install --upgrade gitversioned
 ```
 ````
 
+______________________________________________________________________
+
 ## Uninstalling
 
 === "pip"
@@ -166,6 +203,8 @@ pip uninstall gitversioned
 uv pip uninstall gitversioned
 ```
 ````
+
+______________________________________________________________________
 
 ## Troubleshooting
 

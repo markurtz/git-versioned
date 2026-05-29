@@ -102,7 +102,7 @@ Forces a specific build type. By default, `gitversioned` intelligently decides t
 
 ### `dirty_ignore`
 
-A list of file paths to ignore when `gitversioned` checks if the repository is in a "dirty" state (which normally forces a `dev` version type). The `output_file` and `version_source_file` are always automatically ignored. This is particularly useful for configuration files that might be modified during build processes.
+A list of file paths to ignore when `gitversioned` checks if the repository is in a "dirty" state (which normally forces a `dev` version type). The `output` and `version_source_file` are always automatically ignored. This is particularly useful for configuration files that might be modified during build processes.
 
 - **Type:** List of strings
 - **Default:** `[]`
@@ -120,7 +120,7 @@ Determines which segment of the version string is incremented for pre-releases a
 - **Type:** Dictionary (Mapping string release types to string increment targets)
 - **Default:** `None`
 - **Keys:** `auto`, `release`, `dev`, `pre`, `alpha`, `nightly`, `post`
-- **Values:** `major`, `minor`, `micro` (or `patch`)
+- **Values:** `major`, `minor`, `micro` (or `patch`, `bug`)
 
 ```toml
 [tool.gitversioned.auto_increment]
@@ -128,7 +128,7 @@ Determines which segment of the version string is incremented for pre-releases a
 dev = "patch"
 ```
 
-### `output_file`
+### `output`
 
 The file path where the generated version metadata module will be written. If you want to disable file generation entirely, set this to an empty string.
 
@@ -138,21 +138,87 @@ The file path where the generated version metadata module will be written. If yo
 ```toml
 [tool.gitversioned]
 # Place the output file inside your package directory
-output_file = "src/my_package/version.py"
+output = "src/my_package/version.py"
 ```
+
+### `version_standard`
+
+The standard formatting layout used to normalize and compile the version string.
+
+- **Type:** String
+- **Default:** `"pep440"`
+- **Options:** `pep440`, `semver2`
+
+```toml
+[tool.gitversioned]
+version_standard = "semver2"
+```
+
+### `output_strategies`
+
+Configures the output formatting, templating, and text-replacement actions executed when generating the version file. This can be configured as a single strategy or a dictionary mapping specific `version_type` outputs (such as `release` or `dev`) to separate strategy objects.
+
+- **Type:** Dictionary or Single Strategy Object
+- **Default:** Pre-configured to output full metadata files using template files for `release` and `dev` states.
+- **Strategy Types:**
+  - `template_str`: Formats an inline string pattern containing placeholder variables (e.g. `{version}`, `{repo.current_commit.commit_sha}`).
+  - `template_path`: Reads and formats an external template file relative to the project root.
+  - `regex`: Searches an existing file for a pattern containing a `(?P<version>...)` group and updates the matched version string in-place.
+
+```toml
+# Inline Template String Strategy
+[tool.gitversioned.output_strategies]
+type = "template_str"
+content = "__version__ = '{version}'"
+
+# Or partitioned by release state:
+[tool.gitversioned.output_strategies.release]
+type = "template_path"
+path = "templates/release.py.template"
+
+[tool.gitversioned.output_strategies.dev]
+type = "template_str"
+content = "__version__ = '{version}'"
+```
+
+### `overrides`
+
+Defines override-based settings profiles. Each sub-key under `overrides` represents a named profile that can override any core configuration field. Overrides are particularly useful for projects targeting multiple distinct files, such as writing version data to both a Python package file and a Rust module or `Cargo.toml`.
+
+- **Type:** Dictionary of dictionaries
+- **Default:** `{}`
+
+#### `pyproject.toml` Syntax:
+
+```toml
+[tool.gitversioned.overrides.cargo]
+output = "Cargo.toml"
+output_strategies = { type = "regex", pattern = '(?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2' }
+```
+
+#### `setup.cfg` Syntax:
+
+```ini
+[tool:gitversioned:overrides:cargo]
+output = Cargo.toml
+
+[tool:gitversioned:overrides:cargo:output_strategies]
+type = regex
+pattern = (?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2
+```
+
+Programmatically, overrides can be instantiated via `settings.get_overridden_settings("profile_name")`. From the CLI, overrides are executed using the `overrides` subcommand group: `gitversioned overrides profile_name [calculate|format|write]`.
 
 ______________________________________________________________________
 
 ## Formatting Options
 
-`gitversioned` provides formatting strings to construct the different segments of the PEP 440 compliant version, and full ExStr templates to generate the Python output file.
+`gitversioned` provides formatting strings to construct the different segments of the PEP 440 compliant version.
 
 - **`format_main`**: Base semantic version string.
 - **`format_dev`**: Dev suffix.
 - **`format_pre`**: Pre-release suffix.
 - **`format_post`**: Post-release suffix.
-- **`template_release`**: The output file template used for stable releases.
-- **`template_dev`**: The output file template used for dev/dirty builds.
 
 For comprehensive details on customizing these formats and the available context variables, please read the [Templates & Formatting Guide](templates.md).
 
@@ -167,7 +233,7 @@ In this scenario, a project only considers annotated Git tags as the source of t
 ```toml
 [tool.gitversioned]
 source_type = ["tag"]
-output_file = "src/my_application/__version__.py"
+output = "src/my_application/__version__.py"
 
 [tool.gitversioned.auto_increment]
 dev = "patch"

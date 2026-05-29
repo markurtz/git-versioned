@@ -1,0 +1,270 @@
+---
+# Copyright 2026 markurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: "CI — Main"
+on:
+  push:
+    branches:
+      - main
+concurrency:
+  group: "main-${{ github.ref_name }}"
+  cancel-in-progress: true
+permissions:
+  contents: write
+  packages: write
+  security-events: write
+jobs:
+
+  # ── Stage 1: Quality Gate ──────────────────────────────────────────────────
+  project-quality:
+    name: "Project Quality"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project Quality
+        uses: ./.github/actions/project/quality
+        with:
+          force-run: "true"
+  python-quality:
+    name: "Python Quality (Py ${{ matrix.python-version }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.14"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Python Quality
+        uses: ./.github/actions/python/quality
+        with:
+          python-version: ${{ matrix.python-version }}
+          force-run: "true"
+  oci-quality:
+    name: "OCI Quality"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run OCI Quality
+        uses: ./.github/actions/oci/quality
+        with:
+          force-run: "true"
+
+  # ── Stage 2: Functional Tests ──────────────────────────────────────────────
+  project-functional-tests:
+    name: "Project Functional Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project Functional Tests
+        uses: ./.github/actions/project/tests
+        with:
+          test-type: "functional"
+          force-run: "true"
+  python-functional-tests:
+    name: "Python Functional Tests (Py ${{ matrix.python-version }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.14"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Python Functional Tests
+        id: run-tests
+        uses: ./.github/actions/python/tests
+        with:
+          python-version: ${{ matrix.python-version }}
+          test-type: "functional"
+          test-category: "smoke"
+          force-run: "true"
+      - name: Upload Python Functional Coverage Report
+        if: steps.run-tests.outputs.coverage-reports != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: coverage-functional-${{ matrix.python-version }}
+          path: ${{ steps.run-tests.outputs.coverage-reports }}
+          retention-days: 14
+
+  # ── Stage 3: Build ─────────────────────────────────────────────────────────
+  python-build:
+    name: "Python Build"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Python Build
+        uses: ./.github/actions/python/build
+        with:
+          build-type: "dev"
+          force-run: "true"
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: build-artifact-main
+          path: dist/
+          retention-days: 14
+  oci-build:
+    name: "OCI Build"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run OCI Build
+        id: build
+        uses: ./.github/actions/oci/build
+        with:
+          build-type: "dev"
+          force-run: "true"
+      - name: Upload OCI Image Tarball
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: build-artifact-oci
+          path: ${{ steps.build.outputs.image-path }}
+          retention-days: 7
+
+  # ── Stage 4: E2E Tests ─────────────────────────────────────────────────────
+  project-e2e-tests:
+    name: "Project E2E Tests (Examples)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project E2E Tests
+        uses: ./.github/actions/project/tests
+        with:
+          test-type: "e2e"
+          force-run: "true"
+  project-link-checks:
+    name: "Project Link Checks"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project Link Checks
+        uses: ./.github/actions/project/tests
+        with:
+          test-type: "link-checks"
+          force-run: "true"
+  python-e2e-tests:
+    name: "Python E2E Tests (Py ${{ matrix.python-version }})"
+    needs:
+      - python-build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.14"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download Build Artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-artifact-main
+          path: dist/
+      - name: Run Python E2E Tests
+        id: run-tests
+        uses: ./.github/actions/python/tests
+        with:
+          python-version: ${{ matrix.python-version }}
+          test-type: "e2e"
+          test-category: "smoke"
+          force-run: "true"
+      - name: Upload Python E2E Coverage Report
+        if: steps.run-tests.outputs.coverage-reports != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: coverage-e2e-${{ matrix.python-version }}
+          path: ${{ steps.run-tests.outputs.coverage-reports }}
+          retention-days: 14
+  oci-e2e-tests:
+    name: "OCI E2E Tests (Structure)"
+    needs:
+      - oci-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download OCI Image Tarball
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-artifact-oci
+      - name: Run OCI E2E Tests
+        uses: ./.github/actions/oci/tests
+        with:
+          image-tar: "gitversioned-latest.tar"
+          force-run: "true"
+
+  # ── Stage 5: Docs ──────────────────────────────────────────────────────────
+  docs:
+    name: "Build & Deploy Docs"
+    needs:
+      - python-functional-tests
+      - python-e2e-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Get short SHA
+        id: vars
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Download Python test coverage
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          pattern: coverage-*-3.10
+          path: coverage/python
+          merge-multiple: true
+        continue-on-error: true
+      - name: Run Project Docs Builder
+        uses: ./.github/actions/project/docs
+        with:
+          version-name: "main-${{ steps.vars.outputs.short_sha }}"
+          force-run: "true"

@@ -14,27 +14,37 @@ Before running the examples, ensure you have set up your environment correctly:
 
 ## Example Index
 
-Below is a curated list of available examples, categorized by complexity:
+Below is a curated list of available examples, categorized by build tool and use case:
 
-| Example                                                            | Complexity  | Description                                                           |
-| :----------------------------------------------------------------- | :---------- | :-------------------------------------------------------------------- |
-| **`[setuptools-version-file/](setuptools-version-file/)`**         | ⭐ Beginner | Setuptools configuration using a version file source.                 |
-| **`[setuptools-version-function/](setuptools-version-function/)`** | ⭐ Beginner | Setuptools configuration using a version function source.             |
-| **`[setuptools-tool-table/](setuptools-tool-table/)`**             | ⭐ Beginner | Setuptools configuration using `[tool.gitversioned]` table.           |
-| **`[setuptools-version-tags/](setuptools-version-tags/)`**         | ⭐ Beginner | Setuptools configuration using Git tags as the version source.        |
-| **`[setuptools-version-branch/](setuptools-version-branch/)`**     | ⭐ Beginner | Setuptools configuration using Git branch as the version source.      |
-| **`[setuptools-version-commits/](setuptools-version-commits/)`**   | ⭐ Beginner | Setuptools configuration using Git commits as the version source.     |
-| **`[setuptools-setup-py/](setuptools-setup-py/)`**                 | ⭐ Beginner | Setuptools configuration using a traditional `setup.py` file.         |
-| **`[setuptools-setup-cfg/](setuptools-setup-cfg/)`**               | ⭐ Beginner | Setuptools configuration using a `setup.cfg` file.                    |
-| **`[hatchling-version-file/](hatchling-version-file/)`**           | ⭐ Beginner | Hatchling configuration using a version file source.                  |
-| **`[hatchling-version-function/](hatchling-version-function/)`**   | ⭐ Beginner | Hatchling configuration using a version function source.              |
-| **`[hatchling-hatch-vars/](hatchling-hatch-vars/)`**               | ⭐ Beginner | Hatchling configuration using `[tool.hatch.version]` table variables. |
-| **`[hatchling-tool-table/](hatchling-tool-table/)`**               | ⭐ Beginner | Hatchling configuration using `[tool.gitversioned]` table.            |
-| **`[hatchling-version-tags/](hatchling-version-tags/)`**           | ⭐ Beginner | Hatchling configuration using Git tags as the version source.         |
-| **`[hatchling-version-branch/](hatchling-version-branch/)`**       | ⭐ Beginner | Hatchling configuration using Git branch as the version source.       |
-| **`[hatchling-version-commits/](hatchling-version-commits/)`**     | ⭐ Beginner | Hatchling configuration using Git commits as the version source.      |
+### Setuptools Examples
 
-<!-- Add new examples to the table above as they are created. -->
+| Example                                                                  | Complexity   | Description                                                                         |
+| :----------------------------------------------------------------------- | :----------- | :---------------------------------------------------------------------------------- |
+| **`[setuptools_pyproject_toml/](setuptools_pyproject_toml/)`**           | Beginner     | Standard Setuptools configuration using `pyproject.toml` and `[tool.gitversioned]`. |
+| **`[setuptools_setup_cfg/](setuptools_setup_cfg/)`**                     | Beginner     | Standard Setuptools configuration using a `setup.cfg` file.                         |
+| **`[setuptools_setup_py/](setuptools_setup_py/)`**                       | Beginner     | Standard Setuptools configuration using a traditional `setup.py` file.              |
+| **`[setuptools_pyproject_overrides/](setuptools_pyproject_overrides/)`** | Intermediate | Setuptools integration with external `Dockerfile` overrides via `pyproject.toml`.   |
+
+### Hatchling Examples
+
+| Example                                              | Complexity | Description                                                                |
+| :--------------------------------------------------- | :--------- | :------------------------------------------------------------------------- |
+| **`[hatch_pyproject_toml/](hatch_pyproject_toml/)`** | Beginner   | Hatchling configuration using `pyproject.toml` and `[tool.hatch.version]`. |
+
+### Maturin Examples
+
+| Example                                                          | Complexity | Description                                                                                    |
+| :--------------------------------------------------------------- | :--------- | :--------------------------------------------------------------------------------------------- |
+| **`[maturin_polyglot_overrides/](maturin_polyglot_overrides/)`** | Advanced   | Maturin build backend integration with multi-target overrides (`Cargo.toml` and `Dockerfile`). |
+
+### Command-Line Interface (CLI) Examples
+
+| Example                                                | Complexity | Description                                                                           |
+| :----------------------------------------------------- | :--------- | :------------------------------------------------------------------------------------ |
+| **`[docker_build_args/](docker_build_args/)`**         | Beginner   | Sourcing and formatting versions for Docker build arguments.                          |
+| **`[cli_regex_replacement/](cli_regex_replacement/)`** | Beginner   | Direct, in-place version string replacement in non-python files using regex patterns. |
+
+<!-- Add new examples to the tables above as they are created. -->
 
 ## Running the Examples
 

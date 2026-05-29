@@ -1,0 +1,12 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "docker-build-args"
+version = "0.1.0"
+description = "GitVersioned Docker build args example"
+dependencies = [
+    "gitversioned",
+]
+requires-python = ">=3.10"

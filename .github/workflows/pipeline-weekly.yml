@@ -1,0 +1,300 @@
+---
+# Copyright 2026 markurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: "CI — Weekly"
+on:
+  schedule:
+    - cron: "0 0 * * 0"  # 00:00 UTC every Sunday
+  workflow_dispatch:
+permissions:
+  contents: read
+  security-events: write
+jobs:
+
+  # ── Stage 0: Check Changes ─────────────────────────────────────────────────
+  check-changes:
+    name: "Check for Source Changes"
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Check for recent commits
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            COMMITS=$(git log --since="8 days ago" --oneline)
+            if [ -z "$COMMITS" ]; then
+              echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+  # ── Stage 1: Quality Gate ──────────────────────────────────────────────────
+  project-quality:
+    name: "Project Quality"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project Quality
+        uses: ./.github/actions/project/quality
+        with:
+          force-run: "true"
+  python-quality:
+    name: "Python Quality (Py ${{ matrix.python-version }})"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Python Quality
+        uses: ./.github/actions/python/quality
+        with:
+          python-version: ${{ matrix.python-version }}
+          force-run: "true"
+  oci-quality:
+    name: "OCI Quality"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run OCI Quality
+        uses: ./.github/actions/oci/quality
+        with:
+          force-run: "true"
+
+  # ── Stage 2: Functional Tests ──────────────────────────────────────────────
+  project-functional-tests:
+    name: "Project Functional Tests"
+    needs:
+      - check-changes
+      - project-quality
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project Functional Tests
+        uses: ./.github/actions/project/tests
+        with:
+          test-type: "functional"
+          force-run: "true"
+  python-functional-tests:
+    name: "Python Functional Tests (Py ${{ matrix.python-version }})"
+    needs:
+      - check-changes
+      - python-quality
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Python Functional Tests
+        id: run-tests
+        uses: ./.github/actions/python/tests
+        with:
+          python-version: ${{ matrix.python-version }}
+          test-type: "functional"
+          test-category: "regression"
+          force-run: "true"
+      - name: Upload Python Functional Coverage Report
+        if: steps.run-tests.outputs.coverage-reports != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: coverage-functional-${{ matrix.python-version }}
+          path: ${{ steps.run-tests.outputs.coverage-reports }}
+          retention-days: 14
+
+  # ── Stage 3: Build ─────────────────────────────────────────────────────────
+  python-build:
+    name: "Python Build"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Python Build
+        uses: ./.github/actions/python/build
+        with:
+          build-type: "dev"
+          force-run: "true"
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: build-artifact-weekly
+          path: dist/
+          retention-days: 7
+  oci-build:
+    name: "OCI Build"
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run OCI Build
+        id: build
+        uses: ./.github/actions/oci/build
+        with:
+          build-type: "dev"
+          force-run: "true"
+      - name: Upload OCI Image Tarball
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: build-artifact-oci-weekly
+          path: ${{ steps.build.outputs.image-path }}
+          retention-days: 7
+
+  # ── Stage 4: E2E Tests ─────────────────────────────────────────────────────
+  project-e2e-tests:
+    name: "Project E2E Tests (Examples)"
+    needs:
+      - check-changes
+      - project-quality
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project E2E Tests
+        uses: ./.github/actions/project/tests
+        with:
+          test-type: "e2e"
+          force-run: "true"
+  project-link-checks:
+    name: "Project Link Checks"
+    needs:
+      - check-changes
+      - project-quality
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project Link Checks
+        uses: ./.github/actions/project/tests
+        with:
+          test-type: "link-checks"
+          force-run: "true"
+  python-e2e-tests:
+    name: "Python E2E Tests (Py ${{ matrix.python-version }})"
+    needs:
+      - check-changes
+      - python-build
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download Build Artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-artifact-weekly
+          path: dist/
+      - name: Run Python E2E Tests
+        id: run-tests
+        uses: ./.github/actions/python/tests
+        with:
+          python-version: ${{ matrix.python-version }}
+          test-type: "e2e"
+          test-category: "regression"
+          force-run: "true"
+      - name: Upload Python E2E Coverage Report
+        if: steps.run-tests.outputs.coverage-reports != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: coverage-e2e-${{ matrix.python-version }}
+          path: ${{ steps.run-tests.outputs.coverage-reports }}
+          retention-days: 14
+  oci-e2e-tests:
+    name: "OCI E2E Tests (Structure)"
+    needs:
+      - check-changes
+      - oci-build
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download OCI Image Tarball
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-artifact-oci-weekly
+      - name: Run OCI E2E Tests
+        uses: ./.github/actions/oci/tests
+        with:
+          image-tar: "gitversioned-latest.tar"
+          force-run: "true"

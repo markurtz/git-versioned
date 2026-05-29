@@ -3,18 +3,44 @@
 > Opinionated PEP 440 Python versioning for Git repos and submodules.
 
 `gitversioned` enforces CI and user authority over versioning, and generates rich `version.py` files with deep metadata for full auditability.
-For comprehensive context and full documentation, please see [llms-full.txt](llms-full.txt).
+For complete, merged context containing the full codebase and all guides, see [llms-full.txt](llms-full.txt).
 
-## Docs
-- [Home](https://markurtz.github.io/git-versioned/): Documentation site home page
-- [Getting Started](https://markurtz.github.io/git-versioned/getting-started/): Installation, quickstart, and workflow guides
-- [Guides](https://markurtz.github.io/git-versioned/guides/): How-to guides for common tasks
-- [API Reference](https://markurtz.github.io/git-versioned/reference/): Full API reference documentation
+## Primary Documentation Links
+- [Documentation Home](https://markurtz.github.io/git-versioned/): Main site home page
+- [Getting Started](https://markurtz.github.io/git-versioned/getting-started/): Onboarding, installation, and setup
+- [Concepts & Architecture](https://markurtz.github.io/git-versioned/guides/concepts/): PEP 440, dirty state checks, and metadata fields
+- [Configuration Guide](https://markurtz.github.io/git-versioned/guides/configuration/): Setting overrides via `pyproject.toml`
+- [CLI Guide](https://markurtz.github.io/git-versioned/guides/cli/): Standalone CLI usage and subcommands
+- [Python API Guide](https://markurtz.github.io/git-versioned/guides/api/): Programmatic python usage
+- [Integration: Hatchling](https://markurtz.github.io/git-versioned/guides/hatchling/): Hatch versioning plugin integration
+- [Integration: Setuptools](https://markurtz.github.io/git-versioned/guides/setuptools/): Setuptools versioning hook integration
+- [Integration: Maturin](https://markurtz.github.io/git-versioned/guides/maturin/): Maturin versioning wrapper integration
+- [API Reference Documentation](https://markurtz.github.io/git-versioned/reference/): Complete API reference
 
-## Repository Files
-- [README.md](https://github.com/markurtz/git-versioned/blob/main/README.md): Project overview and quick start
-- [AGENTS.md](https://github.com/markurtz/git-versioned/blob/main/AGENTS.md): AI agent coding instructions
-- [DEVELOPING.md](https://github.com/markurtz/git-versioned/blob/main/DEVELOPING.md): Developer setup guide
+## Architectural Topography
 
-## Optional
-- [Full Documentation](https://markurtz.github.io/git-versioned/llms-full.txt): The complete concatenated documentation for GitVersioned
+### Configuration & Entrypoints
+- [pyproject.toml](pyproject.toml): Project settings, environment scripts, and PEP 518/621 metadata.
+- [AGENTS.md](AGENTS.md): Foundational agent development guidelines, build commands, and security boundaries.
+- [CLAUDE.md](CLAUDE.md): Direct pointer routing assistants to `AGENTS.md`.
+- [src/gitversioned/__main__.py](src/gitversioned/__main__.py): Standalone CLI entrypoint. Exposes subcommands:
+  - `calculate`: Computes and outputs the PEP 440 version string only.
+  - `format`: Formats and prints rendered template outputs to stdout.
+  - `write`: Resolves version and writes it directly to the designated output file (e.g. `version.py`).
+
+### Core Library Modules
+- [src/gitversioned/settings.py](src/gitversioned/settings.py): Pydantic schemas validating configuration fields.
+- [src/gitversioned/logging.py](src/gitversioned/logging.py): Loguru logging setup and stdout/stderr separation.
+- [src/gitversioned/plugins/hatchling_plugin.py](src/gitversioned/plugins/hatchling_plugin.py): Hook for Hatch builds.
+- [src/gitversioned/plugins/setuptools_plugin.py](src/gitversioned/plugins/setuptools_plugin.py): Hook for Setuptools builds.
+- [src/gitversioned/plugins/maturin_plugin.py](src/gitversioned/plugins/maturin_plugin.py): Hook wrapper for Maturin builds.
+- [src/gitversioned/utils/git.py](src/gitversioned/utils/git.py): Git repository information extraction via subprocess hooks.
+- [src/gitversioned/utils/environment.py](src/gitversioned/utils/environment.py): Target environment configuration resolver.
+- [src/gitversioned/versioning/entrypoints.py](src/gitversioned/versioning/entrypoints.py): Package endpoints for resolving and writing versions.
+- [src/gitversioned/versioning/generation.py](src/gitversioned/versioning/generation.py): Version file template compilation and formatting.
+- [src/gitversioned/versioning/sources.py](src/gitversioned/versioning/sources.py): Git state and environment variable version resolvers.
+
+### Testing Suite Tiers
+- [tests/python/unit/](tests/python/unit/): Fully isolated unit tests for individual functions and classes.
+- [tests/python/integration/](tests/python/integration/): Component integration checks.
+- [tests/e2e/](tests/e2e/): High-level integration tests executing CLI flows and package builds.

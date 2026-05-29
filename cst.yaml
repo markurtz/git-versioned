@@ -1,0 +1,93 @@
+---
+# Copyright 2026 markurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+schemaVersion: "2.0.0"
+metadataTest:
+  entrypoint: []
+  cmd:
+    - "python"
+    - "-m"
+    - "gitversioned"
+  workdir: "/app"
+  exposedPorts:
+    - "8080"
+  user: "appuser"
+fileExistenceTests:
+  - name: "Verify app directory exists"
+    path: "/app"
+    shouldExist: true
+commandTests:
+  - name: "Verify python is installed and functional"
+    command: "python"
+    args:
+      - "--version"
+    expectedOutput:
+      - "Python 3.*"
+  - name: "Verify gitversioned module execution and version check"
+    command: "python"
+    args:
+      - "-m"
+      - "gitversioned"
+      - "--version"
+    expectedOutput:
+      - "gitversioned v.*"
+  - name: "Verify gitversioned CLI binary is available and prints version"
+    command: "gitversioned"
+    args:
+      - "--version"
+    expectedOutput:
+      - "gitversioned v.*"
+  - name: "Verify gitversioned CLI binary help command works"
+    command: "gitversioned"
+    args:
+      - "--help"
+    expectedOutput:
+      - "Usage: gitversioned.*"
+      - "calculate"
+      - "format"
+      - "write"
+      - "overrides"
+  - name: "Verify gitversioned module help command works"
+    command: "python"
+    args:
+      - "-m"
+      - "gitversioned"
+      - "--help"
+    expectedOutput:
+      - "Usage: python -m gitversioned.*"
+      - "calculate"
+      - "format"
+      - "write"
+      - "overrides"
+  - name: "Verify gitversioned CLI binary calculate command works"
+    command: "gitversioned"
+    args:
+      - "calculate"
+    expectedOutput:
+      - "0\\.1\\.0"
+  - name: "Verify gitversioned module calculate command works"
+    command: "python"
+    args:
+      - "-m"
+      - "gitversioned"
+      - "calculate"
+    expectedOutput:
+      - "0\\.1\\.0"
+  - name: "Verify gitversioned CLI binary format command works"
+    command: "gitversioned"
+    args:
+      - "format"
+    expectedOutput:
+      - "Auto-generated version file from git-versioned"
+      - "__version__ = \"0\\.1\\.0\""

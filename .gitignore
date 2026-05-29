@@ -50,6 +50,7 @@ cmake-build-*/
 .run/
 
 # VS Code / Cursor
+.vscode
 .vscode/*
 .vscode/settings.json
 .vscode/tasks.json
@@ -80,7 +81,7 @@ bin/
 .zed/
 
 # Xcode
-build/
+/build/
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -166,7 +167,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
+/build/
 develop-eggs/
 dist/
 downloads/
@@ -188,9 +189,6 @@ MANIFEST
 .hatch/
 .hypothesis/
 .pytest_cache/
-.mypy_cache/
-.dmypy.json
-dmypy.json
 .pyre/
 .pytype/
 .ruff_cache/
@@ -282,11 +280,6 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
-
-# Rust
-# target/ (Moved to avoid conflict with Java target/ if in same dir, but fine to ignore twice)
-**/*.rs.bk
-# Cargo.lock # Note: Cargo.lock should typically be committed for executables
 
 # Go
 # bin/ (handled globally or below)
@@ -390,3 +383,16 @@ cdk.out/
 *.csv
 *.dat
 *.seed
+
+# Trivy cache
+.trivycache/
+
+# Generated phmdoctest files
+/.tests/
+
+# Generated reference documentation
+/.docs/
+/docs/reference/python_api/
+
+# Generated version.py files
+version.py

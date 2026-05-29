@@ -64,20 +64,19 @@ When creating new tests, ensure they are placed in the appropriate tier director
 ### Example Unit Test
 
 ```python
-"""Unit tests for my_module."""
-
-from __future__ import annotations
+"""Unit tests for settings."""
 
 import pytest
 
-from gitversioned import my_module
+from gitversioned import Settings
 
 
 @pytest.mark.smoke
-def test_my_function() -> None:
-    """Verify my_function behaves as expected."""
-    result = my_module.my_function()
-    assert result is True
+def test_settings_initialization() -> None:
+    """Verify Settings is initialized with default values."""
+    settings = Settings()
+    assert settings.version == "auto"
+    assert settings.version_type == "auto"
 ```
 
 > [!TIP]

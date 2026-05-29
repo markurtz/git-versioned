@@ -5,11 +5,88 @@ This guide gets you from a fresh installation to running your first command in u
 > [!NOTE]
 > Make sure you have completed [Installation](installation.md) before continuing.
 
+______________________________________________________________________
+
+## Quick Paths
+
+Select the tab below that matches your integration pathway to quickly resolve or write your project version:
+
+=== "CLI: Preview Version"
+
+````
+To check what the current version would calculate to without writing any files, run:
+```bash
+# Resolve and print only the version string
+gitversioned calculate
+```
+````
+
+=== "CLI: Write Version"
+
+````
+To resolve the version and write it directly to the default `version.py` file:
+```bash
+# Resolve the version and write it to version.py
+gitversioned write
+```
+````
+
+=== "Setuptools Plugin"
+
+````
+To integrate with a Setuptools-based project, add `gitversioned` to your `build-system` and define `version` as dynamic in your `pyproject.toml`:
+```toml
+[build-system]
+requires = ["setuptools>=61.0", "gitversioned"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+```
+````
+
+=== "Hatchling Plugin"
+
+````
+To integrate with a Hatchling-based project, declare `gitversioned` in your `pyproject.toml` and configure it as the version source:
+```toml
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "gitversioned"
+```
+````
+
+=== "Maturin Build Wrapper"
+
+````
+To integrate with a Maturin-based Rust/Python project, use the Maturin build wrapper backend in your `pyproject.toml` and ensure your `Cargo.toml` version matches:
+
+**`pyproject.toml`**
+```toml
+[build-system]
+requires = ["maturin>=1.0,<2.0", "gitversioned"]
+build-backend = "gitversioned.plugins.maturin_plugin"
+
+[project]
+dynamic = ["version"]
+```
+
+**`Cargo.toml`**
+```toml
+[package]
+name = "my-rust-package"
+version = "0.0.0"  # Will be dynamically synchronized during builds
+```
+````
+
+______________________________________________________________________
+
 ## Step 1 — Initialize Your Environment
 
 If you haven't already, set up your project and install `gitversioned`:
-
-Choose your preferred package manager to set up your environment:
 
 === "uv (Recommended)"
 
@@ -30,6 +107,8 @@ pip install gitversioned
 ```
 ````
 
+______________________________________________________________________
+
 ## Step 2 — Configure the Build System
 
 GitVersioned is primarily used automatically by your build system. Add it to your `pyproject.toml` (using Hatchling as an example):
@@ -47,7 +126,7 @@ Now, any time you build your package, the version will be dynamically resolved b
 
 ### Configure Archive Support (Recommended)
 
-To ensure GitVersioned can resolve your version when users download your repository as a ZIP file (e.g., from GitHub) where the `.git` directory is missing, set up archive support.
+To ensure GitVersioned can resolve your version when users download your repository as a ZIP file (e.g., from GitHub) where the `.git` directory is missing, set up archive support:
 
 1. Create a `.git_archival.txt` file in your repository root with the following contents:
    ```text
@@ -66,6 +145,8 @@ To ensure GitVersioned can resolve your version when users download your reposit
    ```
 
 When an archive is created (via `git archive` or GitHub's download ZIP feature), Git will replace those placeholders with the actual commit metadata, allowing GitVersioned to fall back to this file and resolve the correct version!
+
+______________________________________________________________________
 
 ## Step 3 — A Complete Scenario
 
@@ -110,6 +191,8 @@ In your CI/CD workflows, you can override this behavior using the `GITVERSIONED_
 
 > [!TIP]
 > You can configure GitVersioned directly within your `pyproject.toml`. See the [Reference](../reference/index.md) for all available configuration options.
+
+______________________________________________________________________
 
 ## Step 4 — Explore Further
 

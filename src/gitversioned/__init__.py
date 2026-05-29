@@ -10,22 +10,20 @@ Example:
     from gitversioned import Settings, resolve_version
     from gitversioned.utils import BuildEnvironment, GitRepository
 
-    version, ref = resolve_version(
+    version, _, ref = resolve_version(
         Settings(), GitRepository(), BuildEnvironment()
     )
-    print(f"Current version: {version}")
+    print("Current version:", version)
 """
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from .logging import LoggingSettings, configure_logger, logger
+from .logging import LoggingSettings, configure_logger
 from .settings import Settings
 from .versioning import (
-    generate_version_py,
-    resolve_and_generate_version,
     resolve_version,
+    resolve_version_output,
+    resolve_version_output_to_stream,
 )
 
 __all__ = [
@@ -33,15 +31,11 @@ __all__ = [
     "Settings",
     "__version__",
     "configure_logger",
-    "generate_version_py",
-    "logger",
-    "resolve_and_generate_version",
     "resolve_version",
+    "resolve_version_output",
+    "resolve_version_output_to_stream",
 ]
 
-__version__: Annotated[
-    str,
-    "The current version of the gitversioned package as a PEP 440 compliant string",
-] = "0.1.2"
+__version__ = "0.2.0"
 
 configure_logger()

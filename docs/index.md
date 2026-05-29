@@ -8,14 +8,14 @@ hide:
 <div class="hero-content" markdown>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logo-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/branding/logo-light.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/branding/logo-dark.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logo-light.svg">
   <img alt="GitVersioned Logo" src="assets/branding/logo-light.svg" width="400">
 </picture>
 
 # GitVersioned
 
-**Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation.**
+**Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch, Setuptools, and Maturin support. Simple, predictable, and foolproof automation.**
 
 [Get Started](getting-started/index.md){ .md-button .md-button--primary }
 [View on GitHub](https://github.com/markurtz/git-versioned){ .md-button }
@@ -27,15 +27,15 @@ hide:
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/user-flow-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="assets/branding/user-flow-light.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/branding/user-flow-dark.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/user-flow-light.svg">
     <img alt="User Flow Diagram" src="assets/branding/user-flow-light.svg" width="800">
   </picture>
 </p>
 
 ## What's Included
 
-<div class="grid" markdown>
+<div class="grid cards" markdown>
 
 <div class="card" markdown>
 :material-rocket-launch-outline: **Getting Started**
@@ -107,10 +107,11 @@ Our security policy, responsible disclosure process, and supported versions.
 
 ## Quick Install
 
-### Build Configuration
+GitVersioned supports multiple integration paths. Select your preferred method to get started:
 
-GitVersioned is primarily used as a build plugin. The preferred pathway is to configure it in your `pyproject.toml`:
+=== "Hatchling"
 
+````
 ```toml
 [build-system]
 requires = ["hatchling", "gitversioned"]
@@ -119,8 +120,44 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "gitversioned"
 ```
+````
 
-For advanced installation options, Setuptools alternatives, and step-by-step onboarding, see the [Installation Guide](getting-started/installation.md).
+=== "Setuptools"
+
+````
+```toml
+[build-system]
+requires = ["setuptools>=61.0", "gitversioned"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+```
+````
+
+=== "Maturin"
+
+````
+```toml
+[build-system]
+requires = ["maturin>=1.0,<2.0", "gitversioned"]
+build-backend = "gitversioned.plugins.maturin_plugin"
+
+[project]
+dynamic = ["version"]
+```
+````
+
+=== "CLI"
+
+````
+```bash
+pip install gitversioned
+gitversioned calculate
+```
+````
+
+For advanced options, archive support, and step-by-step onboarding, see the [Installation Guide](getting-started/installation.md) and the [Quick Start Guide](getting-started/quickstart.md).
 
 ## Links
 

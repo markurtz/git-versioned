@@ -1,0 +1,8 @@
+[project]
+name = "cli-regex-replacement-example"
+version = "0.1.0"
+description = "GitVersioned CLI regex replacement example"
+requires-python = ">=3.10"
+dependencies = [
+    "gitversioned",
+]

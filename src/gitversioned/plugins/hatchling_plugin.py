@@ -1,25 +1,31 @@
 """
 Hatchling version source plugin for GitVersioned.
 
-This module provides the Hatchling plugin interface to dynamically resolve project
-versions from Git state. It bridges Hatch's versioning configuration with GitVersioned's
-core version resolution and file generation engine.
+This module provides the Hatchling plugin interface for GitVersioned, allowing
+Hatchling-based projects to resolve their dynamic package version directly from
+the repository's Git history and environment state. It acts as a bridge between
+Hatch's custom versioning hook framework and GitVersioned's core resolution and
+generation logic.
+
+The main plugin implementation is defined in the GitVersionedVersionSource
+class, which is registered with Hatchling via the
+hatch_register_version_source entry point.
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from hatchling.metadata.core import ProjectMetadata
 from hatchling.plugin import hookimpl
 from hatchling.version.source.plugin.interface import VersionSourceInterface
-from loguru import logger
 
-from gitversioned.logging import LoggingSettings, configure_logger
+from gitversioned.logging import LoggingSettings, autolog, configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
-from gitversioned.versioning import resolve_and_generate_version
+from gitversioned.versioning import resolve_version_output_to_stream
 
 __all__ = [
     "GitVersionedVersionSource",
@@ -28,47 +34,69 @@ __all__ = [
 
 
 class GitVersionedVersionSource(VersionSourceInterface):
-    """
-    Hatchling version source interface for GitVersioned.
+    """Hatchling version source interface for GitVersioned.
 
-    This class provides the implementation for the Hatchling version source plugin
-    interface, allowing projects using Hatchling to dynamically resolve their versions
-    via GitVersioned. It handles version resolution, manual version setting, and project
-    metadata extraction.
+    This class implements the Hatchling VersionSourceInterface to resolve and
+    manage project versions dynamically. It hooks into the Hatchling build
+    lifecycle, retrieving version information from Git tags, commits, or
+    environment variables and passing it to the package builder.
+
+    By extending Hatchling's standard interface, it integrates directly with
+    tools like Hatch build or Hatch publish, enabling zero-configuration
+    version resolution for end users.
 
     .. code-block:: python
 
-        source = GitVersionedVersionSource(root_dir, config)
-        version_data = source.get_version_data()
+        from gitversioned.plugins.hatchling_plugin import GitVersionedVersionSource
 
-    :cvar PLUGIN_NAME: The registered name of the plugin within the Hatchling ecosystem
+        # Instantiate the plugin with project root and Hatch config
+        source = GitVersionedVersionSource(root="/path/to/project", config={})
+        version_info = source.get_version_data()
+
+    :cvar PLUGIN_NAME: The registered name of this plugin within the Hatchling
+        build system
     """
 
-    PLUGIN_NAME: ClassVar[str] = "gitversioned"  # type: ignore[misc]
+    PLUGIN_NAME: str = "gitversioned"
+
+    def __init__(self, root: str, config: dict[str, Any]) -> None:
+        """Initialize the GitVersioned version source plugin with project details.
+
+        :param root: The project root directory path
+        :param config: The plugin configuration dictionary from Hatchling
+        """
+        super().__init__(root, config)
+        self._metadata: ProjectMetadata | None = None
 
     def get_version_data(self) -> dict[str, str]:
-        """
-        Computes the project version from Git state.
+        """Compute the project version based on Git state and configuration.
 
-        Resolves the version using the Git repository, build environment, and combined
-        configuration context, optionally generating a version file if configured.
+        Resolves the version using the Git repository, build environment, and
+        plugin configuration, and optionally writes the resolved version to a
+        generated file if configured.
 
         .. code-block:: python
 
-            data = source.get_version_data()
-            version = data["version"]
+            version_data = source.get_version_data()
+            version_str = version_data["version"]
 
-        :return: A dictionary containing the resolved version string under
+        :returns: A dictionary containing the resolved version string mapped to
             the 'version' key
-        :raises ValueError: If the version resolution process fails
+        :raises ValueError: If the version resolution process fails or cannot
+            find a valid Git state
         """
         configure_logger(LoggingSettings(enabled=True))
         logger.debug("GitVersionedVersionSource.get_version_data called")
 
+        resolved = os.environ.get("GITVERSIONED_RESOLVED_VERSION")
+        if resolved:
+            logger.info(f"Using resolved version from environment: {resolved}")
+            return {"version": resolved}
+
         config = Settings(**self.get_settings_kwargs())
         repo = GitRepository(config.project_root)
         build_env = BuildEnvironment(project_root=config.project_root)
-        version, output_path = resolve_and_generate_version(
+        output_path, _, version, _, _ = resolve_version_output_to_stream(
             settings=config,
             repository=repo,
             environment=build_env,
@@ -80,27 +108,23 @@ class GitVersionedVersionSource(VersionSourceInterface):
 
         return {"version": str(version)}
 
-    def set_version(
-        self,
-        version: str,
-        version_data: dict[str, Any],  # noqa: ARG002
-    ) -> None:
-        """
-        Handler for manual version setting via the Hatch CLI.
+    def set_version(self, version: str, version_data: dict[str, Any]) -> None:
+        """Set the project version manually, updating the version source file.
 
-        This method updates the configured version source file with the explicitly
-        provided version, making it the new persistent version source.
+        This handler is invoked when writing a version via Hatch CLI (e.g.,
+        `hatch version <version>`), persisting the version string to the
+        configured file.
 
         .. code-block:: python
 
-            source.set_version("1.2.3", {})
+            source.set_version(version="1.2.3", version_data={})
 
-        :param version: The raw version string passed by the user
-        :param version_data: Additional version data context from Hatchling
+        :param version: The raw version string to set
+        :param version_data: Additional version context provided by Hatchling
         """
-        _ = (version_data,)  # to avoid lint errors for unused parameters
         logger.debug(
-            f"GitVersionedVersionSource.set_version called with version='{version}'"
+            "GitVersionedVersionSource.set_version called with "
+            f"version='{version}', context={version_data}"
         )
 
         config = Settings(**self.get_settings_kwargs())
@@ -112,19 +136,20 @@ class GitVersionedVersionSource(VersionSourceInterface):
         else:
             logger.warning("version_source_file is not set; skipping manual update")
 
+    @autolog
     def get_settings_kwargs(self) -> dict[str, Any]:
-        """
-        Extracts and prepares the configuration settings for GitVersioned.
+        """Extract and prepare the configuration dictionary for GitVersioned settings.
 
-        Gathers the project root, package name, source root, and plugin configuration
-        from the Hatchling environment to construct the GitVersioned settings.
+        Gathers the project metadata (root directory, package name, source root)
+        and combines it with Hatch plugin-specific configurations to build
+        keyword arguments.
 
         .. code-block:: python
 
             kwargs = source.get_settings_kwargs()
-            settings = Settings(**kwargs)
 
-        :return: A dictionary of keyword arguments for configuring GitVersioned
+        :returns: A dictionary of configuration options compatible with
+            GitVersioned settings
         """
         project_root = self.get_project_root()
         package_name = self.get_package_name()
@@ -146,54 +171,50 @@ class GitVersionedVersionSource(VersionSourceInterface):
         return kwargs
 
     def get_project_root(self) -> Path:
-        """
-        Resolves the absolute path to the project root directory.
+        """Resolve the absolute path to the project root directory.
 
         .. code-block:: python
 
-            root = source.get_project_root()
+            root_path = source.get_project_root()
 
-        :return: The resolved absolute path to the project root
+        :returns: The resolved absolute path to the project root
         """
         return Path(self.root).resolve()
 
     def get_package_name(self) -> str:
-        """
-        Retrieves the normalized package name from project metadata.
+        """Retrieve and normalize the package name from project metadata.
 
-        Extracts the project name from the Hatchling metadata and normalizes it
-        by replacing hyphens with underscores.
+        Extracts the project name from the Hatchling project configuration and replaces
+        hyphens with underscores for Python package compatibility.
 
         .. code-block:: python
 
-            name = source.get_package_name()
+            pkg_name = source.get_package_name()
 
-        :return: The normalized package name
+        :returns: The normalized Python package name
         """
-        root = self.get_project_root()
-        metadata: Any = ProjectMetadata(str(root), None)
+        metadata = self._get_metadata()
         return metadata.name.replace("-", "_")
 
     def get_src_root(self) -> Path:
-        """
-        Determines the source root directory for the project.
+        """Determine the source root directory for the project.
 
-        Resolves the source directory by checking explicit plugin configuration,
-        Hatchling build targets, or falling back to standard repository layouts
-        like 'src/package_name' or 'package_name'.
+        Resolves the directory containing the source package by checking the
+        explicit src_root configuration, Hatchling build target package paths,
+        or falling back to directory layout conventions.
 
         .. code-block:: python
 
             src_root = source.get_src_root()
 
-        :return: The resolved path to the source root directory
+        :returns: The resolved Path to the source root directory
         """
         root = self.get_project_root()
 
         if "src_root" in self.config:
             return Path(root) / str(self.config["src_root"])
 
-        metadata: Any = ProjectMetadata(str(root), None)
+        metadata = self._get_metadata()
         hatch_config = (
             metadata.config.get("tool", {})
             .get("hatch", {})
@@ -208,7 +229,7 @@ class GitVersionedVersionSource(VersionSourceInterface):
 
         sources = hatch_config.get("sources", None)
         if sources and isinstance(sources, dict):
-            return root / list(sources.keys())[0]
+            return root / str(list(sources.keys())[0])
 
         package_name = self.get_package_name()
 
@@ -222,19 +243,25 @@ class GitVersionedVersionSource(VersionSourceInterface):
 
         return root
 
+    def _get_metadata(self) -> ProjectMetadata:
+        if self._metadata is None:
+            self._metadata = ProjectMetadata(str(self.get_project_root()), None)
+        return self._metadata
+
 
 @hookimpl
 def hatch_register_version_source() -> type[VersionSourceInterface]:
-    """
-    Register the GitVersioned source plugin with Hatchling.
+    """Register the GitVersioned version source plugin with the Hatchling build system.
 
-    Provides the entry point for Hatchling to discover and load the
-    GitVersionedVersionSource plugin implementation.
+    Provides the entry point hook for Hatchling to locate and instantiate the custom
+    GitVersionedVersionSource version source implementation.
 
     .. code-block:: python
 
-        plugin_class = hatch_register_version_source()
+        from gitversioned.plugins.hatchling_plugin import hatch_register_version_source
 
-    :return: The class representing the plugin interface
+        plugin_type = hatch_register_version_source()
+
+    :returns: The GitVersionedVersionSource class implementing VersionSourceInterface
     """
     return GitVersionedVersionSource
