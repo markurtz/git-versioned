@@ -12,6 +12,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# ==============================================================================
+# PIPELINE: CI — Repository Cleanup
+# ------------------------------------------------------------------------------
+# Triggered by: Pull Requests closed, daily cron at 00:00 UTC, or manual trigger.
+#
+# Part of the Unified GitVersioned CI/CD Workflow:
+#      [ ] 1. DEVELOPMENT (PR validation, preview docs)
+#      [ ] 2. MAIN (Post-merge validation, main branch docs)
+#      [ ] 3. NIGHTLY (Daily check, pre-release publish, nightly docs)
+#      [ ] 4. WEEKLY (Weekly regression checks)
+#      [ ] 5. RELEASE (Production PyPI & OCI publish, versioned docs)
+#   -> [x] 6. UTILITY: CLEANUP (Daily stale docs/OCI image cleanup) <--- CURRENT WORKFLOW
+#      [ ] 7. UTILITY: PR COMMENTER (Coverage & builds reporting on PRs)
+#
+# High-Level Execution flow & Job Dependencies:
+#
+#   (Runs in parallel depending on the trigger event)
+#   ├──> [cleanup-docs] (Deletes preview review/pr-* docs and stale gh-pages branches)
+#   └──> [cleanup-oci]  (Deletes old containers from registry, keeping last N containers)
+#
+# ==============================================================================
 name: "CI — Repository Cleanup"
 on:
   pull_request:

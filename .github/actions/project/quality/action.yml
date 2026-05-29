@@ -17,8 +17,7 @@ description: "Runs project linting, formatting, and security checks"
 inputs:
   python-version:
     description: "Python version to set up"
-    required: false
-    default: "3.10"
+    required: true
   force-run:
     description: "Always run even if no changes are detected"
     required: false

@@ -26,9 +26,32 @@ permissions:
   pull-requests: write
 jobs:
 
-  # ── Stage 1: Quality Gate ──────────────────────────────────────────────────
+  # ── Stage 0: Pipeline Initialization ───────────────────────────────────────
+  init-gate:
+    name: "Pipeline Initialization"
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: "true"
+      default_python: ${{ steps.parse.outputs.default_python }}
+      quick_matrix: ${{ steps.parse.outputs.quick_matrix }}
+      full_matrix: ${{ steps.parse.outputs.full_matrix }}
+    steps:
+      - name: Checkout config
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          sparse-checkout: .github/pipeline-config.json
+          sparse-checkout-cone-mode: false
+      - name: Parse config
+        id: parse
+        run: |
+          echo "default_python=$(jq -r '.default_python' .github/pipeline-config.json)" >> "$GITHUB_OUTPUT"
+          echo "quick_matrix=$(jq -c '.quick_matrix' .github/pipeline-config.json)" >> "$GITHUB_OUTPUT"
+          echo "full_matrix=$(jq -c '.full_matrix' .github/pipeline-config.json)" >> "$GITHUB_OUTPUT"
+
+  # ── Stage 1: Quality Checks ────────────────────────────────────────────────
   project-quality:
     name: "Project Quality"
+    needs: init-gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -37,15 +60,16 @@ jobs:
           fetch-depth: 0
       - name: Run Project Quality
         uses: ./.github/actions/project/quality
+        with:
+          python-version: ${{ needs.init-gate.outputs.default_python }}
   python-quality:
     name: "Python Quality (Py ${{ matrix.python-version }})"
+    needs: init-gate
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version:
-          - "3.10"
-          - "3.14"
+        python-version: ${{ fromJSON(needs.init-gate.outputs.quick_matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -57,6 +81,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
   oci-quality:
     name: "OCI Quality"
+    needs: init-gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -65,10 +90,23 @@ jobs:
           fetch-depth: 0
       - name: Run OCI Quality
         uses: ./.github/actions/oci/quality
+        with:
+          python-version: ${{ needs.init-gate.outputs.default_python }}
+  quality-gate:
+    name: "Quality Gate"
+    needs:
+      - project-quality
+      - python-quality
+      - oci-quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success
+        run: echo "Quality Gate Passed"
 
   # ── Stage 2: Functional Tests ──────────────────────────────────────────────
   project-functional-tests:
     name: "Project Functional Tests"
+    needs: init-gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -79,15 +117,15 @@ jobs:
         uses: ./.github/actions/project/tests
         with:
           test-type: "functional"
+          python-version: ${{ needs.init-gate.outputs.default_python }}
   python-functional-tests:
     name: "Python Functional Tests (Py ${{ matrix.python-version }})"
+    needs: init-gate
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version:
-          - "3.10"
-          - "3.14"
+        python-version: ${{ fromJSON(needs.init-gate.outputs.quick_matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -107,10 +145,44 @@ jobs:
           name: coverage-functional-${{ matrix.python-version }}
           path: ${{ steps.run-tests.outputs.coverage-reports }}
           retention-days: 7
+  functional-gate:
+    name: "Functional Gate"
+    needs:
+      - project-functional-tests
+      - python-functional-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success
+        run: echo "Functional Gate Passed"
 
-  # ── Stage 3: Build ─────────────────────────────────────────────────────────
+  # ── Stage 3: Integrity Checks ──────────────────────────────────────────────
+  project-link-checks:
+    name: "Project Link Checks"
+    needs: init-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run Project Link Checks
+        uses: ./.github/actions/project/tests
+        with:
+          test-type: "link-checks"
+          python-version: ${{ needs.init-gate.outputs.default_python }}
+  integrity-gate:
+    name: "Integrity Gate"
+    needs:
+      - project-link-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success
+        run: echo "Integrity Gate Passed"
+
+  # ── Stage 4: Build ─────────────────────────────────────────────────────────
   python-build:
     name: "Python Build"
+    needs: init-gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -121,6 +193,7 @@ jobs:
         uses: ./.github/actions/python/build
         with:
           build-type: "dev"
+          python-version: ${{ needs.init-gate.outputs.default_python }}
       - name: Upload Build Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -129,6 +202,7 @@ jobs:
           retention-days: 7
   oci-build:
     name: "OCI Build"
+    needs: init-gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -141,16 +215,29 @@ jobs:
         with:
           build-type: "dev"
           force-run: "true"
+          python-version: ${{ needs.init-gate.outputs.default_python }}
       - name: Upload OCI Image Tarball
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: build-artifact-oci
           path: ${{ steps.build.outputs.image-path }}
           retention-days: 7
+  build-gate:
+    name: "Build Gate"
+    needs:
+      - python-build
+      - oci-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success
+        run: echo "Build Gate Passed"
 
-  # ── Stage 4: E2E Tests ─────────────────────────────────────────────────────
+  # ── Stage 5: E2E Tests ─────────────────────────────────────────────────────
   project-e2e-tests:
     name: "Project E2E Tests (Examples)"
+    needs:
+      - init-gate
+      - build-gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -161,29 +248,17 @@ jobs:
         uses: ./.github/actions/project/tests
         with:
           test-type: "e2e"
-  project-link-checks:
-    name: "Project Link Checks"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 0
-      - name: Run Project Link Checks
-        uses: ./.github/actions/project/tests
-        with:
-          test-type: "link-checks"
+          python-version: ${{ needs.init-gate.outputs.default_python }}
   python-e2e-tests:
     name: "Python E2E Tests (Py ${{ matrix.python-version }})"
     needs:
-      - python-build
+      - init-gate
+      - build-gate
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version:
-          - "3.10"
-          - "3.14"
+        python-version: ${{ fromJSON(needs.init-gate.outputs.quick_matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -211,7 +286,8 @@ jobs:
   oci-e2e-tests:
     name: "OCI E2E Tests (Structure)"
     needs:
-      - oci-build
+      - init-gate
+      - build-gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -227,14 +303,28 @@ jobs:
         with:
           image-tar: "gitversioned-latest.tar"
           force-run: "true"
+          python-version: ${{ needs.init-gate.outputs.default_python }}
+  e2e-gate:
+    name: "E2E Gate"
+    needs:
+      - project-e2e-tests
+      - python-e2e-tests
+      - oci-e2e-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success
+        run: echo "E2E Gate Passed"
 
-  # ── Stage 5: Docs ──────────────────────────────────────────────────────────
+  # ── Stage 6: Docs ──────────────────────────────────────────────────────────
   docs:
     name: "Build & Deploy Docs"
     needs:
-      - python-functional-tests
-      - python-e2e-tests
-    if: github.event.pull_request.head.repo.fork == false
+      - init-gate
+      - quality-gate
+      - functional-gate
+      - e2e-gate
+    if: always() && needs.init-gate.result == 'success' && github.event.pull_request.head.repo.fork
+      == false
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -255,3 +345,4 @@ jobs:
         uses: ./.github/actions/project/docs
         with:
           version-name: "pr-${{ github.event.pull_request.number }}"
+          python-version: ${{ needs.init-gate.outputs.default_python }}
