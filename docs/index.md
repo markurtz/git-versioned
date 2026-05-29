@@ -15,7 +15,7 @@ hide:
 
 # GitVersioned
 
-**Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch, Setuptools, and Maturin support. Simple, predictable, and foolproof automation.**
+**Opinionated compliance-first versioning automation for Git repositories. Enforces CI/User authority and generates rich metadata. Supports Python, Rust (Maturin), Docker/OCI, and multi-file version synchronization via declarative overrides. Powered by a flexible CLI, programmatic API, and native build backend integrations.**
 
 [Get Started](getting-started/index.md){ .md-button .md-button--primary }
 [View on GitHub](https://github.com/markurtz/git-versioned){ .md-button }
@@ -148,12 +148,33 @@ dynamic = ["version"]
 ```
 ````
 
-=== "CLI"
+=== "CLI & API"
 
 ````
 ```bash
 pip install gitversioned
+# Preview version string
 gitversioned calculate
+# Write version and all overrides in-place
+gitversioned write
+```
+````
+
+=== "Multi-File Overrides"
+
+````
+```toml
+# pyproject.toml
+[tool.gitversioned]
+output = "src/package/version.py"
+
+[tool.gitversioned.overrides.cargo]
+output = "Cargo.toml"
+output_strategies = { type = "regex", pattern = 'version = "(?P<version>.*?)"' }
+
+[tool.gitversioned.overrides.docker]
+output = "Dockerfile"
+output_strategies = { type = "regex", pattern = 'ARG VERSION="(?P<version>.*?)"' }
 ```
 ````
 

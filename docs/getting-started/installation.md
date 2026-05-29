@@ -68,6 +68,28 @@ version = "0.0.0"  # Will be dynamically updated on build
 ```
 ````
 
+=== "CLI & Multi-File Overrides"
+
+````
+For multi-language/polyglot repositories or projects built outside Python frontends, use the active CLI to compute and write version strings to multiple targets simultaneously using overrides:
+
+**`pyproject.toml`**
+```toml
+[tool.gitversioned]
+output = "src/package/version.py"
+
+[tool.gitversioned.overrides.cargo]
+output = "Cargo.toml"
+output_strategies = { type = "regex", pattern = 'version = "(?P<version>.*?)"' }
+```
+
+Then run the write subcommand:
+```bash
+pip install gitversioned
+gitversioned write
+```
+````
+
 ______________________________________________________________________
 
 ## Standard Installation

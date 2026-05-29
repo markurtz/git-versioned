@@ -174,6 +174,16 @@ nightly = "minor"
 # Auto-increment the patch/micro version for dev builds to differentiate from the last release
 # Example: If the last tag is 1.0.0, your local dev build will be 1.0.1.dev...
 dev = "patch"
+
+# Multi-file synchronization overrides (e.g., Rust & Docker)
+[tool.gitversioned.overrides.cargo]
+output = "Cargo.toml"
+version_standard = "semver2"
+output_strategies = { type = "regex", pattern = '(?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2' }
+
+[tool.gitversioned.overrides.docker]
+output = "Dockerfile"
+output_strategies = { type = "regex", pattern = 'ARG VERSION="(?P<version>.*?)"' }
 ```
 
 ### CI/CD Version Resolution

@@ -35,7 +35,7 @@
 </p>
 
 <p align="center">
-  <a href="https://markurtz.github.io/git-versioned">Documentation</a> |
+  <a href="https://github.com/markurtz/git-versioned/tree/main/docs">Documentation</a> |
   <a href="https://github.com/markurtz/git-versioned/milestones">Roadmap</a> |
   <a href="https://github.com/markurtz/git-versioned/issues">Issues</a> |
   <a href="https://github.com/markurtz/git-versioned/discussions">Discussions</a>
@@ -57,24 +57,28 @@ GitVersioned is a PEP 440-compliant Python versioning tool for Git repositories.
 
 ### Why GitVersioned?
 
-GitVersioned combines strict PEP 440 compliance with extreme customizability, designed to drop cleanly into modern Python build systems.
+GitVersioned is designed with a core mission: **to trust the user and CI/CD flows above all else, while strictly enforcing packaging standards.** Rather than relying on rigid, heuristic-based version guessing, it prioritizes user and pipeline authority. At the same time, it strictly validates and normalizes all resolved versions against standard specifications (PEP 440 and SemVer 2) to guarantee complete compatibility across the Python packaging ecosystem and broader ecosystems.
 
-- **Ironclad Auditability & Metadata:** Generates rich `version.py` files packed with Git hashes, branch names, and build context to ensure every artifact is fully traceable.
-- **Predictability & Authority:** Enforces CI-driven and user-defined authority. Supports dynamic version resolution from tags, branches, commits, local files, archives (e.g., GitHub ZIP downloads), or custom Python hooks.
-- **Native Integrations & CI/CD Ready:** Offers out-of-the-box support for **Hatch**, **Setuptools**, and **Maturin** and plugs effortlessly into modern CI pipelines (e.g., GitHub Actions) without tangled configurations.
+- **Predictability & Authority First (with Strict Compliance):** Enforces CI-driven and user-defined authority, giving you total control over the versioning flow, while strictly validating against PEP 440 and SemVer 2 to ensure absolute compatibility with pip, PyPI, and external ecosystems.
+- **Robust CLI & API Extensibility:** Empower versioning workflows outside Python build frontends via dedicated CLI commands (`calculate`, `write`, `format`) and a clean Python API, enabling custom scripting and integration into any workflow.
+- **Universal Build Backend Support:** Out-of-the-box integration with all popular Python packaging backends: **Hatchling**, **Setuptools**, and **Maturin**.
+- **Multi-File Version Synchronization:** Update multiple version targets—such as Python modules (`version.py`), Cargo manifests (`Cargo.toml`), and deployment manifests (`Dockerfile`)—simultaneously with a single build or write command, simplifying build processes and unifying version resolution.
+- **Rust Backend Compatibility:** Seamless wrap-around plugins for Maturin, allowing polyglot Rust and Python projects to synchronize versioning logic across Cargo and Python metadata effortlessly.
+- **Docker & OCI Compatibility:** Decouples container image versions from hardcoded values, supplying dynamically computed versions to OCI build environments via environment variables or file updates.
+- **Verbose Auditability & Metadata:** Generates structured `version.py` files packed with Git hashes, branch names, dirty states, and build context to ensure complete traceability.
 - **Deep Customizability:** Features 25+ configuration settings via `pyproject.toml`, `setup.cfg`, or environment variables. Provides advanced ExStr templates and custom format strings for full control over metadata generation and release formatting.
 - **Archive Fallback:** Seamlessly resolves version data from GitHub ZIP downloads or source archives when the `.git` directory is missing.
 - **Submodule Awareness:** Intelligently handles versioning across complex Git submodule structures.
 
 ### Ecosystem Comparison
 
-| Tool               | Versioning Logic & PEP 440                                                                               | Sourcing & Configuration                                                                           | Auditability & Metadata                                                                             | Integrations & DX                                                                          |
-| ------------------ | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **`GitVersioned`** | **Predictable & Robust.** Enforces strict PEP 440 compliance with flow-based auto-incrementing logic.    | **Omni-Source.** Dynamically resolves from Git, archives, env vars, files, or custom Python hooks. | **Unmatched.** Generates rich `version.py` files packed with Git, build, and host environment data. | **Superior.** 2-line setup, zero runtime deps, and native Hatch/Setuptools support.        |
-| `setuptools-scm`   | Heuristic. Relies on "guess-next-version" logic which can lead to unpredictable bumps.                   | VCS-First. Primarily Git/Hg tags; environment overrides are manual and difficult to manage.        | Minimal. Outputs a simple version string with basic stdout build logging.                           | Standard. Industry default but requires build-time dependencies and is tied to Setuptools. |
-| `versioneer`       | Rigid. Uses basic tag-plus-distance logic with little room for customization.                            | VCS-Only. Hardcoded to read from repository tags and hashes.                                       | None. Injects a hardcoded Python module; executes silently with no tracing.                         | Legacy. Requires vendoring ~2,000 lines of code directly into your repository.             |
-| `versioningit`     | Manual. Highly configurable but places the burden of PEP 440 compliance on complex user regex/templates. | Modular. Supports many sources but requires extensive individual manual configuration.             | Moderate. Customizable output via templates but lacks a unified, structured metadata model.         | Complex. Steep learning curve and plugin-heavy architecture.                               |
-| `hatch-vcs`        | Basic. Inherits the standard "guess" logic from the broader SCM ecosystem.                               | Optimized. Tied tightly to Hatchling profiles and its specific environment.                        | Internal. Logging and metadata are strictly restricted to the Hatch ecosystem.                      | Niche. High ease of use for Hatch users, but inapplicable for other build backends.        |
+| Tool               | Core Mission & Authority                                                                              | CLI, API & Config                                                           | Build Backend Support                                                                | Multi-File & Polyglot Sync                                                                                     |
+| :----------------- | :---------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| **`GitVersioned`** | **User/CI-First.** Enforces user and CI/CD authority over heuristic guessing; predictable and robust. | **Excellent.** Standalone active CLI & API with 25+ verbose config options. | **Universal.** Native plugins for Hatchling, Setuptools, and Maturin out-of-the-box. | **Native.** Updates Python, Rust (`Cargo.toml`), `Dockerfile`, and other targets simultaneously via overrides. |
+| `setuptools-scm`   | VCS-First. Relies on "guess-next-version" logic which can lead to unpredictable bumps.                | Low. No standalone CLI/API; manual overrides are difficult to manage.       | Niche. Tightly coupled to Setuptools build pipelines.                                | None. Targets a single Python package version.                                                                 |
+| `versioneer`       | VCS-Only. Rigid tag-plus-distance logic with little room for customization.                           | Legacy. Requires vendoring ~2,000 lines of helper code into the repository. | Niche. Tied to legacy Setuptools setup scripts.                                      | None. Only writes to the Python module it is vendored in.                                                      |
+| `versioningit`     | VCS-bound. Modular but places compliance burden on complex user regex/templates.                      | Python API only. Modular but configuration setup is complex.                | Complex. Requires manual config per backend wrapper.                                 | Limited. Focuses on single Python file output paths.                                                           |
+| `hatch-vcs`        | VCS-First. Inherits the standard guess logic from SCM ecosystem.                                      | None. Tied strictly to Hatchling build profiles.                            | Niche. Tied strictly to Hatchling.                                                   | None. Cannot write or sync non-Python dependencies.                                                            |
 
 ## Quick Start
 
@@ -143,7 +147,28 @@ gitversioned calculate
 gitversioned write --output src/package/version.py
 ```
 
-### 5. Python API
+### 5. Multi-File / Overrides Versioning
+
+Synchronize multiple files simultaneously during a single build or CLI run by declaring overrides in your configuration:
+
+**`pyproject.toml`**
+
+```toml
+[tool.gitversioned]
+output = "src/package/version.py"
+
+[tool.gitversioned.overrides.cargo]
+output = "Cargo.toml"
+output_strategies = { type = "regex", pattern = '(?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2' }
+
+[tool.gitversioned.overrides.docker]
+output = "Dockerfile"
+output_strategies = { type = "regex", pattern = 'ARG VERSION="(?P<version>.*?)"' }
+```
+
+Running `gitversioned write` or building your package will automatically calculate the version and update `src/package/version.py`, `Cargo.toml`, and `Dockerfile` in-place!
+
+### 6. Python API
 
 Integrate version resolution directly inside Python scripts:
 
@@ -180,7 +205,7 @@ To resolve the version when users download a repository ZIP file (e.g., from Git
    .git_archival.txt export-subst
    ```
 
-For full options and onboarding, see the **[Getting Started guide](docs/getting-started/index.md)**.
+For full options and onboarding, see the **[Getting Started guide](https://github.com/markurtz/git-versioned/blob/main/docs/getting-started/index.md)**.
 
 ## Core Concepts
 
