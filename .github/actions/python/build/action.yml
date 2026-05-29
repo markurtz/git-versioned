@@ -17,8 +17,7 @@ description: "Builds the python wheel and sdist package using Hatch"
 inputs:
   python-version:
     description: "Python version to build package against"
-    required: false
-    default: "3.10"
+    required: true
   force-run:
     description: "Always run even if no changes are detected"
     required: false

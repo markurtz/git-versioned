@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# =================================================================-------------
-# Stage 1: Build Stage (Python)
-# =================================================================-------------
 FROM python:3.10-slim-bookworm AS builder
 
 # Set working directory

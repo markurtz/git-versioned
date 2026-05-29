@@ -20,8 +20,7 @@ inputs:
     required: true
   python-version:
     description: "Python version to set up for tooling"
-    required: false
-    default: "3.10"
+    required: true
   force-run:
     description: "Always run even if no changes are detected"
     required: false

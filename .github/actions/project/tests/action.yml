@@ -17,8 +17,7 @@ description: "Runs project integration (doc) tests, E2E (examples) tests, and li
 inputs:
   python-version:
     description: "Python version to set up"
-    required: false
-    default: "3.10"
+    required: true
   test-type:
     description: "Type of tests to run: functional, e2e, or link-checks"
     required: false
