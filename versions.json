@@ -2,6 +2,11 @@
   {
     "version": "main-240b3f6",
     "title": "main-240b3f6",
+    "aliases": []
+  },
+  {
+    "version": "main-b38c071",
+    "title": "main-b38c071",
     "aliases": [
       "dev"
     ]
