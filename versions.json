@@ -2,6 +2,11 @@
   {
     "version": "main-f1044f5",
     "title": "main-f1044f5",
+    "aliases": []
+  },
+  {
+    "version": "main-c6a752d",
+    "title": "main-c6a752d",
     "aliases": [
       "dev"
     ]
