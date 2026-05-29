@@ -1,10 +1,15 @@
 [
   {
-    "version": "main-e3ee39e",
-    "title": "main-e3ee39e",
+    "version": "main-16dfce0",
+    "title": "main-16dfce0",
     "aliases": [
       "dev"
     ]
+  },
+  {
+    "version": "main-e3ee39e",
+    "title": "main-e3ee39e",
+    "aliases": []
   },
   {
     "version": "v0.2.0",
