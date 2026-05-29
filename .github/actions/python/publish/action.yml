@@ -33,7 +33,12 @@ runs:
         packages-dir: dist/
         user: __token__
         password: ""
+        repository-url: https://upload.pypi.org/legacy/
+        verify-metadata: true
+        skip-existing: false
         verbose: true
+        print-hash: true
+        attestations: true
     - name: Create GitHub Release
       if: inputs.create-release == 'true'
       uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191  # v2.0.8
