@@ -130,7 +130,7 @@ nightly = "minor"
 dependency-groups = ["dev"]
 
 [tool.hatch.envs.default.env-vars]
-COVERAGE_CORE = "sys"
+COVERAGE_CORE = "pytrace"
 PYTHONPATH = "."
 PYTHON_TARGETS = "docs examples scripts src tests"
 GITVERSIONED__LOGGING__LEVEL = "ERROR"
