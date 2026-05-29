@@ -1921,7 +1921,258 @@
 
 <h1 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">&para;</a></h1>
 <p>This page documents the CLI for <code>gitversioned</code>.</p>
-<p><em>The CLI documentation has not been generated yet. Run <code>hatch run python:docs</code> to include it in the build.</em></p>
+<h1 id="gitversioned"><code>gitversioned</code><a class="headerlink" href="#gitversioned" title="Permanent link">&para;</a></h1>
+<p>Opinionated PEP 440 Python versioning for Git repos and submodules.</p>
+<p><strong>Usage</strong>:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gp">$ </span>gitversioned<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</span></code></pre></div>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>-v, --version</code>: Show the version and exit.</li>
+<li><code>--help</code>: Show this message and exit.</li>
+</ul>
+<p><strong>Commands</strong>:</p>
+<ul>
+<li><code>calculate</code>: Resolve and output only the PEP 440...</li>
+<li><code>format</code>: Resolve the version and output the...</li>
+<li><code>write</code>: Resolve the version and write output files.</li>
+<li><code>overrides</code>: Run commands under a specific overrides...</li>
+</ul>
+<h2 id="gitversioned-calculate"><code>gitversioned calculate</code><a class="headerlink" href="#gitversioned-calculate" title="Permanent link">&para;</a></h2>
+<p>Resolve and output only the PEP 440 version string.</p>
+<p>This command runs version resolution and prints the final calculated version
+string directly to stdout. It excludes output target and strategy settings.</p>
+<p>:param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
+:returns: None.</p>
+<p><strong>Usage</strong>:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="gp">$ </span>gitversioned<span class="w"> </span>calculate<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</span></code></pre></div>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>--package-name TEXT</code>: The package name being versioned. Enables automatic package name detection when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--project-root PATH</code>: The absolute path to the root directory of the project.</li>
+<li><code>--src-root PATH</code>: The path to the source root directory. Enables automatic source directory fallback detection when set to &#x27;auto&#x27;.</li>
+<li><code>--build-is-editable</code>: Flag indicating whether the package is built as an editable installation.</li>
+<li><code>--overrides TEXT</code>: Override-based settings configurations.</li>
+<li><code>--explicit-version TEXT</code>: Explicit version override string. Enables dynamic version resolution from git/files when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--source-type TEXT</code>: Priority order of sources to query for version information.</li>
+<li><code>--version-source-file TEXT</code>: Path to a file containing the version string. Set to None to disable.  [default: (version.txt)]</li>
+<li><code>--version-source-archive TEXT</code>: Path to a git-archive export info file used when Git is unavailable. Set to None to disable.  [default: (.git_archival.txt)]</li>
+<li><code>--version-source-function TEXT</code>: A string pointing to a module and function (e.g. &#x27;module:func&#x27;) to resolve the version. Set to None to disable.</li>
+<li><code>--regex-version TEXT</code>: Regular expression patterns to parse and validate the explicit version string.</li>
+<li><code>--regex-tag TEXT</code>: Regular expression patterns to extract semantic versioning from Git tags.</li>
+<li><code>--regex-branch TEXT</code>: Regular expression patterns to extract semantic versioning from the current Git branch name.</li>
+<li><code>--regex-commit TEXT</code>: Regular expression patterns to extract semantic versioning from Git commit messages.</li>
+<li><code>--regex-file TEXT</code>: Regular expression patterns to parse version strings from version source files.</li>
+<li><code>--regex-archive TEXT</code>: Regular expression patterns to parse Git metadata from git-archive export files.</li>
+<li><code>--version-type [auto|release|dev|pre|alpha|nightly|post]</code>: The type of version format to generate (e.g. &#x27;release&#x27;, &#x27;dev&#x27;, or &#x27;auto&#x27;).  [default: (auto)]</li>
+<li><code>--version-standard [pep440|semver2]</code>: The standard formatting layout (PEP 440 or SemVer 2) to use for version normalization.  [default: (pep440)]</li>
+<li><code>--auto-increment TEXT</code>: Target increment mapping to apply when ahead of the latest release tag.</li>
+<li><code>--format-main TEXT</code>: Format string for the main semantic version segment.  [default: ({version.major}.{version.minor}.{version.micro})]</li>
+<li><code>--format-dev TEXT</code>: Format string for development builds.  [default: (dev{ref.timestamp:%Y%m%d}+{ref.short_sha})]</li>
+<li><code>--format-pre TEXT</code>: Format string for pre-release or alpha builds.  [default: (a{ref.timestamp:%Y%m%d})]</li>
+<li><code>--format-post TEXT</code>: Format string for post-release builds.  [default: (post{ref.distance_from_head})]</li>
+<li><code>--dirty-ignore TEXT</code>: List of file paths and directories to ignore when checking if the repository is dirty.</li>
+<li><code>--help</code>: Show this message and exit.</li>
+</ul>
+<h2 id="gitversioned-format"><code>gitversioned format</code><a class="headerlink" href="#gitversioned-format" title="Permanent link">&para;</a></h2>
+<p>Resolve the version and output the formatted strategy templates.</p>
+<p>This command prints the rendered content from the configured version output
+strategies to stdout. It excludes final file write targets from the options.</p>
+<p>:param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
+:returns: None.</p>
+<p><strong>Usage</strong>:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp">$ </span>gitversioned<span class="w"> </span>format<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</span></code></pre></div>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>--package-name TEXT</code>: The package name being versioned. Enables automatic package name detection when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--project-root PATH</code>: The absolute path to the root directory of the project.</li>
+<li><code>--src-root PATH</code>: The path to the source root directory. Enables automatic source directory fallback detection when set to &#x27;auto&#x27;.</li>
+<li><code>--build-is-editable</code>: Flag indicating whether the package is built as an editable installation.</li>
+<li><code>--overrides TEXT</code>: Override-based settings configurations.</li>
+<li><code>--explicit-version TEXT</code>: Explicit version override string. Enables dynamic version resolution from git/files when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--source-type TEXT</code>: Priority order of sources to query for version information.</li>
+<li><code>--version-source-file TEXT</code>: Path to a file containing the version string. Set to None to disable.  [default: (version.txt)]</li>
+<li><code>--version-source-archive TEXT</code>: Path to a git-archive export info file used when Git is unavailable. Set to None to disable.  [default: (.git_archival.txt)]</li>
+<li><code>--version-source-function TEXT</code>: A string pointing to a module and function (e.g. &#x27;module:func&#x27;) to resolve the version. Set to None to disable.</li>
+<li><code>--regex-version TEXT</code>: Regular expression patterns to parse and validate the explicit version string.</li>
+<li><code>--regex-tag TEXT</code>: Regular expression patterns to extract semantic versioning from Git tags.</li>
+<li><code>--regex-branch TEXT</code>: Regular expression patterns to extract semantic versioning from the current Git branch name.</li>
+<li><code>--regex-commit TEXT</code>: Regular expression patterns to extract semantic versioning from Git commit messages.</li>
+<li><code>--regex-file TEXT</code>: Regular expression patterns to parse version strings from version source files.</li>
+<li><code>--regex-archive TEXT</code>: Regular expression patterns to parse Git metadata from git-archive export files.</li>
+<li><code>--version-type [auto|release|dev|pre|alpha|nightly|post]</code>: The type of version format to generate (e.g. &#x27;release&#x27;, &#x27;dev&#x27;, or &#x27;auto&#x27;).  [default: (auto)]</li>
+<li><code>--version-standard [pep440|semver2]</code>: The standard formatting layout (PEP 440 or SemVer 2) to use for version normalization.  [default: (pep440)]</li>
+<li><code>--auto-increment TEXT</code>: Target increment mapping to apply when ahead of the latest release tag.</li>
+<li><code>--format-main TEXT</code>: Format string for the main semantic version segment.  [default: ({version.major}.{version.minor}.{version.micro})]</li>
+<li><code>--format-dev TEXT</code>: Format string for development builds.  [default: (dev{ref.timestamp:%Y%m%d}+{ref.short_sha})]</li>
+<li><code>--format-pre TEXT</code>: Format string for pre-release or alpha builds.  [default: (a{ref.timestamp:%Y%m%d})]</li>
+<li><code>--format-post TEXT</code>: Format string for post-release builds.  [default: (post{ref.distance_from_head})]</li>
+<li><code>--dirty-ignore TEXT</code>: List of file paths and directories to ignore when checking if the repository is dirty.</li>
+<li><code>--output-strategies TEXT</code>: Output strategies for formatting the version file.</li>
+<li><code>--help</code>: Show this message and exit.</li>
+</ul>
+<h2 id="gitversioned-write"><code>gitversioned write</code><a class="headerlink" href="#gitversioned-write" title="Permanent link">&para;</a></h2>
+<p>Resolve the version and write output files.</p>
+<p>This command writes the rendered version templates to the configured file
+paths and prints a confirmation of the successfully written path to stdout.</p>
+<p>:param kwargs: Dynamic CLI override arguments mapping to Settings schema fields.
+:returns: None.</p>
+<p><strong>Usage</strong>:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>gitversioned<span class="w"> </span>write<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</span></code></pre></div>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>--package-name TEXT</code>: The package name being versioned. Enables automatic package name detection when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--project-root PATH</code>: The absolute path to the root directory of the project.</li>
+<li><code>--src-root PATH</code>: The path to the source root directory. Enables automatic source directory fallback detection when set to &#x27;auto&#x27;.</li>
+<li><code>--build-is-editable</code>: Flag indicating whether the package is built as an editable installation.</li>
+<li><code>--overrides TEXT</code>: Override-based settings configurations.</li>
+<li><code>--explicit-version TEXT</code>: Explicit version override string. Enables dynamic version resolution from git/files when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--source-type TEXT</code>: Priority order of sources to query for version information.</li>
+<li><code>--version-source-file TEXT</code>: Path to a file containing the version string. Set to None to disable.  [default: (version.txt)]</li>
+<li><code>--version-source-archive TEXT</code>: Path to a git-archive export info file used when Git is unavailable. Set to None to disable.  [default: (.git_archival.txt)]</li>
+<li><code>--version-source-function TEXT</code>: A string pointing to a module and function (e.g. &#x27;module:func&#x27;) to resolve the version. Set to None to disable.</li>
+<li><code>--regex-version TEXT</code>: Regular expression patterns to parse and validate the explicit version string.</li>
+<li><code>--regex-tag TEXT</code>: Regular expression patterns to extract semantic versioning from Git tags.</li>
+<li><code>--regex-branch TEXT</code>: Regular expression patterns to extract semantic versioning from the current Git branch name.</li>
+<li><code>--regex-commit TEXT</code>: Regular expression patterns to extract semantic versioning from Git commit messages.</li>
+<li><code>--regex-file TEXT</code>: Regular expression patterns to parse version strings from version source files.</li>
+<li><code>--regex-archive TEXT</code>: Regular expression patterns to parse Git metadata from git-archive export files.</li>
+<li><code>--version-type [auto|release|dev|pre|alpha|nightly|post]</code>: The type of version format to generate (e.g. &#x27;release&#x27;, &#x27;dev&#x27;, or &#x27;auto&#x27;).  [default: (auto)]</li>
+<li><code>--version-standard [pep440|semver2]</code>: The standard formatting layout (PEP 440 or SemVer 2) to use for version normalization.  [default: (pep440)]</li>
+<li><code>--auto-increment TEXT</code>: Target increment mapping to apply when ahead of the latest release tag.</li>
+<li><code>--format-main TEXT</code>: Format string for the main semantic version segment.  [default: ({version.major}.{version.minor}.{version.micro})]</li>
+<li><code>--format-dev TEXT</code>: Format string for development builds.  [default: (dev{ref.timestamp:%Y%m%d}+{ref.short_sha})]</li>
+<li><code>--format-pre TEXT</code>: Format string for pre-release or alpha builds.  [default: (a{ref.timestamp:%Y%m%d})]</li>
+<li><code>--format-post TEXT</code>: Format string for post-release builds.  [default: (post{ref.distance_from_head})]</li>
+<li><code>--dirty-ignore TEXT</code>: List of file paths and directories to ignore when checking if the repository is dirty.</li>
+<li><code>--output TEXT</code>: The target output path to write the generated version file.  [default: (version.py)]</li>
+<li><code>--output-strategies TEXT</code>: Output strategies for formatting the version file.</li>
+<li><code>--help</code>: Show this message and exit.</li>
+</ul>
+<h2 id="gitversioned-overrides"><code>gitversioned overrides</code><a class="headerlink" href="#gitversioned-overrides" title="Permanent link">&para;</a></h2>
+<p>Run commands under a specific overrides context.</p>
+<p><strong>Usage</strong>:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>gitversioned<span class="w"> </span>overrides<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>OVERRIDES<span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</span></code></pre></div>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>OVERRIDES</code>: The overrides name context to use.  [required]</li>
+</ul>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>--help</code>: Show this message and exit.</li>
+</ul>
+<p><strong>Commands</strong>:</p>
+<ul>
+<li><code>calculate</code>: Resolve and output only the PEP 440...</li>
+<li><code>format</code>: Resolve the version and output formatted...</li>
+<li><code>write</code>: Resolve the version and write output files...</li>
+</ul>
+<h3 id="gitversioned-overrides-calculate"><code>gitversioned overrides calculate</code><a class="headerlink" href="#gitversioned-overrides-calculate" title="Permanent link">&para;</a></h3>
+<p>Resolve and output only the PEP 440 version string for overrides.</p>
+<p><strong>Usage</strong>:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">$ </span>gitversioned<span class="w"> </span>overrides<span class="w"> </span>calculate<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</span></code></pre></div>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>--package-name TEXT</code>: The package name being versioned. Enables automatic package name detection when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--project-root PATH</code>: The absolute path to the root directory of the project.</li>
+<li><code>--src-root PATH</code>: The path to the source root directory. Enables automatic source directory fallback detection when set to &#x27;auto&#x27;.</li>
+<li><code>--build-is-editable</code>: Flag indicating whether the package is built as an editable installation.</li>
+<li><code>--overrides TEXT</code>: Override-based settings configurations.</li>
+<li><code>--explicit-version TEXT</code>: Explicit version override string. Enables dynamic version resolution from git/files when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--source-type TEXT</code>: Priority order of sources to query for version information.</li>
+<li><code>--version-source-file TEXT</code>: Path to a file containing the version string. Set to None to disable.  [default: (version.txt)]</li>
+<li><code>--version-source-archive TEXT</code>: Path to a git-archive export info file used when Git is unavailable. Set to None to disable.  [default: (.git_archival.txt)]</li>
+<li><code>--version-source-function TEXT</code>: A string pointing to a module and function (e.g. &#x27;module:func&#x27;) to resolve the version. Set to None to disable.</li>
+<li><code>--regex-version TEXT</code>: Regular expression patterns to parse and validate the explicit version string.</li>
+<li><code>--regex-tag TEXT</code>: Regular expression patterns to extract semantic versioning from Git tags.</li>
+<li><code>--regex-branch TEXT</code>: Regular expression patterns to extract semantic versioning from the current Git branch name.</li>
+<li><code>--regex-commit TEXT</code>: Regular expression patterns to extract semantic versioning from Git commit messages.</li>
+<li><code>--regex-file TEXT</code>: Regular expression patterns to parse version strings from version source files.</li>
+<li><code>--regex-archive TEXT</code>: Regular expression patterns to parse Git metadata from git-archive export files.</li>
+<li><code>--version-type [auto|release|dev|pre|alpha|nightly|post]</code>: The type of version format to generate (e.g. &#x27;release&#x27;, &#x27;dev&#x27;, or &#x27;auto&#x27;).  [default: (auto)]</li>
+<li><code>--version-standard [pep440|semver2]</code>: The standard formatting layout (PEP 440 or SemVer 2) to use for version normalization.  [default: (pep440)]</li>
+<li><code>--auto-increment TEXT</code>: Target increment mapping to apply when ahead of the latest release tag.</li>
+<li><code>--format-main TEXT</code>: Format string for the main semantic version segment.  [default: ({version.major}.{version.minor}.{version.micro})]</li>
+<li><code>--format-dev TEXT</code>: Format string for development builds.  [default: (dev{ref.timestamp:%Y%m%d}+{ref.short_sha})]</li>
+<li><code>--format-pre TEXT</code>: Format string for pre-release or alpha builds.  [default: (a{ref.timestamp:%Y%m%d})]</li>
+<li><code>--format-post TEXT</code>: Format string for post-release builds.  [default: (post{ref.distance_from_head})]</li>
+<li><code>--dirty-ignore TEXT</code>: List of file paths and directories to ignore when checking if the repository is dirty.</li>
+<li><code>--help</code>: Show this message and exit.</li>
+</ul>
+<h3 id="gitversioned-overrides-format"><code>gitversioned overrides format</code><a class="headerlink" href="#gitversioned-overrides-format" title="Permanent link">&para;</a></h3>
+<p>Resolve the version and output formatted strategy templates for overrides.</p>
+<p><strong>Usage</strong>:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gp">$ </span>gitversioned<span class="w"> </span>overrides<span class="w"> </span>format<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</span></code></pre></div>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>--package-name TEXT</code>: The package name being versioned. Enables automatic package name detection when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--project-root PATH</code>: The absolute path to the root directory of the project.</li>
+<li><code>--src-root PATH</code>: The path to the source root directory. Enables automatic source directory fallback detection when set to &#x27;auto&#x27;.</li>
+<li><code>--build-is-editable</code>: Flag indicating whether the package is built as an editable installation.</li>
+<li><code>--overrides TEXT</code>: Override-based settings configurations.</li>
+<li><code>--explicit-version TEXT</code>: Explicit version override string. Enables dynamic version resolution from git/files when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--source-type TEXT</code>: Priority order of sources to query for version information.</li>
+<li><code>--version-source-file TEXT</code>: Path to a file containing the version string. Set to None to disable.  [default: (version.txt)]</li>
+<li><code>--version-source-archive TEXT</code>: Path to a git-archive export info file used when Git is unavailable. Set to None to disable.  [default: (.git_archival.txt)]</li>
+<li><code>--version-source-function TEXT</code>: A string pointing to a module and function (e.g. &#x27;module:func&#x27;) to resolve the version. Set to None to disable.</li>
+<li><code>--regex-version TEXT</code>: Regular expression patterns to parse and validate the explicit version string.</li>
+<li><code>--regex-tag TEXT</code>: Regular expression patterns to extract semantic versioning from Git tags.</li>
+<li><code>--regex-branch TEXT</code>: Regular expression patterns to extract semantic versioning from the current Git branch name.</li>
+<li><code>--regex-commit TEXT</code>: Regular expression patterns to extract semantic versioning from Git commit messages.</li>
+<li><code>--regex-file TEXT</code>: Regular expression patterns to parse version strings from version source files.</li>
+<li><code>--regex-archive TEXT</code>: Regular expression patterns to parse Git metadata from git-archive export files.</li>
+<li><code>--version-type [auto|release|dev|pre|alpha|nightly|post]</code>: The type of version format to generate (e.g. &#x27;release&#x27;, &#x27;dev&#x27;, or &#x27;auto&#x27;).  [default: (auto)]</li>
+<li><code>--version-standard [pep440|semver2]</code>: The standard formatting layout (PEP 440 or SemVer 2) to use for version normalization.  [default: (pep440)]</li>
+<li><code>--auto-increment TEXT</code>: Target increment mapping to apply when ahead of the latest release tag.</li>
+<li><code>--format-main TEXT</code>: Format string for the main semantic version segment.  [default: ({version.major}.{version.minor}.{version.micro})]</li>
+<li><code>--format-dev TEXT</code>: Format string for development builds.  [default: (dev{ref.timestamp:%Y%m%d}+{ref.short_sha})]</li>
+<li><code>--format-pre TEXT</code>: Format string for pre-release or alpha builds.  [default: (a{ref.timestamp:%Y%m%d})]</li>
+<li><code>--format-post TEXT</code>: Format string for post-release builds.  [default: (post{ref.distance_from_head})]</li>
+<li><code>--dirty-ignore TEXT</code>: List of file paths and directories to ignore when checking if the repository is dirty.</li>
+<li><code>--output-strategies TEXT</code>: Output strategies for formatting the version file.</li>
+<li><code>--help</code>: Show this message and exit.</li>
+</ul>
+<h3 id="gitversioned-overrides-write"><code>gitversioned overrides write</code><a class="headerlink" href="#gitversioned-overrides-write" title="Permanent link">&para;</a></h3>
+<p>Resolve the version and write output files for overrides.</p>
+<p><strong>Usage</strong>:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp">$ </span>gitversioned<span class="w"> </span>overrides<span class="w"> </span>write<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</span></code></pre></div>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>--package-name TEXT</code>: The package name being versioned. Enables automatic package name detection when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--project-root PATH</code>: The absolute path to the root directory of the project.</li>
+<li><code>--src-root PATH</code>: The path to the source root directory. Enables automatic source directory fallback detection when set to &#x27;auto&#x27;.</li>
+<li><code>--build-is-editable</code>: Flag indicating whether the package is built as an editable installation.</li>
+<li><code>--overrides TEXT</code>: Override-based settings configurations.</li>
+<li><code>--explicit-version TEXT</code>: Explicit version override string. Enables dynamic version resolution from git/files when set to &#x27;auto&#x27;.  [default: (auto)]</li>
+<li><code>--source-type TEXT</code>: Priority order of sources to query for version information.</li>
+<li><code>--version-source-file TEXT</code>: Path to a file containing the version string. Set to None to disable.  [default: (version.txt)]</li>
+<li><code>--version-source-archive TEXT</code>: Path to a git-archive export info file used when Git is unavailable. Set to None to disable.  [default: (.git_archival.txt)]</li>
+<li><code>--version-source-function TEXT</code>: A string pointing to a module and function (e.g. &#x27;module:func&#x27;) to resolve the version. Set to None to disable.</li>
+<li><code>--regex-version TEXT</code>: Regular expression patterns to parse and validate the explicit version string.</li>
+<li><code>--regex-tag TEXT</code>: Regular expression patterns to extract semantic versioning from Git tags.</li>
+<li><code>--regex-branch TEXT</code>: Regular expression patterns to extract semantic versioning from the current Git branch name.</li>
+<li><code>--regex-commit TEXT</code>: Regular expression patterns to extract semantic versioning from Git commit messages.</li>
+<li><code>--regex-file TEXT</code>: Regular expression patterns to parse version strings from version source files.</li>
+<li><code>--regex-archive TEXT</code>: Regular expression patterns to parse Git metadata from git-archive export files.</li>
+<li><code>--version-type [auto|release|dev|pre|alpha|nightly|post]</code>: The type of version format to generate (e.g. &#x27;release&#x27;, &#x27;dev&#x27;, or &#x27;auto&#x27;).  [default: (auto)]</li>
+<li><code>--version-standard [pep440|semver2]</code>: The standard formatting layout (PEP 440 or SemVer 2) to use for version normalization.  [default: (pep440)]</li>
+<li><code>--auto-increment TEXT</code>: Target increment mapping to apply when ahead of the latest release tag.</li>
+<li><code>--format-main TEXT</code>: Format string for the main semantic version segment.  [default: ({version.major}.{version.minor}.{version.micro})]</li>
+<li><code>--format-dev TEXT</code>: Format string for development builds.  [default: (dev{ref.timestamp:%Y%m%d}+{ref.short_sha})]</li>
+<li><code>--format-pre TEXT</code>: Format string for pre-release or alpha builds.  [default: (a{ref.timestamp:%Y%m%d})]</li>
+<li><code>--format-post TEXT</code>: Format string for post-release builds.  [default: (post{ref.distance_from_head})]</li>
+<li><code>--dirty-ignore TEXT</code>: List of file paths and directories to ignore when checking if the repository is dirty.</li>
+<li><code>--output TEXT</code>: The target output path to write the generated version file.  [default: (version.py)]</li>
+<li><code>--output-strategies TEXT</code>: Output strategies for formatting the version file.</li>
+<li><code>--help</code>: Show this message and exit.</li>
+</ul>
 
 
 
