@@ -317,6 +317,7 @@ jobs:
   publish-oci:
     name: "Publish Release OCI Image"
     needs:
+      - python-build
       - oci-e2e-tests
     runs-on: ubuntu-latest
     permissions:
