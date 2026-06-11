@@ -118,9 +118,12 @@ dirty_ignore = ["poetry.lock", "tests/sandbox/"]
 Determines which segment of the version string is incremented for pre-releases and development builds when the repository is ahead of the last version source.
 
 - **Type:** Dictionary (Mapping string release types to string increment targets)
-- **Default:** `None`
-- **Keys:** `auto`, `release`, `dev`, `pre`, `alpha`, `nightly`, `post`
+- **Default:** `{"dev": "patch", "pre": "minor"}`
+- **Keys:** `release`, `dev`, `pre`, `alpha`, `nightly`, `post`
 - **Values:** `major`, `minor`, `micro` (or `patch`, `bug`)
+
+> [!NOTE]
+> If the resolved build type is `alpha` or `nightly`, and no auto-increment level is explicitly defined for them, `gitversioned` falls back to the configuration set for `pre`.
 
 ```toml
 [tool.gitversioned.auto_increment]
@@ -208,6 +211,33 @@ pattern = (?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\
 ```
 
 Programmatically, overrides can be instantiated via `settings.get_overridden_settings("profile_name")`. From the CLI, overrides are executed using the `overrides` subcommand group: `gitversioned overrides profile_name [calculate|format|write]`.
+
+______________________________________________________________________
+
+## Logging & Telemetry Configuration
+
+`gitversioned` provides a dedicated logging subsystem configured via the `LoggingSettings` schema. Parameters are read from environment variables prefixed with `GITVERSIONED__LOGGING__` or via direct programmatic setup.
+
+### Logging Settings Reference
+
+| Option                | Type               | Default Value          | Environment Variable                     | Description                                                                                 |
+| :-------------------- | :----------------- | :--------------------- | :--------------------------------------- | :------------------------------------------------------------------------------------------ |
+| **`enabled`**         | `bool`             | `False`                | `GITVERSIONED__LOGGING__ENABLED`         | Enables or disables the global package logging.                                             |
+| **`clear_loggers`**   | `bool`             | `False`                | `GITVERSIONED__LOGGING__CLEAR_LOGGERS`   | Removes existing active Loguru logger sinks before setup if set to `True`.                  |
+| **`sink`**            | `str` / `Any`      | `sys.stderr`           | `GITVERSIONED__LOGGING__SINK`            | Target log output (e.g. `stdout`, `stderr`, or a file path string).                         |
+| **`level`**           | `str`              | `"WARNING"`            | `GITVERSIONED__LOGGING__LEVEL`           | The minimum severity level required for log messages to be emitted (e.g., `DEBUG`, `INFO`). |
+| **`otel_formatting`** | `str`              | `"auto"`               | `GITVERSIONED__LOGGING__OTEL_FORMATTING` | Controls OpenTelemetry-compliant JSON formatting (`auto`, `enable`, or `disable`).          |
+| **`format`**          | `str` / `callable` | Standard Loguru layout | `GITVERSIONED__LOGGING__FORMAT`          | The standard text template layout used to render log lines.                                 |
+| **`filter`**          | `Any`              | `True`                 | `GITVERSIONED__LOGGING__FILTER`          | Filtering criteria (e.g. module names). Defaults to filtering for `gitversioned` logs only. |
+| **`enqueue`**         | `bool`             | `True`                 | `GITVERSIONED__LOGGING__ENQUEUE`         | Enables asynchronous, thread-safe message queueing.                                         |
+| **`kwargs`**          | `dict`             | `{}`                   | `GITVERSIONED__LOGGING__KWARGS`          | Extra arguments passed directly to the Loguru sink handler registration.                    |
+
+```bash
+# Example: Verbose logging to stdout via environment overrides
+export GITVERSIONED__LOGGING__ENABLED=true
+export GITVERSIONED__LOGGING__LEVEL=DEBUG
+export GITVERSIONED__LOGGING__SINK=stdout
+```
 
 ______________________________________________________________________
 

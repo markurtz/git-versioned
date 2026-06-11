@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hatchling_custom_config"
+dynamic = ["version"]
+description = "An advanced example project showcasing Hatchling integration with custom GitVersioned configurations"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hatchling_custom_config"]
+
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.gitversioned]
+format_main = "{version.major}.{version.minor}"
+format_dev = "dev{ref.distance_from_head}"
+auto_increment = { dev = "minor" }
+dirty_ignore = ["temp_ignored.txt"]

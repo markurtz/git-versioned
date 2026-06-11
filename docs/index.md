@@ -140,7 +140,7 @@ source = "gitversioned"
 ````
 ```toml
 [build-system]
-requires = ["setuptools>=61.0", "gitversioned"]
+requires = ["setuptools>=64.0", "gitversioned"]
 build-backend = "setuptools.build_meta"
 
 [project]

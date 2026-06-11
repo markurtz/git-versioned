@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[project]
+name = "webapp_example"
+dynamic = ["version"]
+description = "A Python web application versioned dynamically by GitVersioned in a CI/CD workflow"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/webapp"]
+
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.hatch.version]
+source = "gitversioned"

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hatchling_docker_overrides"
+dynamic = ["version"]
+description = "An advanced example project showcasing Hatchling integration with GitVersioned and Docker overrides"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hatchling_docker_overrides"]
+
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.gitversioned.overrides.docker]
+output = "Dockerfile"
+output_strategies = { type = "regex", pattern = 'ARG VERSION="(?P<version>.*?)"' }

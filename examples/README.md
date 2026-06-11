@@ -25,65 +25,66 @@ This directory contains practical, runnable demonstrations of how to use GitVers
 
 Before running the examples, ensure you have set up your environment correctly:
 
-1. **Install Dependencies:** Make sure you have installed the core package for your environment and any example-specific requirements.
-1. **Environment Variables:** Copy `.env.example` to `.env` if the examples require configuration (e.g., API keys or external services).
-
-> [!NOTE]
-> Some examples may require additional dependencies not included in the core `gitversioned` package. Please check the `README.md` within each specific example directory for details.
+1. **Install Dependencies:** Make sure you have installed the core `gitversioned` package in your environment.
+1. **Setup virtualenv:** We recommend running inside the project's virtual environment (`.venv`).
 
 ## Example Index
 
-Below is a curated list of available examples, categorized by build tool and use case:
+Below is a curated list of available examples, categorized by entrypoint type and use case:
 
-### Setuptools Examples
+### 1. [Hatchling Examples](./hatchling/)
 
-| Example                                                                  | Complexity   | Description                                                                         |
-| :----------------------------------------------------------------------- | :----------- | :---------------------------------------------------------------------------------- |
-| **`[setuptools_pyproject_toml/](setuptools_pyproject_toml/)`**           | Beginner     | Standard Setuptools configuration using `pyproject.toml` and `[tool.gitversioned]`. |
-| **`[setuptools_setup_cfg/](setuptools_setup_cfg/)`**                     | Beginner     | Standard Setuptools configuration using a `setup.cfg` file.                         |
-| **`[setuptools_setup_py/](setuptools_setup_py/)`**                       | Beginner     | Standard Setuptools configuration using a traditional `setup.py` file.              |
-| **`[setuptools_pyproject_overrides/](setuptools_pyproject_overrides/)`** | Intermediate | Setuptools integration with external `Dockerfile` overrides via `pyproject.toml`.   |
+| Location                                                                             | Type     | Complexity   | Description                                                                               |
+| :----------------------------------------------------------------------------------- | :------- | :----------- | :---------------------------------------------------------------------------------------- |
+| **`[hatchling/](./hatchling/)`**                                                     | Root     | Beginner     | Standard Hatchling configuration using `pyproject.toml` with version source hooks.        |
+| **`[hatchling/advanced/docker_overrides/](./hatchling/advanced/docker_overrides/)`** | Advanced | Intermediate | Dynamic versioning featuring external `Dockerfile` overrides during build.                |
+| **`[hatchling/advanced/custom_config/](./hatchling/advanced/custom_config/)`**       | Advanced | Intermediate | Dynamic versioning showcasing custom pre-release templates and auto-increment strategies. |
 
-### Hatchling Examples
+### 2. [Setuptools Examples](./setuptools/)
 
-| Example                                              | Complexity | Description                                                                |
-| :--------------------------------------------------- | :--------- | :------------------------------------------------------------------------- |
-| **`[hatch_pyproject_toml/](hatch_pyproject_toml/)`** | Beginner   | Hatchling configuration using `pyproject.toml` and `[tool.hatch.version]`. |
+| Location                                                                               | Type     | Complexity   | Description                                                                                |
+| :------------------------------------------------------------------------------------- | :------- | :----------- | :----------------------------------------------------------------------------------------- |
+| **`[setuptools/](./setuptools/)`**                                                     | Root     | Beginner     | Standard Setuptools configuration using `pyproject.toml` and `[tool.gitversioned]`.        |
+| **`[setuptools/advanced/setup_cfg/](./setuptools/advanced/setup_cfg/)`**               | Advanced | Beginner     | Declarative Setuptools configuration using legacy `setup.cfg` parameters.                  |
+| **`[setuptools/advanced/setup_py/](./setuptools/advanced/setup_py/)`**                 | Advanced | Beginner     | Imperative Setuptools configuration using legacy `setup.py` parameter dictionary passing.  |
+| **`[setuptools/advanced/docker_overrides/](./setuptools/advanced/docker_overrides/)`** | Advanced | Intermediate | Setuptools integration featuring external `Dockerfile` overrides via `pyproject.toml`.     |
+| **`[setuptools/advanced/custom_config/](./setuptools/advanced/custom_config/)`**       | Advanced | Intermediate | Custom Setuptools config overrides featuring customized dirty ignoral rules and templates. |
 
-### Maturin Examples
+### 3. [Maturin Examples](./maturin/)
 
-| Example                                                          | Complexity | Description                                                                                    |
-| :--------------------------------------------------------------- | :--------- | :--------------------------------------------------------------------------------------------- |
-| **`[maturin_polyglot_overrides/](maturin_polyglot_overrides/)`** | Advanced   | Maturin build backend integration with multi-target overrides (`Cargo.toml` and `Dockerfile`). |
+| Location                                                                             | Type     | Complexity   | Description                                                                                         |
+| :----------------------------------------------------------------------------------- | :------- | :----------- | :-------------------------------------------------------------------------------------------------- |
+| **`[maturin/](./maturin/)`**                                                         | Root     | Beginner     | Minimal Rust/Python polyglot extension using Maturin and `gitversioned.plugins.maturin_plugin`.     |
+| **`[maturin/advanced/polyglot_overrides/](./maturin/advanced/polyglot_overrides/)`** | Advanced | Advanced     | Maturin build backend integration featuring multi-target overrides (`Cargo.toml` and `Dockerfile`). |
+| **`[maturin/advanced/custom_config/](./maturin/advanced/custom_config/)`**           | Advanced | Intermediate | Maturin configuration specifying custom tag formatting and Rust-specific settings.                  |
 
-### Command-Line Interface (CLI) Examples
+### 4. [General (CLI & API) Examples](./general/)
 
-| Example                                                | Complexity | Description                                                                           |
-| :----------------------------------------------------- | :--------- | :------------------------------------------------------------------------------------ |
-| **`[docker_build_args/](docker_build_args/)`**         | Beginner   | Sourcing and formatting versions for Docker build arguments.                          |
-| **`[cli_regex_replacement/](cli_regex_replacement/)`** | Beginner   | Direct, in-place version string replacement in non-python files using regex patterns. |
+| Location                                                                           | Type     | Complexity   | Description                                                                                       |
+| :--------------------------------------------------------------------------------- | :------- | :----------- | :------------------------------------------------------------------------------------------------ |
+| **`[general/](./general/)`**                                                       | Root     | Beginner     | Python web app (CI/CD) serving its dynamic Git-resolved version from an endpoint.                 |
+| **`[general/advanced/docker_build_args/](./general/advanced/docker_build_args/)`** | Advanced | Beginner     | Sourcing and formatting dynamic versions to inject as Docker container build arguments.           |
+| **`[general/advanced/regex_replacement/](./general/advanced/regex_replacement/)`** | Advanced | Beginner     | In-place version string replacements in non-Python config files using the CLI and regex patterns. |
+| **`[general/advanced/api_usage/](./general/advanced/api_usage/)`**                 | Advanced | Beginner     | Programmatic version resolution and output writing using the public python package API.           |
+| **`[general/advanced/custom_config/](./general/advanced/custom_config/)`**         | Advanced | Intermediate | Programmatic API usage applying custom dirty checks, formats, and auto-increment.                 |
 
-<!-- Add new examples to the tables above as they are created. -->
+______________________________________________________________________
 
 ## Running the Examples
 
-Most examples can be executed directly from the command line. Navigate to the root of the repository and run the desired script:
+Each example directory contains standard build configurations. You can build and package the example projects (which automatically triggers version calculation) using standard frontends:
 
 ```bash
-# Example: Running a generic example script
-python examples/example_name/main.py
+# Example: Build an example package using the build frontend
+python -m build examples/setuptools
+```
+
+You can also run the E2E verification test suite, which automatically validates that all examples build and execute correctly:
+
+```bash
+# Run E2E verification tests for all examples
+.venv/bin/hatch run project:tests-e2e
 ```
 
 > [!TIP]
-> **Always run examples from the repository root.** This ensures that all relative paths, environment variables, and module imports resolve correctly.
-
-## Contributing New Examples
-
-We welcome community contributions! If you have a use case that isn't covered, please consider submitting a new example:
-
-1. Create a new directory under `examples/` with a descriptive name.
-1. Include a focused, easily digestible script or application.
-1. Add a local `README.md` within your example directory explaining what it does and how to run it.
-1. Update the **Example Index** table above.
-
-For more details on contributing, please review our [Contributing Guide](../CONTRIBUTING.md).
+> **Always run example commands from the repository root.** This ensures that relative paths, python modules, and configurations resolve correctly.

@@ -525,6 +525,8 @@ select = [
   "S603",    # allow subprocess with untrusted input in tests
   "S607",    # allow partial executable paths in tests
   "T201",    # allow print in tests
+  "PLC0415", # allow local imports in tests
+  "E501",    # allow long lines in tests
 ]
 "examples/**/*.py" = [
   "T201",   # allow print in examples

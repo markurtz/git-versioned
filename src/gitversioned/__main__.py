@@ -20,6 +20,7 @@ import inspect
 import json
 import sys
 import typing
+from pathlib import Path
 from typing import Annotated, Any
 
 import typer
@@ -27,7 +28,7 @@ from loguru import logger
 from pydantic_core import PydanticUndefined
 
 from gitversioned import __version__
-from gitversioned.logging import LoggingSettings, configure_logger
+from gitversioned.logging import configure_logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
 from gitversioned.versioning import (
@@ -40,6 +41,7 @@ __all__ = [
     "app",
     "calculate",
     "format_cmd",
+    "init_archive",
     "main",
     "main_callback",
     "overrides_app",
@@ -174,6 +176,56 @@ def write(**kwargs: Any) -> None:
     _run_write(kwargs)
 
 
+@app.command(name="init-archive")
+def init_archive() -> None:
+    """
+    Initialize git archive fallback metadata template files in the repository.
+
+    Creates .git_archival.txt and appends export-subst to .gitattributes.
+    """
+    project_root = Path.cwd()
+    archival_file = project_root / ".git_archival.txt"
+    gitattributes_file = project_root / ".gitattributes"
+
+    archival_content = (
+        "commit_sha: $Format:%H$\n"
+        "short_sha: $Format:%h$\n"
+        "timestamp: $Format:%aI$\n"
+        "author_name: $Format:%an$\n"
+        "author_email: $Format:%ae$\n"
+        "ref_names: $Format:%D$\n"
+        "distance_from_head: 0\n"
+        "is_head_commit: true\n"
+        "total_commits: 0\n"
+        "is_current_branch: true\n"
+        "commit_message:\n"
+        "$Format:%B$\n"
+    )
+
+    gitattributes_entry = ".git_archival.txt export-subst\n"
+
+    try:
+        archival_file.write_text(archival_content, encoding="utf-8")
+        typer.echo(f"Created {archival_file.name}")
+
+        existing_content = ""
+        if gitattributes_file.is_file():
+            existing_content = gitattributes_file.read_text(encoding="utf-8")
+
+        if gitattributes_entry.strip() not in existing_content:
+            with gitattributes_file.open("a", encoding="utf-8") as f:
+                if existing_content and not existing_content.endswith("\n"):
+                    f.write("\n")
+                f.write(gitattributes_entry)
+            typer.echo(f"Updated {gitattributes_file.name}")
+        else:
+            typer.echo(f"{gitattributes_file.name} already contains export-subst entry")
+    except OSError as e:
+        logger.exception("Failed to initialize archive fallback templates")
+        typer.echo(f"Error: Failed to write archival files: {e}", err=True)
+        raise typer.Exit(1) from None
+
+
 @overrides_app.command(name="calculate")
 def overrides_calculate(ctx: typer.Context, **kwargs: Any) -> None:
     """
@@ -293,13 +345,15 @@ def _cli_execution_context(
     :param overrides: Optional overrides context name.
     :yields: A tuple of (Settings, GitRepository, BuildEnvironment) instances.
     """
+    configure_logger(
+        enabled=True,
+        clear_loggers=True,
+        level="auto",
+        filter=True,
+        enqueue=True,
+    )
     try:
         settings = _parse_cli_args(kwargs, overrides=overrides)
-
-        logging_settings = LoggingSettings()
-        if logging_settings.sink is sys.stdout:
-            logging_settings.sink = sys.stderr
-        configure_logger(logging_settings)
         logger.debug(f"Starting gitversioned CLI {command_name}...")
 
         repository = GitRepository(settings.project_root)
@@ -310,7 +364,7 @@ def _cli_execution_context(
         raise exit_exc
     except Exception as error:
         with contextlib.suppress(Exception):
-            configure_logger(LoggingSettings(enabled=True, sink=sys.stderr))
+            configure_logger(enabled=True, sink=sys.stderr)
         logger.exception(f"Failed to execute gitversioned CLI {command_name}")
         raise SystemExit(1) from error
 

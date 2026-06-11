@@ -29,8 +29,7 @@ ______________________________________________________________________
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gitversioned import Settings
-from gitversioned.utils import GitRepository, BuildEnvironment
+from gitversioned import Settings, GitRepository, BuildEnvironment
 from gitversioned.versioning import resolve_version
 
 # 1. Initialize configuration settings (loads pyproject.toml / env vars / defaults)
@@ -84,8 +83,7 @@ ______________________________________________________________________
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gitversioned import Settings
-from gitversioned.utils import GitRepository, BuildEnvironment
+from gitversioned import Settings, GitRepository, BuildEnvironment
 from gitversioned.versioning import resolve_version_output
 
 settings = Settings()
@@ -138,8 +136,7 @@ ______________________________________________________________________
 import tempfile
 from pathlib import Path
 
-from gitversioned import Settings
-from gitversioned.utils import GitRepository, BuildEnvironment
+from gitversioned import Settings, GitRepository, BuildEnvironment
 from gitversioned.versioning import resolve_version_output_to_stream
 
 # Customize output path programmatically using a temporary directory
@@ -167,34 +164,74 @@ with tempfile.TemporaryDirectory() as temp_dir:
 
 ______________________________________________________________________
 
-## Configuring Programmable Logging
+## Programmable Logging & Telemetry
 
-`gitversioned` uses `loguru` for structured internal logging. You can control logging behavior programmatically:
+`gitversioned` provides a robust, loguru-powered logging subsystem. You can customize logging behavior programmatically using `configure_logger`.
+
+### 1. Basic Logging Setup
+
+To initialize logging, import `configure_logger` and pass settings. You can pass a `LoggingSettings` object or use inline keyword argument overrides:
 
 ```python
-# Copyright 2026 Mark Kurtz
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import sys
 from gitversioned.logging import LoggingSettings, configure_logger
 
-# Enable verbose debug logs redirected to stderr
+# Option A: Initialize with LoggingSettings
 configure_logger(
     LoggingSettings(
         enabled=True,
         level="DEBUG",
         sink=sys.stderr,
-    ),
+    )
 )
+
+# Option B: Initialize using keyword overrides directly
+configure_logger(
+    enabled=True,
+    level="INFO",
+    clear_loggers=True,
+    sink=sys.stderr
+)
+```
+
+### 2. Advanced Logging & Sinks
+
+The logging system supports asynchronous queueing, clearing parent handlers, standard Python `logging` interception, and OpenTelemetry-compliant JSON formatting:
+
+```python
+import sys
+from gitversioned.logging import configure_logger, OtelSink
+
+# Configure asynchronous OpenTelemetry-compliant JSON logging
+configure_logger(
+    enabled=True,
+    level="INFO",
+    otel_formatting="enable",  # Serializes all logs to OpenTelemetry JSON
+    enqueue=True,              # Enables thread-safe asynchronous queueing
+    clear_loggers=True,         # Removes any existing active logger sinks
+    sink=sys.stderr
+)
+```
+
+- **Standard Logging Interception:** When `enabled=True` is set, `gitversioned` automatically routes standard library log statements (from `import logging`) through the Loguru pipeline using `InterceptHandler`.
+- **OpenTelemetry Sink (`OtelSink`):** If `otel_formatting="enable"` (or `"auto"` when `opentelemetry` is installed) is active, loguru records are intercepted by `OtelSink`, serialized into standard OpenTelemetry JSON format, and written to the target stream or file.
+
+### 3. Function Telemetry with `@autolog`
+
+You can auto-instrument functions in your tools and scripts using the `@autolog` decorator. This automatically logs function calls, argument inputs, outputs, and any raised exceptions with trace details:
+
+```python
+from gitversioned.logging import autolog
+
+# Decorate a function using default settings (logs exceptions at ERROR level)
+@autolog
+def calculate_next_release(major: int, minor: int) -> str:
+    return f"{major}.{minor + 1}.0"
+
+# Decorate a function with custom exception log levels
+@autolog(exception_log_level="WARNING")
+def parse_version_metadata(data: dict) -> str:
+    if "version" not in data:
+        raise KeyError("version missing")
+    return data["version"]
 ```

@@ -1,8 +1,0 @@
-# GitVersioned generated files
-src/setuptools_pyproject_overrides/version.py
-
-# Build and egg-info directories
-build/
-dist/
-*.egg-info/
-__pycache__/

@@ -18,17 +18,20 @@ import os
 from pathlib import Path
 from typing import Any
 
+from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 from hatchling.metadata.core import ProjectMetadata
 from hatchling.plugin import hookimpl
 from hatchling.version.source.plugin.interface import VersionSourceInterface
 
-from gitversioned.logging import LoggingSettings, autolog, configure_logger, logger
+from gitversioned.logging import autolog, configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
 from gitversioned.versioning import resolve_version_output_to_stream
 
 __all__ = [
+    "GitVersionedBuildHook",
     "GitVersionedVersionSource",
+    "hatch_register_build_hook",
     "hatch_register_version_source",
 ]
 
@@ -85,7 +88,13 @@ class GitVersionedVersionSource(VersionSourceInterface):
         :raises ValueError: If the version resolution process fails or cannot
             find a valid Git state
         """
-        configure_logger(LoggingSettings(enabled=True))
+        configure_logger(
+            enabled=True,
+            level="INFO",
+            otel_formatting="disable",
+            enqueue=False,
+            format="<cyan>[gitversioned:hatch]</cyan> <level>{message}</level>\n",
+        )
         logger.debug("GitVersionedVersionSource.get_version_data called")
 
         resolved = os.environ.get("GITVERSIONED_RESOLVED_VERSION")
@@ -249,6 +258,79 @@ class GitVersionedVersionSource(VersionSourceInterface):
         return self._metadata
 
 
+class GitVersionedBuildHook(BuildHookInterface):
+    """Hatchling build hook interface for GitVersioned.
+
+    Automatically adds the configured output version file to the build data
+    artifacts list so Hatchling packages it even if it is git-ignored.
+    """
+
+    PLUGIN_NAME: str = "gitversioned"
+
+    def initialize(self, version: str, build_data: dict[str, Any]) -> None:  # noqa: ARG002
+        """Initialize the build hook, injecting the output version file to build
+
+        artifacts.
+
+        :param version: The version resolved for the build.
+        :param build_data: The target build data dictionary.
+        """
+        configure_logger(
+            enabled=True,
+            level="INFO",
+            otel_formatting="disable",
+            enqueue=False,
+            format="<cyan>[gitversioned:hatch-build]</cyan> <level>{message}</level>\n",
+        )
+        logger.debug("GitVersionedBuildHook.initialize called")
+
+        config = Settings(**self.get_settings_kwargs())
+        if config.output:
+            resolved_output = config.resolve_path_from_root(
+                config.output, enforce_existence=False
+            )
+            if resolved_output:
+                try:
+                    rel_output = resolved_output.relative_to(config.project_root)
+                    build_data.setdefault("artifacts", []).append(str(rel_output))
+                    logger.info(
+                        f"Automatically registered build artifact: {rel_output}"
+                    )
+                except ValueError:
+                    pass
+
+    def get_settings_kwargs(self) -> dict[str, Any]:
+        """Extract and prepare the configuration dictionary for GitVersioned
+
+        settings.
+        """
+        project_root = Path(self.root).resolve()
+        metadata = ProjectMetadata(str(project_root), None)
+        package_name = metadata.name.replace("-", "_")
+
+        # Probe filesystem for source root
+        src_path = project_root / "src" / package_name
+        if src_path.exists():
+            src_root = src_path
+        else:
+            pkg_path = project_root / package_name
+            src_root = pkg_path if pkg_path.exists() else project_root
+
+        kwargs = {
+            "package_name": package_name,
+            "project_root": project_root,
+            "src_root": src_root,
+            "build_is_editable": False,
+        }
+
+        plugin_config = self.config.copy()
+        plugin_config.pop("project_root", None)
+        plugin_config.pop("src_root", None)
+
+        kwargs.update(plugin_config)
+        return kwargs
+
+
 @hookimpl
 def hatch_register_version_source() -> type[VersionSourceInterface]:
     """Register the GitVersioned version source plugin with the Hatchling build system.
@@ -265,3 +347,15 @@ def hatch_register_version_source() -> type[VersionSourceInterface]:
     :returns: The GitVersionedVersionSource class implementing VersionSourceInterface
     """
     return GitVersionedVersionSource
+
+
+@hookimpl
+def hatch_register_build_hook() -> type[BuildHookInterface]:
+    """Register the GitVersioned build hook plugin with the Hatchling build system.
+
+    Provides the entry point hook for Hatchling to locate and instantiate the custom
+    GitVersionedBuildHook build hook implementation.
+
+    :returns: The GitVersionedBuildHook class implementing BuildHookInterface
+    """
+    return GitVersionedBuildHook

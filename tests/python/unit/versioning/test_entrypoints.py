@@ -483,6 +483,7 @@ class TestResolveVersionOutputToStream:
             return original_resolve(settings, path, enforce_existence)
 
         mocker.patch.object(Settings, "resolve_path_from_root", side_effect=side_effect)
+        mocker.patch.object(Settings, "resolve_path_from_src", return_value=None)
 
         with pytest.raises(ValueError, match="Could not resolve output path"):
             resolve_version_output_to_stream(

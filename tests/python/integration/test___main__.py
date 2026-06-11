@@ -21,7 +21,6 @@ from gitversioned.__main__ import (
     main,
     write,
 )
-from gitversioned.logging import LoggingSettings
 from tests.conftest import GitRepoHelper
 
 # Module level constants to avoid magic strings and numbers
@@ -144,10 +143,21 @@ class TestSubcommandsIntegration:
     @pytest.mark.parametrize(
         ("state", "args_list", "expected_version"),
         [
-            ("clean", [], "0.1.0"),
-            ("tagged", [], "1.0.0"),
-            ("tagged_plus_commit", ["--version-type", "dev"], "1.0.0.dev"),
-            ("tagged", ["--explicit-version", "2.3.4"], "2.3.4"),
+            ("clean", ["--auto-increment", "none"], "0.1.0"),
+            ("tagged", ["--auto-increment", "none"], "1.0.0"),
+            (
+                "tagged_plus_commit",
+                ["--version-type", "dev", "--auto-increment", "none"],
+                "1.0.0.dev",
+            ),
+            (
+                "tagged",
+                ["--explicit-version", "2.3.4", "--auto-increment", "none"],
+                "2.3.4",
+            ),
+            # Test default auto-increment behavior
+            ("clean", [], "0.1.1.dev"),
+            ("tagged_plus_commit", ["--version-type", "dev"], "1.0.1.dev"),
         ],
     )
     def test_calculate_happy(
@@ -317,23 +327,6 @@ class TestSubcommandsIntegration:
                 "Failed to execute gitversioned CLI calculate" in record.message
                 for record in caplog.records
             )
-
-    @pytest.mark.sanity
-    def test_cli_logger_stdout_redirect(self) -> None:
-        """Validate that any stdout logger sink is redirected to stderr."""
-        mock_logging_settings = LoggingSettings(sink=sys.stdout)
-        with (
-            patch(
-                "gitversioned.__main__.LoggingSettings",
-                return_value=mock_logging_settings,
-            ),
-            patch("gitversioned.__main__.configure_logger") as mock_configure,
-        ):
-            with _cli_execution_context("test", {}):
-                pass
-            mock_configure.assert_called_once()
-            called_settings = mock_configure.call_args[0][0]
-            assert called_settings.sink is sys.stderr
 
     @pytest.mark.regression
     def test_parse_cli_args_deserialization(self, tmp_path: Path) -> None:

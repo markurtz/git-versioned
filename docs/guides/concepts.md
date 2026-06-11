@@ -17,19 +17,22 @@ ______________________________________________________________________
 
 ## 1. Source Evaluation Priority
 
-The `source_type` configuration setting defines an ordered list of places to look for a version string. By default, `source_type = ["auto"]` expands to:
-`["file", "function", "tag", "branch", "commit"]`.
+The `source_type` configuration setting defines an ordered list of places to look for a version string. By default, `source_type = ["auto"]` expands dynamically based on the availability of Git:
 
-`gitversioned` iterates through this list. As soon as it extracts a valid version from one of these sources (using the corresponding `regex_*` configuration), the search stops.
+- **When Git is active/available:** `gitversioned` prioritizes Git tags and references before falling back to static files or custom functions: `["tag", "branch", "commit", "file", "function"]`.
+- **When Git is unavailable (e.g., downstream installations or ZIP downloads):** Git resolution is bypassed entirely to save resources: `["file", "function"]`.
 
-### Example Flow
+`gitversioned` iterates through the expanded list in order. As soon as it extracts a valid version from one of these sources (using the corresponding `regex_*` configuration), the search stops.
+
+### Example Flow & Fallbacks
 
 If `source_type = ["tag", "file"]`:
 
 1. `gitversioned` first checks the repository for Git tags matching the `regex_tag` pattern.
-1. If it finds matches (e.g., `v1.2.0`), it selects the tag that is "closest" (has the fewest commits) to the current `HEAD`.
-1. If no matching tags exist (e.g., a fresh repository or a shallow clone without tags), it falls back to inspecting the file defined by `version_source_file`.
-1. **Archive Fallback:** If all configured sources fail to resolve a version (or if the `.git` directory is entirely absent, such as in a GitHub ZIP download), `gitversioned` will attempt to parse a version and metadata from the file specified by `version_source_archive` (defaulting to `.git_archival.txt`).
+1. If it finds matches (e.g., `v1.2.0`), it selects the tag that is closest (has the fewest commits) to the current `HEAD`.
+1. If no matching tags exist or Git is not available, it falls back to inspecting the file defined by `version_source_file` (defaulting to `version.txt`).
+   - **Smart Fallback:** If `version_source_file` is not found, and Git is unavailable, `gitversioned` automatically falls back to inspecting `settings.output` (e.g., `version.py`). This allows downstream installations to successfully resolve their versions from pre-generated dynamic output files.
+1. **Archive Fallback:** If all configured sources fail to resolve a version (or if the `.git` directory is entirely absent, such as in a GitHub ZIP download), `gitversioned` will attempt to parse version metadata from the file specified by `version_source_archive` (defaulting to `.git_archival.txt`).
 
 ______________________________________________________________________
 
@@ -55,6 +58,9 @@ The `[tool.gitversioned.auto_increment]` setting allows you to bump the base ver
 ### Mechanics
 
 If the repository is ahead of the matched Git reference (`distance_from_head > 0`), the engine checks the auto-increment target for the active `version_type`.
+
+> [!NOTE]
+> If the active `version_type` is `alpha` or `nightly`, and no auto-increment level is explicitly defined for them under `auto_increment`, `gitversioned` automatically falls back to checking the level configured for `pre`.
 
 **Configuration Example:**
 

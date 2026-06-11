@@ -19,9 +19,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     CliSettingsSource,
+    JsonConfigSettingsSource,
     PydanticBaseSettingsSource,
     PyprojectTomlConfigSettingsSource,
     SettingsConfigDict,
+    TomlConfigSettingsSource,
 )
 
 from gitversioned.compat import tomllib
@@ -29,6 +31,7 @@ from gitversioned.logging import autolog
 from gitversioned.utils import EnsureList, EnsurePath
 
 __all__ = [
+    "AutoIncrementDict",
     "IncrementLevel",
     "OutputStrategy",
     "RegexStrategy",
@@ -39,244 +42,6 @@ __all__ = [
     "VersionStandard",
     "VersionType",
 ]
-
-VersionType = Annotated[
-    Literal["auto", "release", "dev", "pre", "alpha", "nightly", "post"],
-    "The type of version format to generate, driving version string construction.",
-]
-VersionStandard = Annotated[
-    Literal["pep440", "semver2"],
-    "The standard format used to normalize version strings.",
-]
-IncrementLevel = Annotated[
-    Literal["major", "minor", "micro", "patch", "bug"],
-    "The target segment level of the version to auto-increment.",
-]
-
-
-class TemplatePathStrategy(BaseModel):
-    """
-    Output strategy using a template file path.
-
-    Resolves version files by reading a template file containing placeholder variables,
-    replacing them with resolved version metadata, and writing to the output path.
-
-    Example:
-        ::
-
-            strategy = TemplatePathStrategy(path=Path("templates/release.py.template"))
-    """
-
-    type: Literal["template_path"] = Field(
-        default="template_path",
-        description=(
-            "Discriminator type field identifying the template path "
-            "resolution strategy."
-        ),
-    )
-    path: Path = Field(
-        description=(
-            "The file path containing the template text to format with "
-            "version metadata."
-        )
-    )
-
-
-class TemplateStrStrategy(BaseModel):
-    """
-    Output strategy using a raw template string.
-
-    Formats the target version file utilizing an inline template string pattern
-    defined directly in the configuration, rather than reading from a file.
-
-    Example:
-        ::
-
-            strategy = TemplateStrStrategy(content="__version__ = '{version}'")
-    """
-
-    type: Literal["template_str"] = Field(
-        default="template_str",
-        description=(
-            "Discriminator type field identifying the template string "
-            "resolution strategy."
-        ),
-    )
-    content: str = Field(
-        description="The inline template string used to format the version file output."
-    )
-
-
-class RegexStrategy(BaseModel):
-    """
-    Output strategy using regex version replacement.
-
-    Updates the version string inline in an existing file by searching for a match with
-    a regex pattern and replacing the target named 'version' group.
-
-    Example:
-        ::
-
-            strategy = RegexStrategy(pattern=r'version = "(?P<version>.*?)"')
-    """
-
-    type: Literal["regex"] = Field(
-        default="regex",
-        description=(
-            "Discriminator type field identifying the regex-based replacement strategy."
-        ),
-    )
-    pattern: str = Field(
-        description=(
-            "The regular expression containing a (?P<version>...) named group to "
-            "locate and replace within the target file."
-        )
-    )
-
-
-OutputStrategy = Annotated[
-    TemplatePathStrategy | TemplateStrStrategy | RegexStrategy,
-    (
-        "The active output strategy configuration used to format and "
-        "generate target version files."
-    ),
-    Field(
-        discriminator="type",
-        description=(
-            "The active output strategy configuration used to format and "
-            "generate target version files."
-        ),
-    ),
-]
-
-
-@autolog
-def _detect_package_name(project_root: Path) -> str:
-    # Detect package name from various config files or folder name.
-    pyproject_path = project_root / "pyproject.toml"
-    if pyproject_path.exists() and tomllib is not None:
-        try:
-            with pyproject_path.open("rb") as toml_file:
-                data = tomllib.load(toml_file)
-                name = data.get("project", {}).get("name")
-                if name:
-                    return str(name).replace("-", "_")
-        except (OSError, ValueError):
-            with contextlib.suppress(OSError, ValueError):
-                content = pyproject_path.read_text(encoding="utf-8")
-                match = re.search(r'(?m)^name\s*=\s*["\']([^"\']+)["\']', content)
-                if match:
-                    return match.group(1).replace("-", "_")
-
-    setup_cfg_path = project_root / "setup.cfg"
-    if setup_cfg_path.exists():
-        with contextlib.suppress(OSError, configparser.Error):
-            config = configparser.ConfigParser()
-            config.read(setup_cfg_path)
-            name = config.get("metadata", "name", fallback=None)
-            if name:
-                return name.replace("-", "_")
-
-    return project_root.name.replace("-", "_")
-
-
-@autolog
-def _resolve_src_root(project_root: Path, package_name: str) -> Path:
-    # Resolve src_root directory from project_root and package_name.
-    src_pkg = project_root / "src" / package_name
-    pkg_dir = project_root / package_name
-    if src_pkg.exists() and src_pkg.is_dir():
-        return src_pkg
-    if pkg_dir.exists() and pkg_dir.is_dir():
-        return pkg_dir
-    return project_root
-
-
-class SetupCfgSettingsSource(PydanticBaseSettingsSource):
-    """
-    Settings source for loading configurations from setup.cfg files.
-
-    Extracts configuration parameters nested under the 'tool:gitversioned'
-    sections of a project's setup.cfg file. Integrates as a custom source in
-    the Pydantic settings management pipeline.
-
-    Example:
-        ::
-
-            source = SetupCfgSettingsSource(Settings, project_root=Path.cwd())
-            config = source()
-
-    :ivar project_root: The root directory containing the setup.cfg file.
-    """
-
-    def __init__(self, settings_cls: type[BaseSettings], project_root: Path) -> None:
-        """
-        Initialize the setup.cfg settings source.
-
-        :param settings_cls: The Settings class being configured.
-        :param project_root: The root directory containing setup.cfg.
-        """
-        super().__init__(settings_cls)
-        self.project_root = project_root
-
-    def __call__(self) -> dict[str, Any]:
-        """
-        Retrieve loaded settings from setup.cfg.
-
-        :return: Loaded configuration settings dict.
-        """
-        return self._config
-
-    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
-        """
-        Get value for a configuration field from setup.cfg.
-
-        :param field: The Pydantic Field object.
-        :param field_name: The name of the field to fetch.
-        :return: A tuple containing the field's value, name, and if it was found.
-        :raises KeyError: If the field is not present in the settings source.
-        """
-        _ = (field,)  # Allow unused variable to satisfy lint/format
-        config = self._config
-        if field_name in config:
-            return config[field_name], field_name, False
-        raise KeyError(field_name)
-
-    @functools.cached_property
-    def _config(self) -> dict[str, Any]:
-        # Load and parse configuration from setup.cfg and cache the result.
-        path = self.project_root / "setup.cfg"
-        if not path.exists():
-            return {}
-
-        config_parser = configparser.ConfigParser()
-        config_parser.read(path)
-        base_section = "tool:gitversioned"
-
-        result: dict[str, Any] = {}
-        if base_section in config_parser:
-            result.update(config_parser.items(base_section))
-
-        prefix = f"{base_section}:"
-        for section in config_parser.sections():
-            if section.startswith(prefix):
-                key = section[len(prefix) :]
-                if key.startswith("overrides:"):
-                    override_name = key[10:]
-                    overrides_dict = result.setdefault("overrides", {})
-                    if not isinstance(overrides_dict, dict):
-                        overrides_dict = {}
-                        result["overrides"] = overrides_dict
-                    override_val = overrides_dict.setdefault(override_name, {})
-                    override_val.update(config_parser.items(section))
-                else:
-                    val = result.get(key, {})
-                    if not isinstance(val, dict):
-                        val = {"_": val}
-                    val.update(config_parser.items(section))
-                    result[key] = val
-
-        return result
 
 
 class Settings(BaseSettings):
@@ -462,7 +227,13 @@ class Settings(BaseSettings):
         ]
         | None
     ) = Field(
-        default=None,
+        default_factory=lambda: cast(
+            "AutoIncrementDict",
+            {
+                "dev": "patch",
+                "pre": "minor",
+            },
+        ),
         description=(
             "Target increment mapping to apply when ahead of the latest release tag."
         ),
@@ -543,6 +314,18 @@ class Settings(BaseSettings):
             SetupCfgSettingsSource(settings_cls, project_root=project_root),
             PyprojectTomlConfigSettingsSource(
                 settings_cls, toml_file=project_root / "pyproject.toml"
+            ),
+            TomlConfigSettingsSource(
+                settings_cls, toml_file=project_root / "gitversioned.toml"
+            ),
+            TomlConfigSettingsSource(
+                settings_cls, toml_file=project_root / ".gitversioned.toml"
+            ),
+            JsonConfigSettingsSource(
+                settings_cls, json_file=project_root / "gitversioned.json"
+            ),
+            JsonConfigSettingsSource(
+                settings_cls, json_file=project_root / ".gitversioned.json"
             ),
             dotenv_settings,
             env_settings,
@@ -672,6 +455,18 @@ class Settings(BaseSettings):
             ) or self.resolve_path_from_src(path, enforce_existence=True)
             if resolved is not None:
                 return resolved
+            if self.src_root != self.project_root:
+                if path:
+                    try:
+                        rel_src = self.src_root.relative_to(self.project_root)
+                        p_path = Path(path)
+                        if p_path.parts[: len(rel_src.parts)] == rel_src.parts:
+                            return self.resolve_path_from_project(
+                                path, enforce_existence=False
+                            )
+                    except ValueError:
+                        pass
+                return self.resolve_path_from_src(path, enforce_existence=False)
             return self.resolve_path_from_project(path, enforce_existence=False)
 
     @autolog
@@ -759,9 +554,259 @@ class Settings(BaseSettings):
             if new_pkg_name != self.package_name:
                 self.package_name = new_pkg_name
 
-        if self.src_root == self.project_root:
+        if (
+            self.src_root == self.project_root
+            or self.src_root.resolve() == Path.cwd().resolve()
+        ):
             new_src_root = _resolve_src_root(self.project_root, self.package_name)
             if new_src_root != self.src_root:
                 self.src_root = new_src_root
 
         return self
+
+
+class TemplatePathStrategy(BaseModel):
+    """
+    Output strategy using a template file path.
+
+    Resolves version files by reading a template file containing placeholder variables,
+    replacing them with resolved version metadata, and writing to the output path.
+
+    Example:
+        ::
+
+            strategy = TemplatePathStrategy(path=Path("templates/release.py.template"))
+    """
+
+    type: Literal["template_path"] = Field(
+        default="template_path",
+        description=(
+            "Discriminator type field identifying the template path "
+            "resolution strategy."
+        ),
+    )
+    path: Path = Field(
+        description=(
+            "The file path containing the template text to format with "
+            "version metadata."
+        )
+    )
+
+
+class TemplateStrStrategy(BaseModel):
+    """
+    Output strategy using a raw template string.
+
+    Formats the target version file utilizing an inline template string pattern
+    defined directly in the configuration, rather than reading from a file.
+
+    Example:
+        ::
+
+            strategy = TemplateStrStrategy(content="__version__ = '{version}'")
+    """
+
+    type: Literal["template_str"] = Field(
+        default="template_str",
+        description=(
+            "Discriminator type field identifying the template string "
+            "resolution strategy."
+        ),
+    )
+    content: str = Field(
+        description="The inline template string used to format the version file output."
+    )
+
+
+class RegexStrategy(BaseModel):
+    """
+    Output strategy using regex version replacement.
+
+    Updates the version string inline in an existing file by searching for a match with
+    a regex pattern and replacing the target named 'version' group.
+
+    Example:
+        ::
+
+            strategy = RegexStrategy(pattern=r'version = "(?P<version>.*?)"')
+    """
+
+    type: Literal["regex"] = Field(
+        default="regex",
+        description=(
+            "Discriminator type field identifying the regex-based replacement strategy."
+        ),
+    )
+    pattern: str = Field(
+        description=(
+            "The regular expression containing a (?P<version>...) named group to "
+            "locate and replace within the target file."
+        )
+    )
+
+
+OutputStrategy = Annotated[
+    TemplatePathStrategy | TemplateStrStrategy | RegexStrategy,
+    (
+        "The active output strategy configuration used to format and "
+        "generate target version files."
+    ),
+    Field(
+        discriminator="type",
+        description=(
+            "The active output strategy configuration used to format and "
+            "generate target version files."
+        ),
+    ),
+]
+
+
+class SetupCfgSettingsSource(PydanticBaseSettingsSource):
+    """
+    Settings source for loading configurations from setup.cfg files.
+
+    Extracts configuration parameters nested under the 'tool:gitversioned'
+    sections of a project's setup.cfg file. Integrates as a custom source in
+    the Pydantic settings management pipeline.
+
+    Example:
+        ::
+
+            source = SetupCfgSettingsSource(Settings, project_root=Path.cwd())
+            config = source()
+
+    :ivar project_root: The root directory containing the setup.cfg file.
+    """
+
+    def __init__(self, settings_cls: type[BaseSettings], project_root: Path) -> None:
+        """
+        Initialize the setup.cfg settings source.
+
+        :param settings_cls: The Settings class being configured.
+        :param project_root: The root directory containing setup.cfg.
+        """
+        super().__init__(settings_cls)
+        self.project_root = project_root
+
+    def __call__(self) -> dict[str, Any]:
+        """
+        Retrieve loaded settings from setup.cfg.
+
+        :return: Loaded configuration settings dict.
+        """
+        return self._config
+
+    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
+        """
+        Get value for a configuration field from setup.cfg.
+
+        :param field: The Pydantic Field object.
+        :param field_name: The name of the field to fetch.
+        :return: A tuple containing the field's value, name, and if it was found.
+        :raises KeyError: If the field is not present in the settings source.
+        """
+        _ = (field,)  # Allow unused variable to satisfy lint/format
+        config = self._config
+        if field_name in config:
+            return config[field_name], field_name, False
+        raise KeyError(field_name)
+
+    @functools.cached_property
+    def _config(self) -> dict[str, Any]:
+        # Load and parse configuration from setup.cfg and cache the result.
+        path = self.project_root / "setup.cfg"
+        if not path.exists():
+            return {}
+
+        config_parser = configparser.ConfigParser()
+        config_parser.read(path)
+        base_section = "tool:gitversioned"
+
+        result: dict[str, Any] = {}
+        if base_section in config_parser:
+            result.update(config_parser.items(base_section))
+
+        prefix = f"{base_section}:"
+        for section in config_parser.sections():
+            if section.startswith(prefix):
+                key = section[len(prefix) :]
+                if key.startswith("overrides:"):
+                    override_name = key[10:]
+                    overrides_dict = result.setdefault("overrides", {})
+                    if not isinstance(overrides_dict, dict):
+                        overrides_dict = {}
+                        result["overrides"] = overrides_dict
+                    override_val = overrides_dict.setdefault(override_name, {})
+                    override_val.update(config_parser.items(section))
+                else:
+                    val = result.get(key, {})
+                    if not isinstance(val, dict):
+                        val = {"_": val}
+                    val.update(config_parser.items(section))
+                    result[key] = val
+
+        return result
+
+
+VersionType = Annotated[
+    Literal["auto", "release", "dev", "pre", "alpha", "nightly", "post"],
+    "The type of version format to generate, driving version string construction.",
+]
+VersionStandard = Annotated[
+    Literal["pep440", "semver2"],
+    "The standard format used to normalize version strings.",
+]
+IncrementLevel = Annotated[
+    Literal["major", "minor", "micro", "patch", "bug"],
+    "The target segment level of the version to auto-increment.",
+]
+AutoIncrementDict = dict[
+    Literal["release", "dev", "pre", "alpha", "nightly", "post"],
+    IncrementLevel,
+]
+
+
+@autolog
+def _detect_package_name(project_root: Path) -> str:
+    # Detect package name from various config files or folder name.
+    pyproject_path = project_root / "pyproject.toml"
+    if pyproject_path.exists() and tomllib is not None:
+        try:
+            with pyproject_path.open("rb") as toml_file:
+                data = tomllib.load(toml_file)
+                name = data.get("project", {}).get("name")
+                if name:
+                    return str(name).replace("-", "_")
+        except (OSError, ValueError):
+            with contextlib.suppress(OSError, ValueError):
+                content = pyproject_path.read_text(encoding="utf-8")
+                match = re.search(r'(?m)^name\s*=\s*["\']([^"\']+)["\']', content)
+                if match:
+                    return match.group(1).replace("-", "_")
+
+    setup_cfg_path = project_root / "setup.cfg"
+    if setup_cfg_path.exists():
+        with contextlib.suppress(OSError, configparser.Error):
+            config = configparser.ConfigParser()
+            config.read(setup_cfg_path)
+            name = config.get("metadata", "name", fallback=None)
+            if name:
+                return name.replace("-", "_")
+
+    return project_root.name.replace("-", "_")
+
+
+@autolog
+def _resolve_src_root(project_root: Path, package_name: str) -> Path:
+    # Resolve src_root directory from project_root and package_name.
+    src_pkg = project_root / "src" / package_name
+    pkg_dir = project_root / package_name
+    if src_pkg.exists() and src_pkg.is_dir():
+        return src_pkg
+    if pkg_dir.exists() and pkg_dir.is_dir():
+        return pkg_dir
+    return project_root
+
+
+# Rebuild Pydantic models to resolve forward references for fields defined out of order
+Settings.model_rebuild()

@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import runpy
 import sys
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -10,7 +11,15 @@ import pytest
 import typer
 
 from gitversioned import __version__
-from gitversioned.__main__ import app, calculate, format_cmd, main, main_callback, write
+from gitversioned.__main__ import (
+    app,
+    calculate,
+    format_cmd,
+    init_archive,
+    main,
+    main_callback,
+    write,
+)
 
 
 @pytest.mark.smoke
@@ -22,7 +31,7 @@ def test_app() -> None:
         == "Opinionated PEP 440 Python versioning for Git repos and submodules."
     )
     callbacks = {cmd.callback for cmd in app.registered_commands}
-    assert callbacks == {calculate, format_cmd, write}
+    assert callbacks == {calculate, format_cmd, init_archive, write}
 
 
 class TestMain:
@@ -226,7 +235,7 @@ class TestCalculate:
 
     @pytest.mark.regression
     def test_logging_sink_routing(self) -> None:
-        """Validate calculate routes stdout log sink to stderr."""
+        """Validate calculate configures logger correctly."""
         with (
             patch("gitversioned.__main__.configure_logger") as mock_logger,
             patch("gitversioned.__main__.Settings") as mock_settings,
@@ -242,17 +251,15 @@ class TestCalculate:
             mock_settings_instance.project_root = "/mock/root"
             mock_settings.return_value = mock_settings_instance
 
-            with patch(
-                "gitversioned.__main__.LoggingSettings"
-            ) as mock_logging_settings:
-                mock_log_settings_instance = MagicMock()
-                mock_log_settings_instance.sink = sys.stdout
-                mock_logging_settings.return_value = mock_log_settings_instance
+            calculate()
 
-                calculate()
-
-                assert mock_log_settings_instance.sink is sys.stderr
-                mock_logger.assert_called_once_with(mock_log_settings_instance)
+            mock_logger.assert_called_once_with(
+                enabled=True,
+                clear_loggers=True,
+                level="auto",
+                filter=True,
+                enqueue=True,
+            )
 
 
 class TestFormatCmd:
@@ -440,3 +447,71 @@ class TestRunAsMain:
             runpy.run_module("gitversioned.__main__", run_name="__main__")
             mock_typer_class.assert_called()
             mock_typer_class.return_value.assert_called()
+
+
+class TestInitArchive:
+    """Unit tests for the init-archive subcommand."""
+
+    @pytest.mark.smoke
+    def test_invocation_smoke(self, tmp_path: Path) -> None:
+        """Validate init-archive creates files correctly."""
+        with (
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+            patch("typer.echo") as mock_echo,
+        ):
+            init_archive()
+
+            # Check .git_archival.txt is created
+            archival_file = tmp_path / ".git_archival.txt"
+            assert archival_file.is_file()
+            content = archival_file.read_text()
+            assert "$Format:%H$" in content
+            assert "distance_from_head: 0\n" in content
+            assert "is_head_commit: true\n" in content
+            assert "total_commits: 0\n" in content
+            assert "is_current_branch: true\n" in content
+
+            # Check .gitattributes is created
+            gitattributes_file = tmp_path / ".gitattributes"
+            assert gitattributes_file.is_file()
+            assert ".git_archival.txt export-subst" in gitattributes_file.read_text()
+
+            # Verify typer.echo calls
+            mock_echo.assert_any_call("Created .git_archival.txt")
+            mock_echo.assert_any_call("Updated .gitattributes")
+
+    @pytest.mark.sanity
+    def test_existing_gitattributes(self, tmp_path: Path) -> None:
+        """Validate init-archive appends to existing .gitattributes."""
+        gitattributes_file = tmp_path / ".gitattributes"
+        gitattributes_file.write_text("*.py text\n", encoding="utf-8")
+
+        with (
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+            patch("typer.echo") as mock_echo,
+        ):
+            init_archive()
+
+            content = gitattributes_file.read_text()
+            assert content == "*.py text\n.git_archival.txt export-subst\n"
+            mock_echo.assert_any_call("Updated .gitattributes")
+
+    @pytest.mark.sanity
+    def test_existing_gitattributes_already_contains(self, tmp_path: Path) -> None:
+        """Validate init-archive does not append if entry already exists."""
+        gitattributes_file = tmp_path / ".gitattributes"
+        gitattributes_file.write_text(
+            ".git_archival.txt export-subst\n", encoding="utf-8"
+        )
+
+        with (
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+            patch("typer.echo") as mock_echo,
+        ):
+            init_archive()
+
+            content = gitattributes_file.read_text()
+            assert content == ".git_archival.txt export-subst\n"
+            mock_echo.assert_any_call(
+                ".gitattributes already contains export-subst entry"
+            )
