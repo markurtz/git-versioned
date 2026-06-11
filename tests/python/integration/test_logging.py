@@ -634,6 +634,16 @@ class TestConfigureLogger:
             logger.remove()
             _state["handler_id"] = original_handler_id
 
+    @pytest.mark.regression
+    def test_configure_logger_removes_handler_when_disabled(self) -> None:
+        """Verify configure_logger removes the previously registered handler when disabling."""
+        _state["handler_id"] = 777
+        settings_instance = LoggingSettings(enabled=False)
+        with patch("gitversioned.logging.logger") as mock_loguru:
+            configure_logger(settings_instance)
+            mock_loguru.remove.assert_called_once_with(777)
+            assert _state["handler_id"] is None
+
 
 class TestCLIEntrypoint:
     """Integration test suite for logger behavior under CLI execution context."""
@@ -676,7 +686,8 @@ class TestBuildPluginsIntegration:
         assert mock_configure.call_count == 1
         call_kwargs = mock_configure.call_args.kwargs
         assert call_kwargs["enabled"] is True
-        assert call_kwargs["level"] == "INFO"
+        assert call_kwargs["clear_loggers"] is True
+        assert call_kwargs["level"] == "WARNING"
         assert call_kwargs["otel_formatting"] == "disable"
         assert call_kwargs["enqueue"] is False
 
@@ -699,7 +710,8 @@ class TestBuildPluginsIntegration:
         assert mock_configure.call_count == 1
         call_kwargs = mock_configure.call_args.kwargs
         assert call_kwargs["enabled"] is True
-        assert call_kwargs["level"] == "INFO"
+        assert call_kwargs["clear_loggers"] is True
+        assert call_kwargs["level"] == "WARNING"
         assert call_kwargs["otel_formatting"] == "disable"
         assert call_kwargs["enqueue"] is False
 
@@ -714,7 +726,8 @@ class TestBuildPluginsIntegration:
         assert mock_configure.call_count == 1
         call_kwargs = mock_configure.call_args.kwargs
         assert call_kwargs["enabled"] is True
-        assert call_kwargs["level"] == "INFO"
+        assert call_kwargs["clear_loggers"] is True
+        assert call_kwargs["level"] == "WARNING"
         assert call_kwargs["otel_formatting"] == "disable"
         assert call_kwargs["enqueue"] is False
 

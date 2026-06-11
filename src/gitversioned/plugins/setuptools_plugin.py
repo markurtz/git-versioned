@@ -62,7 +62,8 @@ def setup_keywords(distribution: Distribution, attribute: str, value: Any) -> No
     """
     configure_logger(
         enabled=True,
-        level="INFO",
+        clear_loggers=True,
+        level="WARNING",
         otel_formatting="disable",
         enqueue=False,
         format="[gitversioned:setuptools] {level} - {message}\n",
@@ -105,7 +106,8 @@ def finalize_distribution_options(distribution: Distribution) -> None:
     """
     configure_logger(
         enabled=True,
-        level="INFO",
+        clear_loggers=True,
+        level="WARNING",
         otel_formatting="disable",
         enqueue=False,
         format="[gitversioned:setuptools] {level} - {message}\n",

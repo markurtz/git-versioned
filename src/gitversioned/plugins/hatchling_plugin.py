@@ -90,7 +90,8 @@ class GitVersionedVersionSource(VersionSourceInterface):
         """
         configure_logger(
             enabled=True,
-            level="INFO",
+            clear_loggers=True,
+            level="WARNING",
             otel_formatting="disable",
             enqueue=False,
             format="<cyan>[gitversioned:hatch]</cyan> <level>{message}</level>\n",
@@ -277,7 +278,8 @@ class GitVersionedBuildHook(BuildHookInterface):
         """
         configure_logger(
             enabled=True,
-            level="INFO",
+            clear_loggers=True,
+            level="WARNING",
             otel_formatting="disable",
             enqueue=False,
             format="<cyan>[gitversioned:hatch-build]</cyan> <level>{message}</level>\n",

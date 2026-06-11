@@ -614,6 +614,16 @@ class TestConfigureLogger:
             logger.remove()
             _state["handler_id"] = original_handler_id
 
+    @pytest.mark.regression
+    def test_configure_logger_removes_handler_when_disabled(self) -> None:
+        """Verify configure_logger removes the previously registered handler when disabling."""
+        _state["handler_id"] = 9999
+        settings = LoggingSettings(enabled=False)
+        with patch("gitversioned.logging.logger") as mock_logger:
+            configure_logger(settings)
+            mock_logger.remove.assert_called_once_with(9999)
+            assert _state["handler_id"] is None
+
 
 class TestAutolog:
     """Test suite for autolog module-level decorator."""
