@@ -464,14 +464,14 @@ class TestCargoTomlOverrides:
         assert not settings_passed.overrides
 
     @pytest.mark.regression
-    def test_overrides_not_injected_when_overrides_exist(
+    def test_overrides_not_overwritten_when_cargo_override_exists(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         mock_maturin: MagicMock,
         mock_resolve_version: MagicMock,
     ) -> None:
-        """Verify cargo override is not injected if overrides already configured."""
+        """Verify cargo override is not overwritten if already configured."""
         monkeypatch.chdir(tmp_path)
         cargo_toml = tmp_path / "Cargo.toml"
         cargo_toml.touch()
@@ -481,7 +481,7 @@ class TestCargoTomlOverrides:
             "[project]\n"
             'name = "mock_pkg"\n'
             'dynamic = ["version"]\n\n'
-            "[tool.gitversioned.overrides.docker]\noutput = 'Dockerfile'\n",
+            "[tool.gitversioned.overrides.cargo]\noutput = 'Cargo.toml'\nversion_standard = 'pep440'\n",
             encoding="utf-8",
         )
 
@@ -489,8 +489,8 @@ class TestCargoTomlOverrides:
 
         assert mock_resolve_version.call_count == 1
         settings_passed = mock_resolve_version.call_args[1]["settings"]
-        assert "cargo" not in settings_passed.overrides
-        assert "docker" in settings_passed.overrides
+        assert "cargo" in settings_passed.overrides
+        assert settings_passed.overrides["cargo"]["version_standard"] == "pep440"
 
 
 class TestModuleExports:

@@ -464,7 +464,12 @@ class TestInitArchive:
             # Check .git_archival.txt is created
             archival_file = tmp_path / ".git_archival.txt"
             assert archival_file.is_file()
-            assert "$Format:%H$" in archival_file.read_text()
+            content = archival_file.read_text()
+            assert "$Format:%H$" in content
+            assert "distance_from_head: 0\n" in content
+            assert "is_head_commit: true\n" in content
+            assert "total_commits: 0\n" in content
+            assert "is_current_branch: true\n" in content
 
             # Check .gitattributes is created
             gitattributes_file = tmp_path / ".gitattributes"

@@ -128,6 +128,7 @@ class TestGeneralWebappExample:
             try:
                 # Query localhost endpoint
                 target_url = f"http://127.0.0.1:{port}/version"
+                # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected  # noqa: ERA001, E501
                 with urllib.request.urlopen(target_url) as response:  # noqa: S310
                     status_ok = 200
                     assert response.status == status_ok

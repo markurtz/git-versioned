@@ -59,7 +59,8 @@ class PropagateHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         """Route loguru record to standard logging."""
-        self.caplog_handler.handle(record)
+        if record.levelno >= self.caplog_handler.level:
+            self.caplog_handler.handle(record)
 
 
 @pytest.fixture(autouse=True)

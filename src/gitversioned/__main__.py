@@ -194,6 +194,10 @@ def init_archive() -> None:
         "author_name: $Format:%an$\n"
         "author_email: $Format:%ae$\n"
         "ref_names: $Format:%D$\n"
+        "distance_from_head: 0\n"
+        "is_head_commit: true\n"
+        "total_commits: 0\n"
+        "is_current_branch: true\n"
         "commit_message:\n"
         "$Format:%B$\n"
     )
