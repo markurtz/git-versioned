@@ -7,11 +7,16 @@
     ]
   },
   {
-    "version": "main-16dfce0",
-    "title": "main-16dfce0",
+    "version": "main-701c144",
+    "title": "main-701c144",
     "aliases": [
       "dev"
     ]
+  },
+  {
+    "version": "main-16dfce0",
+    "title": "main-16dfce0",
+    "aliases": []
   },
   {
     "version": "v0.3.0",
