@@ -1,0 +1,10 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0", "gitversioned"]
+build-backend = "gitversioned.plugins.maturin_plugin"
+
+[project]
+name = "maturin_example"
+dynamic = ["version"]
+description = "A minimal example project showcasing Maturin integration with GitVersioned"
+readme = "README.md"
+requires-python = ">=3.10"

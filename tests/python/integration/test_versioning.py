@@ -531,6 +531,7 @@ def test_strategy_marshalling(temp_git_repo: GitRepoHelper) -> None:
         project_root=temp_git_repo.path,
         source_type=["tag"],
         version="auto",
+        auto_increment=None,
         output_strategies={
             "release": TemplateStrStrategy(content="Release: {version}"),
             "dev": TemplateStrStrategy(content="Dev: {version}"),

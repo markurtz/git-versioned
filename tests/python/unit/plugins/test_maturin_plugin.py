@@ -400,8 +400,8 @@ class TestLoggingConfiguration:
         maturin_plugin.build_wheel("wheel_dir")
 
         mock_configure_logger.assert_called_once()
-        call_args = mock_configure_logger.call_args[0][0]
-        assert call_args.enabled is True
+        call_kwargs = mock_configure_logger.call_args[1]
+        assert call_kwargs["enabled"] is True
         assert maturin_plugin._logging_configured is True
 
     @pytest.mark.regression

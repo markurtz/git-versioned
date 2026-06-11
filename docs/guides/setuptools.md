@@ -11,12 +11,12 @@ Depending on your project's layout and preference, you can configure Setuptools 
 === "pyproject.toml (Modern)"
 
 ````
-Declare `gitversioned` under `build-system` requirements, specify `version` as dynamic, and configure it under `[tool.gitversioned]`:
+Declare `gitversioned` under `build-system` requirements and specify `version` as dynamic in your `pyproject.toml`. It runs zero-config out of the box, or you can configure custom settings under `[tool.gitversioned]`:
 
 ```toml
 # pyproject.toml
 [build-system]
-requires = ["setuptools>=61.0", "gitversioned"]
+requires = ["setuptools>=64.0", "gitversioned"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -36,7 +36,7 @@ dev = "patch"
 === "setup.cfg (Declarative)"
 
 ````
-If you define your package metadata in `setup.cfg`, ensure `gitversioned` is in `setup_requires` and declare your settings under `[tool:gitversioned]`:
+If you define your package metadata in `setup.cfg`, you can enable dynamic versioning with zero-config defaults by setting `gitversioned = True` under `[options]`. Alternatively, customize your settings under `[tool:gitversioned]`:
 
 ```ini
 # setup.cfg
@@ -44,10 +44,12 @@ If you define your package metadata in `setup.cfg`, ensure `gitversioned` is in 
 name = my-package
 
 [options]
-# Keep version dynamic so Setuptools hooks can inject it
 setup_requires =
     gitversioned
+# Set to True to enable zero-config defaults
+gitversioned = True
 
+# Optional: Declare custom configuration overrides
 [tool:gitversioned]
 source_type = tag
 output = src/my_package/version.py
@@ -61,30 +63,16 @@ dev = patch
 === "setup.py (Legacy/Imperative)"
 
 ````
-If your project uses an imperative `setup.py` file, pass configuration overrides directly to `setup()` via the `gitversioned` dictionary keyword argument:
+If your project uses an imperative `setup.py` file, pass the `gitversioned` parameter. Set it to `True` for zero-config defaults, or pass a configuration dictionary for custom behavior:
 
 ```python
 # setup.py
-# Copyright 2026 Mark Kurtz
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from setuptools import setup
 
 setup(
     name="my-package",
     setup_requires=["gitversioned"],
-    # Configure settings directly in python
+    # Set to True for zero-config, or pass a dict for custom overrides:
     gitversioned={
         "source_type": ["tag"],
         "output": "src/my_package/version.py",

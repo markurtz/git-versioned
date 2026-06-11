@@ -8,7 +8,7 @@ ______________________________________________________________________
 
 ## 1. Enabling the Plugin
 
-To use `gitversioned` as a version source, you need to declare it as a build dependency and configure Hatch to use it in your `pyproject.toml`.
+To use `gitversioned` as a version source, declare it as a build dependency, configure Hatch to use it, and enable the build hook plugin in your `pyproject.toml` to automatically bundle the dynamic output version file:
 
 ```toml
 [build-system]
@@ -21,6 +21,9 @@ dynamic = ["version"]
 
 [tool.hatch.version]
 source = "gitversioned"
+
+# Recommended: Automatically registers and bundles the generated version file
+[tool.hatch.build.hooks.gitversioned]
 ```
 
 With this minimal setup, running `hatch build` will dynamically determine the version (e.g., from your latest Git tag or commit) and inject it into the built wheel and sdist!
@@ -104,16 +107,32 @@ This ensures `hatch build` works perfectly in both local clones and downstream s
 
 If you add your generated `version.py` file to `.gitignore` so it isn't committed to your repository, Hatchling will natively ignore it during the build process, meaning it won't be included in your final wheel or sdist.
 
-To ensure the ignored version file is correctly packaged, you must instruct Hatchling to explicitly include it via `artifacts`:
+To ensure the ignored version file is correctly packaged, you have two configuration pathways:
+
+#### Pathway A: The Build Hook Plugin (Recommended)
+
+Add the custom build hook to your `pyproject.toml`. The plugin will automatically run during the build process, resolve the path of the generated version file, and dynamically register it as a build artifact:
 
 ```toml
+# pyproject.toml
+[tool.hatch.build.hooks.gitversioned]
+```
+
+#### Pathway B: Manual Artifacts Listing (Advanced Alternative)
+
+If you prefer to manually configure build packaging parameters or need custom control over version files, declare the output file explicitly in the `artifacts` list under your build configuration:
+
+```toml
+# pyproject.toml
 [tool.hatch.build]
 artifacts = [
     "src/my_package/version.py"
 ]
 ```
 
-You can then cleanly expose this version in your package's `__init__.py`:
+#### Exposing the Version in Your Code
+
+Regardless of which pathway you choose, you can then cleanly expose this version in your package's `__init__.py`:
 
 ```python
 # src/my_package/__init__.py

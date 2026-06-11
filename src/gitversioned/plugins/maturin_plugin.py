@@ -25,7 +25,7 @@ from typing import Any
 from packaging.version import Version as PackagingVersion
 
 from gitversioned.compat import maturin, tomllib
-from gitversioned.logging import LoggingSettings, configure_logger, logger
+from gitversioned.logging import configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
 from gitversioned.versioning import resolve_version_output_to_stream
@@ -254,7 +254,17 @@ def _get_maturin() -> types.ModuleType:
 
     global _logging_configured  # noqa: PLW0603
     if not _logging_configured:
-        configure_logger(LoggingSettings(enabled=True))
+        configure_logger(
+            enabled=True,
+            clear_loggers=True,
+            level="INFO",
+            otel_formatting="auto",
+            filter=False,
+            enqueue=True,
+            format=(
+                "<magenta>[gitversioned:maturin]</magenta> <level>{message}</level>\n"
+            ),
+        )
         _logging_configured = True
 
     logger.debug("Maturin plugin: resolving dynamic version...")
@@ -292,19 +302,21 @@ def _get_maturin() -> types.ModuleType:
                 logger.warning(f"Failed to read PKG-INFO: {error}")
 
     cargo_toml = settings.project_root / "Cargo.toml"
-    if cargo_toml.exists() and cargo_toml.is_file() and not settings.overrides:
-        settings.overrides = {
-            "cargo": {
-                "output": "Cargo.toml",
-                "version_standard": "semver2",
-                "output_strategies": {
-                    "type": "regex",
-                    "pattern": (
-                        r"(?ms)^\[package\].*?^"
-                        r"(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2"
-                    ),
-                },
-            }
+    if (
+        cargo_toml.exists()
+        and cargo_toml.is_file()
+        and "cargo" not in settings.overrides
+    ):
+        settings.overrides["cargo"] = {
+            "output": "Cargo.toml",
+            "version_standard": "semver2",
+            "output_strategies": {
+                "type": "regex",
+                "pattern": (
+                    r"(?ms)^\[package\].*?^"
+                    r"(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2"
+                ),
+            },
         }
 
     repository = GitRepository(settings.project_root)

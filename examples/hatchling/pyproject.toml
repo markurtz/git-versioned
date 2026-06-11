@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hatchling_example"
+dynamic = ["version"]
+description = "A minimal example project showcasing Hatchling integration with GitVersioned"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hatchling_example"]
+
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.hatch.version]
+source = "gitversioned"

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel", "gitversioned"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "setuptools_docker_overrides"
+dynamic = ["version"]
+description = "An advanced example project showcasing Setuptools integration with GitVersioned and Docker overrides"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.gitversioned.overrides.docker]
+output = "Dockerfile"
+output_strategies = { type = "regex", pattern = 'ARG VERSION="(?P<version>.*?)"' }

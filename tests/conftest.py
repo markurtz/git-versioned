@@ -53,11 +53,13 @@ class PropagateHandler(logging.Handler):
     Routes loguru logs to standard logging so that caplog can capture them.
     """
 
+    def __init__(self, caplog_handler: logging.Handler) -> None:
+        super().__init__()
+        self.caplog_handler = caplog_handler
+
     def emit(self, record: logging.LogRecord) -> None:
         """Route loguru record to standard logging."""
-        log_logger = logging.getLogger(record.name)
-        if log_logger.isEnabledFor(record.levelno):
-            log_logger.handle(record)
+        self.caplog_handler.handle(record)
 
 
 @pytest.fixture(autouse=True)
@@ -76,7 +78,7 @@ def caplog_loguru(
     _state["handler_id"] = None
     logger.enable("gitversioned")
 
-    logger.add(PropagateHandler(), format="{message}")
+    logger.add(PropagateHandler(caplog.handler), format="{message}")
     yield caplog
     logger.remove()
     _state["handler_id"] = None

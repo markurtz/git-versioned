@@ -78,8 +78,12 @@ def resolve_sources(
             f"Could not resolve version from explicit config/argument: {exp_err}"
         )
 
-    if "auto" in sources:
-        sources = ["file", "function", "tag", "branch", "commit"]
+    had_auto = "auto" in sources
+    if had_auto:
+        if repository.is_available:
+            sources = ["tag", "branch", "commit", "file", "function"]
+        else:
+            sources = ["file", "function"]
         logger.debug(f"Expanded 'auto' source type to: {sources}")
 
     logger.info(f"Resolving version sources in order: {sources}")
@@ -112,7 +116,10 @@ def resolve_sources(
         "attempting to resolve from archive."
     )
     try:
-        version, reference = resolve_sources_from_archive(sources, settings)
+        archive_sources = (
+            ["tag", "branch", "commit", "file", "function"] if had_auto else sources
+        )
+        version, reference = resolve_sources_from_archive(archive_sources, settings)
         logger.info(f"Resolved version from archive: {version} for {reference}")
         return version, reference
     except VersionResolutionError as archive_err:
@@ -180,8 +187,24 @@ def resolve_from_file_source(
         raise VersionResolutionError("No version_source_file configured.")
 
     source_path = settings.resolve_path_from_root(settings.version_source_file)
+
+    if (not source_path or not source_path.exists()) and (
+        not repository.is_available and settings.output
+    ):
+        output_path = settings.resolve_path_from_root(settings.output)
+        if output_path and output_path.exists():
+            source_path = output_path
+            logger.debug(
+                f"Version source file '{settings.version_source_file}' "
+                f"not found; falling back to output file: {source_path}"
+            )
+
     if not source_path or not source_path.exists():
-        raise VersionResolutionError(f"Version file '{source_path}' not found.")
+        raise VersionResolutionError(
+            f"Neither version_source_file "
+            f"'{settings.version_source_file}' nor "
+            f"output file '{settings.output}' found."
+        )
 
     logger.debug(f"Attempting to resolve version from file: {source_path}")
 

@@ -25,7 +25,7 @@ from typing import Any, cast
 from packaging.utils import canonicalize_name
 from setuptools import Distribution
 
-from gitversioned.logging import LoggingSettings, autolog, configure_logger, logger
+from gitversioned.logging import autolog, configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
 from gitversioned.versioning import resolve_version_output_to_stream
@@ -60,18 +60,26 @@ def setup_keywords(distribution: Distribution, attribute: str, value: Any) -> No
     :raises DistutilsSetupError: If the keyword attribute is invalid or the
         value is not a dict.
     """
-    configure_logger(LoggingSettings(enabled=True))
+    configure_logger(
+        enabled=True,
+        level="INFO",
+        otel_formatting="disable",
+        enqueue=False,
+        format="[gitversioned:setuptools] {level} - {message}\n",
+    )
     logger.debug(f"setup_keywords called with attribute='{attribute}'")
 
     if attribute != "gitversioned":
         logger.error(f"Unknown keyword argument: {attribute}")
         raise DistutilsSetupError(f"Unknown keyword argument: {attribute}")
 
-    if not isinstance(value, dict):
-        logger.error("gitversioned keyword argument must be a dict")
-        raise DistutilsSetupError("gitversioned must be a dict")
+    if not isinstance(value, (dict, bool)):
+        logger.error("gitversioned keyword argument must be a dict or bool")
+        raise DistutilsSetupError("gitversioned must be a dict or bool")
 
-    cast("Any", distribution).gitversioned_config = value
+    cast("Any", distribution).gitversioned_config = (
+        {} if isinstance(value, bool) else value
+    )
 
 
 def finalize_distribution_options(distribution: Distribution) -> None:
@@ -95,7 +103,13 @@ def finalize_distribution_options(distribution: Distribution) -> None:
     :raises DistutilsSetupError: If the package name is unresolved or if version
         resolution encounters an unexpected failure.
     """
-    configure_logger(LoggingSettings(enabled=True))
+    configure_logger(
+        enabled=True,
+        level="INFO",
+        otel_formatting="disable",
+        enqueue=False,
+        format="[gitversioned:setuptools] {level} - {message}\n",
+    )
     logger.debug("Finalizing distribution options for GitVersioned.")
 
     project_root, source_root, package_name = _resolve_project_context(distribution)

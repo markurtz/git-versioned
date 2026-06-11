@@ -34,13 +34,14 @@ gitversioned write
 === "Setuptools Plugin"
 
 ````
-To integrate with a Setuptools-based project, add `gitversioned` to your `build-system` and define `version` as dynamic in your `pyproject.toml`:
+To integrate with a Setuptools-based project, add `gitversioned` to your `build-system` and declare the version as dynamic in your `pyproject.toml`. It works zero-config out of the box:
 ```toml
 [build-system]
-requires = ["setuptools>=61.0", "gitversioned"]
+requires = ["setuptools>=64.0", "gitversioned"]
 build-backend = "setuptools.build_meta"
 
 [project]
+name = "my-package"
 dynamic = ["version"]
 ```
 ````
@@ -48,14 +49,21 @@ dynamic = ["version"]
 === "Hatchling Plugin"
 
 ````
-To integrate with a Hatchling-based project, declare `gitversioned` in your `pyproject.toml` and configure it as the version source:
+To integrate with a Hatchling-based project, declare `gitversioned` in your `pyproject.toml` build requirements, configure it as the version source, and enable the build hook plugin to automatically package your version file:
 ```toml
 [build-system]
 requires = ["hatchling", "gitversioned"]
 build-backend = "hatchling.build"
 
+[project]
+name = "my-package"
+dynamic = ["version"]
+
 [tool.hatch.version]
 source = "gitversioned"
+
+# Recommended: Automatically registers and bundles the generated version file
+[tool.hatch.build.hooks.gitversioned]
 ```
 ````
 
@@ -71,6 +79,7 @@ requires = ["maturin>=1.0,<2.0", "gitversioned"]
 build-backend = "gitversioned.plugins.maturin_plugin"
 
 [project]
+name = "my-package"
 dynamic = ["version"]
 ```
 
@@ -118,8 +127,15 @@ GitVersioned is primarily used automatically by your build system. Add it to you
 requires = ["hatchling", "gitversioned"]
 build-backend = "hatchling.build"
 
+[project]
+name = "my-package"
+dynamic = ["version"]
+
 [tool.hatch.version]
 source = "gitversioned"
+
+# Recommended: Automatically registers and bundles the generated version file
+[tool.hatch.build.hooks.gitversioned]
 ```
 
 Now, any time you build your package, the version will be dynamically resolved based on your Git repository state!
@@ -128,21 +144,11 @@ Now, any time you build your package, the version will be dynamically resolved b
 
 To ensure GitVersioned can resolve your version when users download your repository as a ZIP file (e.g., from GitHub) where the `.git` directory is missing, set up archive support:
 
-1. Create a `.git_archival.txt` file in your repository root with the following contents:
-   ```text
-   commit_sha: $Format:%H$
-   short_sha: $Format:%h$
-   timestamp: $Format:%aI$
-   author_name: $Format:%an$
-   author_email: $Format:%ae$
-   ref_names: $Format:%D$
-   commit_message:
-   $Format:%B$
-   ```
-1. Create or update your `.gitattributes` file in the repository root to enable variable substitution during archive creation:
-   ```text
-   .git_archival.txt export-subst
-   ```
+```bash
+gitversioned init-archive
+```
+
+This automatically initializes the `.git_archival.txt` template and enables variable substitution (`export-subst`) in `.gitattributes`.
 
 When an archive is created (via `git archive` or GitHub's download ZIP feature), Git will replace those placeholders with the actual commit metadata, allowing GitVersioned to fall back to this file and resolve the correct version!
 

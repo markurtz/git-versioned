@@ -9,7 +9,7 @@ output to target files or system streams.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from packaging.version import Version
 
@@ -67,36 +67,24 @@ def resolve_version(
             f"defaulting to base version: {version} and git reference {reference}"
         )
 
-    # Determine version type to build (release, dev, alpha, post)
-    version_type = str(settings.version_type).strip().lower()
-    if version_type == "auto":
-        raw_ignore = [
-            settings.output,
-            settings.version_source_file,
-            *settings.dirty_ignore,
-        ]
-        if hasattr(settings, "overrides") and settings.overrides:
-            for override_data in settings.overrides.values():
-                if isinstance(override_data, dict) and "output" in override_data:
-                    raw_ignore.append(override_data["output"])
-        ignore_paths = [
-            path
-            for raw_path in raw_ignore
-            if (path := settings.resolve_path_from_root(raw_path)) is not None
-        ]
-        is_dirty = bool(repository.filtered_dirty_files(ignore_paths=ignore_paths))
-        version_type = "dev" if is_dirty or not reference.is_head_commit else "release"
-        logger.info(
-            f"Auto-resolved version type to: '{version_type}' for ref {reference}"
-        )
+    version_type = _determine_version_type(settings, repository, reference)
     logger.info(f"Using version type: '{version_type}' for git reference {reference}")
 
-    # Determine if an auto-increment should occur and if so apply it at the proper level
+    target_key = cast("VersionType", version_type)
     auto_increment_level = ""
-    if settings.auto_increment is not None:
-        target_key = cast("VersionType", version_type)
-        if target_key in settings.auto_increment:
-            auto_increment_level = settings.auto_increment[target_key].lower().strip()
+    val = (
+        settings.auto_increment.get(cast("Any", target_key))
+        if settings.auto_increment is not None
+        else None
+    )
+    if (
+        val is None
+        and target_key in ("alpha", "nightly")
+        and settings.auto_increment is not None
+    ):
+        val = settings.auto_increment.get("pre")
+    if val is not None:
+        auto_increment_level = val.lower().strip()
     if (
         target_idx := {"major": 0, "minor": 1, "micro": 2, "patch": 2, "bug": 2}.get(
             auto_increment_level
@@ -136,6 +124,37 @@ def resolve_version(
     logger.info(f"Resolved final version: {version_final}")
 
     return version_final, cast("VersionType", version_type), reference
+
+
+@autolog
+def _determine_version_type(
+    settings: Settings,
+    repository: GitRepository,
+    reference: GitReference,
+) -> str:
+    # Determine version type to build (release, dev, alpha, post)
+    version_type = str(settings.version_type).strip().lower()
+    if version_type == "auto":
+        raw_ignore = [
+            settings.output,
+            settings.version_source_file,
+            *settings.dirty_ignore,
+        ]
+        if hasattr(settings, "overrides") and settings.overrides:
+            for override_data in settings.overrides.values():
+                if isinstance(override_data, dict) and "output" in override_data:
+                    raw_ignore.append(override_data["output"])
+        ignore_paths = [
+            path
+            for raw_path in raw_ignore
+            if (path := settings.resolve_path_from_root(raw_path)) is not None
+        ]
+        is_dirty = bool(repository.filtered_dirty_files(ignore_paths=ignore_paths))
+        version_type = "dev" if is_dirty or not reference.is_head_commit else "release"
+        logger.info(
+            f"Auto-resolved version type to: '{version_type}' for ref {reference}"
+        )
+    return version_type
 
 
 @autolog

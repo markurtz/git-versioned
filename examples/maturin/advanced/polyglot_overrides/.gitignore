@@ -1,0 +1,12 @@
+# Generated version file
+src/maturin_polyglot_overrides/version.py
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Build artifacts
+dist/
+*.egg-info/
+__pycache__/
+*.pyc

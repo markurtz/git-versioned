@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from .logging import LoggingSettings, configure_logger
 from .settings import Settings
+from .utils import BuildEnvironment, GitRepository
 from .versioning import (
     resolve_version,
     resolve_version_output,
@@ -44,6 +45,8 @@ from .versioning import (
 )
 
 __all__ = [
+    "BuildEnvironment",
+    "GitRepository",
     "LoggingSettings",
     "Settings",
     "__version__",
@@ -53,6 +56,6 @@ __all__ = [
     "resolve_version_output_to_stream",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.2.1.dev24+02d93d4"
 
 configure_logger()

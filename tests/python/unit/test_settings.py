@@ -16,12 +16,14 @@ from pydantic_settings import (
 
 from gitversioned.settings import (
     IncrementLevel,
+    JsonConfigSettingsSource,
     OutputStrategy,
     RegexStrategy,
     Settings,
     SetupCfgSettingsSource,
     TemplatePathStrategy,
     TemplateStrStrategy,
+    TomlConfigSettingsSource,
     VersionStandard,
     VersionType,
 )
@@ -444,13 +446,18 @@ class TestSettings:
         sources = Settings.settings_customise_sources(
             Settings, init_source, init_source, init_source, init_source
         )
-        assert len(sources) == 6
+        assert len(sources) == 10
         assert sources[0] is init_source
         assert isinstance(sources[1], SetupCfgSettingsSource)
         assert isinstance(sources[2], PyprojectTomlConfigSettingsSource)
-        assert sources[3] is init_source
-        assert sources[4] is init_source
-        assert isinstance(sources[5], CliSettingsSource)
+
+        assert isinstance(sources[3], TomlConfigSettingsSource)
+        assert isinstance(sources[4], TomlConfigSettingsSource)
+        assert isinstance(sources[5], JsonConfigSettingsSource)
+        assert isinstance(sources[6], JsonConfigSettingsSource)
+        assert sources[7] is init_source
+        assert sources[8] is init_source
+        assert isinstance(sources[9], CliSettingsSource)
 
     @pytest.mark.sanity
     def test_settings_customise_sources_invalid(self) -> None:
@@ -668,6 +675,15 @@ class TestSettings:
         assert settings_instance.resolve_path_from_root("missing.txt") is None
         assert (
             settings_instance.resolve_path_from_root(
+                "missing.txt", enforce_existence=False
+            )
+            == src_dir / "missing.txt"
+        )
+        settings_same_root = Settings(
+            package_name="test", project_root=tmp_path, src_root=tmp_path
+        )
+        assert (
+            settings_same_root.resolve_path_from_root(
                 "missing.txt", enforce_existence=False
             )
             == tmp_path / "missing.txt"

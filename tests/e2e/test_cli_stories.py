@@ -640,6 +640,8 @@ class TestLegacyPythonProject:
                 json.dumps(strategy),
                 "--source-type",
                 "branch",
+                "--auto-increment",
+                "none",
             ],
             cwd=repo_helper.path,
         )

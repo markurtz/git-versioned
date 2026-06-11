@@ -59,6 +59,17 @@ For example, to write the version to a target configured under the `cargo` overr
 gitversioned overrides cargo write
 ```
 
+### 5. `init-archive`
+
+Initializes Git archive fallback metadata template files in your repository root.
+
+```bash
+gitversioned init-archive
+```
+
+- **Output:** Creates `.git_archival.txt` and appends placeholder export settings to `.gitattributes`.
+- **Use Case:** Automating the setup of archive fallback version resolution for GitHub ZIP downloads.
+
 ______________________________________________________________________
 
 ## Detailed User Stories & Workflows

@@ -26,8 +26,15 @@ Before installing, ensure your system meets the following prerequisites:
 requires = ["hatchling", "gitversioned"]
 build-backend = "hatchling.build"
 
+[project]
+name = "my-package"
+dynamic = ["version"]
+
 [tool.hatch.version]
 source = "gitversioned"
+
+# Recommended: Automatically registers and bundles the generated version file
+[tool.hatch.build.hooks.gitversioned]
 ```
 ````
 
@@ -37,10 +44,11 @@ source = "gitversioned"
 ```toml
 # pyproject.toml
 [build-system]
-requires = ["setuptools>=61.0", "gitversioned"]
+requires = ["setuptools>=64.0", "gitversioned"]
 build-backend = "setuptools.build_meta"
 
 [project]
+name = "my-package"
 dynamic = ["version"]
 ```
 ````
@@ -57,6 +65,7 @@ requires = ["maturin>=1.0,<2.0", "gitversioned"]
 build-backend = "gitversioned.plugins.maturin_plugin"
 
 [project]
+name = "my-package"
 dynamic = ["version"]
 ```
 

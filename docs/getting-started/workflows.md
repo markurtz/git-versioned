@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up environment
         uses: actions/setup-python@v5
@@ -30,7 +32,6 @@ jobs:
 
       - name: Write version metadata
         run: gitversioned write
-
 ```
 
 **Need more?** See the [Guides](../guides/index.md) section for in-depth task-specific documentation or browse the [Examples](../examples/index.md) for runnable code.

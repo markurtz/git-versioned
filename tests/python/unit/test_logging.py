@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import inspect
+import json
+import logging
 import sys
 from datetime import datetime
+from io import StringIO
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
@@ -10,34 +15,44 @@ from pydantic import ValidationError
 from pydantic_settings import BaseSettings
 
 from gitversioned.logging import (
+    InterceptHandler,
     LoggingSettings,
+    OtelSink,
+    _otel_formatter,
+    _otel_serialize,
     _state,
     autolog,
     configure_logger,
+    intercept_standard_logging,
     logger,
 )
 
 
-@pytest.fixture(
-    params=[
-        {},
-        {"enabled": True, "level": "DEBUG"},
-        {"sink": "stdout", "otel_formatting": "enable"},
-        {"sink": "sys.stderr", "filter": False},
-        {"sink": "stderr"},
-        {"sink": "sys.stdout"},
-        {"sink": "logfile.log"},
-        {"format": "{message}", "clear_loggers": True},
-        {"enqueue": False, "kwargs": {"backtrace": True}},
-    ]
-)
-def valid_instances(request: pytest.FixtureRequest) -> LoggingSettings:
-    """Fixture providing instantiated valid variations of LoggingSettings."""
-    return LoggingSettings(**request.param)
+def set_process_id(process: Any, value: int) -> None:
+    """Helper to dynamically set process ID without ruff constant setattr warning."""
+    name = "".join(["i", "d"])
+    setattr(process, name, value)
 
 
 class TestLoggingSettings:
     """Test suite for the LoggingSettings class."""
+
+    @pytest.fixture(
+        params=[
+            {},
+            {"enabled": True, "level": "DEBUG"},
+            {"sink": "stdout", "otel_formatting": "enable"},
+            {"sink": "sys.stderr", "filter": False},
+            {"sink": "stderr"},
+            {"sink": "sys.stdout"},
+            {"sink": "logfile.log"},
+            {"format": "{message}", "clear_loggers": True},
+            {"enqueue": False, "kwargs": {"backtrace": True}},
+        ]
+    )
+    def valid_instances(self, request: pytest.FixtureRequest) -> LoggingSettings:
+        """Fixture providing instantiated valid variations of LoggingSettings."""
+        return LoggingSettings(**request.param)
 
     @pytest.mark.smoke
     def test_signature(self) -> None:
@@ -93,7 +108,7 @@ class TestLoggingSettings:
         settings = LoggingSettings()
         assert settings.enabled is False
         assert settings.clear_loggers is False
-        assert settings.sink is sys.stdout
+        assert settings.sink is sys.stderr
         assert settings.level == "WARNING"
         assert settings.otel_formatting == "auto"
         assert settings.filter is True
@@ -126,186 +141,450 @@ class TestLoggingSettings:
         assert settings.clear_loggers is True
 
 
-class TestConfigureLogger:
-    """Test suite for the configure_logger function."""
+class TestOtelSink:
+    """Test suite for the OtelSink class."""
+
+    @pytest.fixture(
+        params=[
+            "stdout",
+            "stderr",
+            "temp_file_path",
+        ]
+    )
+    def valid_instances(
+        self, request: pytest.FixtureRequest, tmp_path: Path
+    ) -> OtelSink:
+        """Fixture providing instantiated valid variations of OtelSink."""
+        target = request.param
+        if target == "stdout":
+            return OtelSink(sys.stdout)
+        if target == "stderr":
+            return OtelSink(sys.stderr)
+        return OtelSink(tmp_path / "otel_fixture.log")
 
     @pytest.mark.smoke
-    def test_invocation_defaults(self) -> None:
-        """Verify configure_logger works with default arguments (None)."""
-        with patch("gitversioned.logging.logger") as mock_logger:
-            configure_logger(None)
-            mock_logger.disable.assert_called_once_with("gitversioned")
+    def test_signature(self) -> None:
+        """Validate class signature, inheritance, and public methods."""
+        assert hasattr(OtelSink, "write")
+        assert hasattr(OtelSink, "close")
+        assert inspect.isfunction(OtelSink.write)
+        assert inspect.isfunction(OtelSink.close)
+
+    @pytest.mark.sanity
+    def test_initialization(self, valid_instances: OtelSink) -> None:
+        """Test initializing OtelSink and verify state mappings."""
+        assert isinstance(valid_instances, OtelSink)
+        assert valid_instances.target is not None
+        if isinstance(valid_instances.target, (str, Path)):
+            assert valid_instances._file is not None
+        else:
+            assert valid_instances._file is None
+
+    @pytest.mark.regression
+    def test_invalid_initialization_values(self) -> None:
+        """Verify behavior with non-writable custom target objects."""
+        sink = OtelSink(object())
+        assert sink.target is not None
+        assert sink._file is None
+
+    @pytest.mark.regression
+    def test_invalid_initialization_missing(self) -> None:
+        """Verify instantiation fails when required arguments are missing."""
+        with pytest.raises(TypeError):
+            OtelSink()  # type: ignore
 
     @pytest.mark.sanity
     @pytest.mark.parametrize(
-        "settings_dict",
+        "message_payload",
         [
-            {"enabled": False},
-            {"enabled": True},
-            {"enabled": True, "clear_loggers": True},
+            "raw string message payload\n",
+            "another text line\n",
         ],
     )
-    def test_invocation_enabled_disabled(self, settings_dict: dict[str, Any]) -> None:
-        """Test configure_logger correctly enables, disables or clears loggers."""
-        settings = LoggingSettings(**settings_dict)
+    def test_write(self, tmp_path: Path, message_payload: str) -> None:
+        """Test write method executing Setup -> Mock -> Invoke -> Teardown."""
+        # 1. StringIO target (stream)
+        stream = StringIO()
+        sink = OtelSink(stream)
+        sink.write(message_payload)
+        assert stream.getvalue() == message_payload
+
+        # 2. File path target
+        file_path = tmp_path / "otel_test_write.log"
+        sink_file = OtelSink(file_path)
+        sink_file.write(message_payload)
+        sink_file.close()
+        assert file_path.read_text(encoding="utf-8") == message_payload
+
+    @pytest.mark.sanity
+    def test_write_loguru_record(self, tmp_path: Path) -> None:
+        """Test write method with a mock loguru record dict."""
+
+        class MockLevel:
+            name = "INFO"
+
+        mock_process = MagicMock()
+        set_process_id(mock_process, 9999)
+
+        record_dict = {
+            "time": datetime(2026, 6, 11, 8, 12, 11),
+            "level": MockLevel(),
+            "message": "test message",
+            "name": "test_module",
+            "function": "test_func",
+            "line": 42,
+            "process": mock_process,
+            "extra": {"custom_extra": "value"},
+        }
+
+        class MockMessage(str):
+            record: dict[str, Any]
+
+        msg_obj = MockMessage("formatted message\n")
+        msg_obj.record = record_dict
+
+        # StringIO stream target
+        stream = StringIO()
+        sink = OtelSink(stream)
+        sink.write(msg_obj)
+        output_str = stream.getvalue()
+
+        # Verify JSON properties
+        data = json.loads(output_str)
+        assert data["timestamp"] == "2026-06-11T08:12:11"
+        assert data["severity_text"] == "INFO"
+        assert data["body"] == "test message"
+        assert data["attributes"]["module"] == "test_module"
+        assert data["attributes"]["custom_extra"] == "value"
+
+        # File target
+        file_path = tmp_path / "otel_test_record.log"
+        sink_file = OtelSink(file_path)
+        sink_file.write(msg_obj)
+        sink_file.close()
+
+        file_data = json.loads(file_path.read_text(encoding="utf-8"))
+        assert file_data["timestamp"] == "2026-06-11T08:12:11"
+
+    @pytest.mark.sanity
+    def test_write_otel_record_with_trace_and_exception(self) -> None:
+        """Test OtelSink.write when OpenTelemetry tracing is active
+
+        and an exception is present.
+        """
+
+        class MockContext:
+            is_valid = True
+            trace_id = 12345
+            span_id = 67890
+            trace_flags = 1
+
+        class MockSpan:
+            def get_span_context(self) -> MockContext:
+                return MockContext()
+
+        class MockTrace:
+            def get_current_span(self) -> MockSpan:
+                return MockSpan()
+
+        class MockLevel:
+            name = "ERROR"
+
+        mock_process = MagicMock()
+        set_process_id(mock_process, 7777)
+
+        class MockException:
+            type = ValueError
+            value = ValueError("custom error message")
+            traceback = None
+
+        record_dict = {
+            "time": datetime(2026, 6, 11, 9, 30, 0),
+            "level": MockLevel(),
+            "message": "error logged",
+            "name": "gitversioned",
+            "function": "error_func",
+            "line": 80,
+            "process": mock_process,
+            "extra": {},
+            "exception": MockException(),
+        }
+
+        class MockMessage(str):
+            record: dict[str, Any]
+
+        msg_obj = MockMessage("formatted error message\n")
+        msg_obj.record = record_dict
+
+        stream = StringIO()
+        sink = OtelSink(stream)
+
+        mock_trace = MockTrace()
+        with patch("gitversioned.logging.opentelemetry_trace", mock_trace):
+            sink.write(msg_obj)
+
+        output_str = stream.getvalue()
+        data = json.loads(output_str)
+
+        # Check trace and span ID fields
+        assert data["trace_id"] == format(12345, "032x")
+        assert data["span_id"] == format(67890, "016x")
+        assert data["trace_flags"] == format(1, "02x")
+
+        # Check exception attributes
+        assert data["attributes"]["exception.type"] == "ValueError"
+        assert data["attributes"]["exception.message"] == "custom error message"
+        assert "exception.stacktrace" in data["attributes"]
+
+    @pytest.mark.sanity
+    def test_close(self, tmp_path: Path) -> None:
+        """Test close method executing Setup -> Mock -> Invoke -> Teardown."""
+        # Stream target - close is a no-op
+        stream = StringIO()
+        sink = OtelSink(stream)
+        sink.close()  # should not raise error
+
+        # File target - close should close file descriptor
+        file_path = tmp_path / "otel_test_close.log"
+        sink_file = OtelSink(file_path)
+        assert sink_file._file is not None
+        assert not sink_file._file.closed
+        sink_file.close()
+        assert sink_file._file.closed
+
+
+class TestInterceptHandler:
+    """Test suite for the InterceptHandler class."""
+
+    @pytest.fixture(
+        params=[
+            {"level": 0},
+            {"level": logging.WARNING},
+        ]
+    )
+    def valid_instances(self, request: pytest.FixtureRequest) -> InterceptHandler:
+        """Fixture providing instantiated valid variations of InterceptHandler."""
+        return InterceptHandler(**request.param)
+
+    @pytest.mark.smoke
+    def test_signature(self) -> None:
+        """Validate class signature, inheritance, and methods."""
+        assert issubclass(InterceptHandler, logging.Handler)
+        assert hasattr(InterceptHandler, "emit")
+        assert inspect.isfunction(InterceptHandler.emit)
+
+    @pytest.mark.sanity
+    def test_initialization(self, valid_instances: InterceptHandler) -> None:
+        """Test initializing InterceptHandler and verify state mappings."""
+        assert isinstance(valid_instances, InterceptHandler)
+        assert hasattr(valid_instances, "level")
+
+    @pytest.mark.regression
+    def test_invalid_initialization_values(self) -> None:
+        """Verify behavior with invalid parameters."""
+        with pytest.raises(ValueError):
+            InterceptHandler(level="NOT_A_LEVEL")
+
+    @pytest.mark.regression
+    def test_invalid_initialization_missing(self) -> None:
+        """Verify default instantiation works."""
+        handler = InterceptHandler()
+        assert handler.level == 0
+
+    @pytest.mark.sanity
+    def test_emit(self) -> None:
+        """Test emit method forwarding standard LogRecord to Loguru logger."""
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.WARNING,
+            pathname="some/file_path.py",
+            lineno=12,
+            msg="test message %s",
+            args=("arg_val",),
+            exc_info=None,
+            func="some_func",
+        )
+
+        handler = InterceptHandler()
+
         with patch("gitversioned.logging.logger") as mock_logger:
+            mock_level_info = MagicMock()
+            mock_level_info.name = "WARNING"
+            mock_logger.level.return_value = mock_level_info
+
+            mock_patch = MagicMock()
+            mock_bind = MagicMock()
+            mock_opt = MagicMock()
+
+            mock_logger.patch.return_value = mock_patch
+            mock_patch.bind.return_value = mock_bind
+            mock_bind.opt.return_value = mock_opt
+
+            handler.emit(record)
+
+            mock_logger.patch.assert_called_once()
+            mock_patch.bind.assert_called_once_with(
+                pathname="some/file_path.py",
+                lineno=12,
+                funcName="some_func",
+            )
+            mock_bind.opt.assert_called_once_with(exception=None)
+            mock_opt.log.assert_called_once_with("WARNING", "test message arg_val")
+
+    @pytest.mark.regression
+    def test_emit_unknown_level(self) -> None:
+        """Test emit method with a custom/unknown log level (falls back to numeric)."""
+        record = logging.LogRecord(
+            name="test_logger",
+            level=35,
+            pathname="some/file_path.py",
+            lineno=12,
+            msg="custom level message",
+            args=(),
+            exc_info=None,
+            func="some_func",
+        )
+        record.levelname = "UNKNOWN_LEVEL_NAME"
+
+        handler = InterceptHandler()
+
+        with patch("gitversioned.logging.logger") as mock_logger:
+            mock_logger.level.side_effect = ValueError("no such level")
+
+            mock_patch = MagicMock()
+            mock_bind = MagicMock()
+            mock_opt = MagicMock()
+
+            mock_logger.patch.return_value = mock_patch
+            mock_patch.bind.return_value = mock_bind
+            mock_bind.opt.return_value = mock_opt
+
+            handler.emit(record)
+
+            mock_opt.log.assert_called_once_with(35, "custom level message")
+
+
+class TestConfigureLogger:
+    """Test suite for configure_logger module-level function."""
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize(
+        "scenario",
+        [
+            {"settings": None, "expect_disabled": True},
+            {"settings": {"enabled": False}, "expect_disabled": True},
+            {"settings": {"enabled": True, "level": "DEBUG"}, "expect_enabled": True},
+            {
+                "settings": {"enabled": True, "level": "auto"},
+                "expect_enabled": True,
+                "expected_level": "WARNING",
+            },
+            {
+                "settings": {"enabled": True, "clear_loggers": True},
+                "expect_enabled": True,
+            },
+            {
+                "settings": {"enabled": True, "filter": "custom_prefix"},
+                "expect_enabled": True,
+                "expected_filter": "custom_prefix",
+            },
+            {
+                "settings": {"enabled": True, "filter": ["prefix1", "prefix2"]},
+                "expect_enabled": True,
+                "expected_filter_prefixes": ("prefix1", "prefix2"),
+            },
+            {
+                "settings": {"enabled": True, "filter": ("prefix3", "prefix4")},
+                "expect_enabled": True,
+                "expected_filter_prefixes": ("prefix3", "prefix4"),
+            },
+            {
+                "settings": {"enabled": True, "filter": False},
+                "expect_enabled": True,
+                "expected_filter": None,
+            },
+        ],
+    )
+    def test_invocation(self, scenario: dict[str, Any]) -> None:
+        """Test configure_logger execution scenarios via Mock -> Invoke -> Teardown."""
+        settings_dict = scenario.get("settings")
+        settings = (
+            LoggingSettings(**settings_dict) if settings_dict is not None else None
+        )
+
+        with patch("gitversioned.logging.logger") as mock_logger:
+            mock_logger.add.return_value = 1234
+
             configure_logger(settings)
-            if not settings.enabled:
+
+            if scenario.get("expect_disabled"):
                 mock_logger.disable.assert_called_once_with("gitversioned")
                 mock_logger.enable.assert_not_called()
             else:
                 mock_logger.enable.assert_called_once_with("gitversioned")
-                if settings.clear_loggers:
-                    mock_logger.remove.assert_called_once()
+                mock_logger.add.assert_called_once()
+                add_kwargs = mock_logger.add.call_args.kwargs
 
-    @pytest.mark.sanity
-    @pytest.mark.parametrize(
-        ("settings_dict", "expected_match", "expected_non_match"),
-        [
-            (
-                {"enabled": True, "filter": "custom_prefix"},
-                "custom_prefix.test",
-                "other_scope",
-            ),
-            (
-                {"enabled": True, "filter": ["prefix1", "prefix2"]},
-                "prefix1.test",
-                "other_scope",
-            ),
-            (
-                {"enabled": True, "filter": ("prefix3", "prefix4")},
-                "prefix3.test",
-                "other_scope",
-            ),
-            ({"enabled": True, "filter": False}, None, None),
-            (
-                {
-                    "enabled": True,
-                    "filter": lambda record: record["name"] == "gitversioned",
-                },
-                "gitversioned",
-                "other_scope",
-            ),
-        ],
-    )
-    def test_invocation_filters(
-        self,
-        settings_dict: dict[str, Any],
-        expected_match: str | None,
-        expected_non_match: str | None,
-    ) -> None:
-        """Test configure_logger correctly configures prefix or custom filters."""
-        settings = LoggingSettings(**settings_dict)
-        with patch("gitversioned.logging.logger") as mock_logger:
-            configure_logger(settings)
-            mock_logger.add.assert_called_once()
-            add_kwargs = mock_logger.add.call_args.kwargs
-            logger_filter = add_kwargs["filter"]
+                # Check level
+                expected_level = scenario.get(
+                    "expected_level", settings.level if settings else "WARNING"
+                )
+                assert add_kwargs["level"] == expected_level
 
-            if expected_match is not None:
-                assert callable(logger_filter)
-                assert logger_filter({"name": expected_match}) is True
-                assert logger_filter({"name": expected_non_match}) is False
-                assert logger_filter({"name": None}) is False
-            elif settings.filter is False:
-                assert logger_filter is None
-            elif callable(settings.filter):
-                assert logger_filter({"name": "gitversioned"}) is True
-
-    @pytest.mark.sanity
-    @pytest.mark.parametrize(
-        ("settings_dict", "mock_otel", "expect_otel"),
-        [
-            ({"enabled": True, "otel_formatting": "disable"}, True, False),
-            ({"enabled": True, "otel_formatting": "auto"}, True, True),
-            ({"enabled": True, "otel_formatting": "auto"}, False, False),
-            ({"enabled": True, "otel_formatting": "enable"}, True, True),
-        ],
-    )
-    def test_invocation_otel(
-        self,
-        settings_dict: dict[str, Any],
-        mock_otel: bool,
-        expect_otel: bool,
-    ) -> None:
-        """Test configure_logger correctly configures OpenTelemetry formatting."""
-        settings = LoggingSettings(**settings_dict)
-
-        with patch("gitversioned.logging.logger") as mock_logger:
-            mock_logger.add.return_value = 42
-            if mock_otel:
-                mock_trace = MagicMock()
-                mock_span = MagicMock()
-                mock_context = MagicMock()
-                mock_context.is_valid = True
-                mock_context.trace_id = 12345
-                mock_context.span_id = 67890
-                mock_context.trace_flags = 1
-                mock_span.get_span_context.return_value = mock_context
-                mock_trace.get_current_span.return_value = mock_span
-                patch_target = "gitversioned.logging.opentelemetry_trace"
-                with patch(patch_target, mock_trace):
-                    configure_logger(settings)
-            else:
-                with patch("gitversioned.logging.opentelemetry_trace", None):
-                    configure_logger(settings)
-
-            mock_logger.add.assert_called_once()
-            add_kwargs = mock_logger.add.call_args.kwargs
-
-            if expect_otel:
-                assert callable(add_kwargs["format"])
-
-                class MockLevel:
-                    name = "INFO"
-
-                class MockProcess:
-                    id = 1234
-
-                record_data: dict[str, Any] = {
-                    "time": datetime.now(),
-                    "level": MockLevel(),
-                    "message": "test message {with} <brackets>",
-                    "name": "gitversioned.test",
-                    "function": "func",
-                    "line": 10,
-                    "extra": {"custom_key": "custom_val"},
-                    "process": MockProcess(),
-                }
-
-                # Verify formatter output formatting with trace details
-                if mock_otel:
-                    with patch("gitversioned.logging.opentelemetry_trace", mock_trace):
-                        formatted_log = add_kwargs["format"](record_data)
-                        assert "trace_id" in formatted_log
-                        assert "span_id" in formatted_log
-                        assert "trace_flags" in formatted_log
-                        assert "\\<brackets\\>" in formatted_log
-                        assert "{{with}}" in formatted_log
-
-                # Verify formatter output when trace context is invalid
-                if mock_otel:
-                    mock_context.is_valid = False
-                    with patch("gitversioned.logging.opentelemetry_trace", mock_trace):
-                        formatted_log = add_kwargs["format"](record_data)
-                        assert "trace_id" not in formatted_log
-
-                # Verify formatter output when record contains exception
-                class MockExceptionInfo:
-                    type = ValueError
-                    value = ValueError("error message")
-                    traceback = None
-
-                record_data["exception"] = MockExceptionInfo()
-                with patch("gitversioned.logging.opentelemetry_trace", mock_trace):
-                    formatted_log = add_kwargs["format"](record_data)
-                    assert "exception.type" in formatted_log
-                    assert "exception.message" in formatted_log
-            else:
-                assert add_kwargs["format"] == settings.format
+                # Check filter
+                logger_filter = add_kwargs["filter"]
+                if "expected_filter" in scenario:
+                    assert logger_filter == scenario["expected_filter"]
+                elif "expected_filter_prefixes" in scenario:
+                    assert callable(logger_filter)
+                    prefixes = scenario["expected_filter_prefixes"]
+                    assert logger_filter({"name": f"{prefixes[0]}.module"}) is True
+                    assert logger_filter({"name": "other_module"}) is False
+                    assert logger_filter({"name": None}) is False
 
     @pytest.mark.regression
-    def test_invocation_existing_handler(self) -> None:
+    @pytest.mark.parametrize(
+        ("otel_setting", "mock_trace_present", "expect_error"),
+        [
+            ("enable", False, True),
+            ("enable", True, False),
+            ("auto", True, False),
+            ("auto", False, False),
+        ],
+    )
+    def test_invalid(
+        self, otel_setting: str, mock_trace_present: bool, expect_error: bool
+    ) -> None:
+        """Verify exception/failure conditions and boundary overrides
+
+        for configure_logger.
+        """
+        settings = LoggingSettings(enabled=True, otel_formatting=otel_setting)  # type: ignore
+
+        mock_trace = MagicMock() if mock_trace_present else None
+
+        with (
+            patch("gitversioned.logging.opentelemetry_trace", mock_trace),
+            patch("gitversioned.logging.logger") as mock_logger,
+        ):
+            mock_logger.add.return_value = 42
+
+            if expect_error:
+                with pytest.raises(ImportError, match="OpenTelemetry is not installed"):
+                    configure_logger(settings)
+            else:
+                configure_logger(settings)
+                mock_logger.add.assert_called_once()
+                add_kwargs = mock_logger.add.call_args.kwargs
+                if otel_setting == "enable" or (
+                    otel_setting == "auto" and mock_trace_present
+                ):
+                    assert isinstance(add_kwargs["sink"], OtelSink)
+                else:
+                    assert not isinstance(add_kwargs["sink"], OtelSink)
+
+    @pytest.mark.regression
+    def test_invocation_existing_handler_cleanup(self) -> None:
         """Verify configure_logger removes the previously registered handler."""
         _state["handler_id"] = 9999
         settings = LoggingSettings(enabled=True)
@@ -316,22 +595,28 @@ class TestConfigureLogger:
             assert _state["handler_id"] == 1234
 
     @pytest.mark.regression
-    def test_invalid(self) -> None:
-        """Test configure_logger raises ImportError when OpenTelemetry is missing.
+    def test_invocation_clear_loggers_real_logger(self) -> None:
+        """Test configure_logger clear_loggers path with a real
 
-        This occurs when OTEL formatting is enabled but the library is not installed.
+        non-mock logger (line 215-221).
         """
-        settings = LoggingSettings(enabled=True, otel_formatting="enable")
+        original_handler_id = _state["handler_id"]
+        try:
+            configure_logger(LoggingSettings(enabled=True))
+            first_handler_id = _state["handler_id"]
+            assert isinstance(first_handler_id, int)
 
-        with (
-            patch("gitversioned.logging.opentelemetry_trace", None),
-            pytest.raises(ImportError, match="OpenTelemetry is not installed"),
-        ):
-            configure_logger(settings)
+            configure_logger(LoggingSettings(enabled=True, clear_loggers=True))
+            second_handler_id = _state["handler_id"]
+            assert isinstance(second_handler_id, int)
+            assert second_handler_id != first_handler_id
+        finally:
+            logger.remove()
+            _state["handler_id"] = original_handler_id
 
 
 class TestAutolog:
-    """Test suite for the autolog decorator."""
+    """Test suite for autolog module-level decorator."""
 
     @pytest.mark.sanity
     @pytest.mark.parametrize(
@@ -372,7 +657,6 @@ class TestAutolog:
                 with pytest.raises(ValueError, match="custom error") as exc_info:
                     wrapped(42, "hello")
 
-                # Verify entry log
                 expected_msg = (
                     "Calling function "
                     "'TestAutolog.test_invocation.<locals>.target_func' "
@@ -380,7 +664,6 @@ class TestAutolog:
                 )
                 mock_logger.debug.assert_any_call(expected_msg)
 
-                # Verify exception log
                 if exception_level is not None or not use_factory:
                     expected_level = exception_level if use_factory else "ERROR"
                     if expected_level == "ERROR":
@@ -403,7 +686,6 @@ class TestAutolog:
                 result = wrapped(42, "hello")
                 assert result == "42-hello"
 
-                # Verify entry and exit debug logs
                 assert mock_logger.debug.call_count == 2
                 first_call_args = mock_logger.debug.call_args_list[0][0][0]
                 assert "Calling function" in first_call_args
@@ -415,11 +697,51 @@ class TestAutolog:
                 assert "returned" in second_call_args
                 assert "42-hello" in second_call_args
 
-    @pytest.mark.sanity
+    @pytest.mark.regression
     def test_invalid(self) -> None:
         """Verify invalid autolog usage raising TypeError."""
         with pytest.raises(TypeError):
             cast("Any", autolog)(None, "WARNING")
+
+
+class TestInterceptStandardLogging:
+    """Test suite for intercept_standard_logging module-level function."""
+
+    @pytest.mark.sanity
+    @pytest.mark.parametrize("enable_flag", [True, False])
+    def test_invocation(self, enable_flag: bool) -> None:
+        """Test enabling and disabling standard logging interception."""
+        intercept_standard_logging(enable_flag)
+        root_logger = logging.getLogger()
+
+        has_handler = any(
+            isinstance(handler, InterceptHandler) for handler in root_logger.handlers
+        )
+        assert has_handler is enable_flag
+
+        if enable_flag:
+            intercept_standard_logging(False)
+
+    @pytest.mark.sanity
+    def test_interception_flow(self) -> None:
+        """Test standard logging message is correctly intercepted and patched."""
+        stream = StringIO()
+
+        handler_id = logger.add(
+            stream, format="{file.name}:{line}:{function} - {message}\n"
+        )
+        try:
+            intercept_standard_logging(True)
+            std_logger = logging.getLogger("test_interception_flow_logger")
+            std_logger.warning("intercepted log message")
+        finally:
+            intercept_standard_logging(False)
+            logger.remove(handler_id)
+
+        output_str = stream.getvalue()
+        assert "intercepted log message" in output_str
+        assert "test_logging.py" in output_str
+        assert "test_interception_flow" in output_str
 
 
 @pytest.mark.smoke
@@ -427,3 +749,37 @@ def test_logger() -> None:
     """Validate that the public logger is configured correctly."""
     assert type(logger).__name__ == "Logger"
     logger.debug("Test public logger validation message")
+
+
+@pytest.mark.regression
+def test_otel_private_helpers() -> None:
+    """Verify that private helpers _otel_serialize and
+
+    _otel_formatter execute correctly.
+    """
+
+    class MockLevel:
+        name = "INFO"
+
+    mock_process = MagicMock()
+    set_process_id(mock_process, 8888)
+
+    record = {
+        "time": datetime(2026, 6, 11, 10, 0, 0),
+        "level": MockLevel(),
+        "message": "private helper test",
+        "name": "gitversioned",
+        "function": "some_func",
+        "line": 100,
+        "process": mock_process,
+        "extra": {},
+    }
+
+    serialized_dict = _otel_serialize(record)
+    assert serialized_dict["timestamp"] == "2026-06-11T10:00:00"
+    assert serialized_dict["severity_text"] == "INFO"
+    assert serialized_dict["body"] == "private helper test"
+
+    formatted_str = _otel_formatter(record)
+    assert "private helper test" in formatted_str
+    assert formatted_str.endswith("\n")

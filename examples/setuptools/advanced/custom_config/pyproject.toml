@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel", "gitversioned"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "setuptools_custom_config"
+dynamic = ["version"]
+description = "An advanced example project showcasing Setuptools integration with custom GitVersioned configurations"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.gitversioned]
+format_main = "{version.major}.{version.minor}"
+format_dev = "dev{ref.distance_from_head}"
+auto_increment = { dev = "minor" }
+dirty_ignore = ["temp_ignored.txt"]

@@ -281,6 +281,10 @@ def _generate_output_from_regex_strategy(
             f"output content from {output_path}."
         )
 
+    formatted_version = FormattedVersion(
+        version, version_type, settings.version_standard
+    )
+
     # Process matches in reverse order so modification lengths
     # don't corrupt the index offsets of preceding matches.
     for match in reversed(matches):
@@ -300,19 +304,27 @@ def _generate_output_from_regex_strategy(
                 # Convert group names like 'ref__tag' to 'ref.tag' for tstr evaluation
                 tstr_expression = name.replace("__", ".")
                 placeholder = f"{{{tstr_expression}}}"
-                content = content[:start_idx] + placeholder + content[end_idx:]
+                rendered_value = generate_from_template(
+                    placeholder,
+                    formatted_version,
+                    reference,
+                    settings,
+                    repository,
+                    environment,
+                )
+                content = content[:start_idx] + rendered_value + content[end_idx:]
         else:
             # Fallback: if no named capture groups exist, assume the
             # entire regex match represents the version string.
             start_idx, end_idx = match.span()
-            content = content[:start_idx] + "{version}" + content[end_idx:]
+            rendered_value = generate_from_template(
+                "{version}",
+                formatted_version,
+                reference,
+                settings,
+                repository,
+                environment,
+            )
+            content = content[:start_idx] + rendered_value + content[end_idx:]
 
-    return _generate_output_from_template_strategy(
-        TemplateStrStrategy(content=content),
-        version,
-        version_type,
-        reference,
-        settings,
-        repository,
-        environment,
-    )
+    return content

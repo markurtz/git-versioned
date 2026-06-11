@@ -1,0 +1,8 @@
+# Generated version file
+src/webapp/version.py
+
+# Build artifacts
+dist/
+*.egg-info/
+__pycache__/
+*.pyc

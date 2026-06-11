@@ -94,35 +94,90 @@ GitVersioned is designed with a core mission: **to trust the user and CI/CD flow
 
 GitVersioned supports multiple integration paths: as a build plugin for **Hatchling**, **Setuptools**, or **Maturin**, via a standalone **CLI**, or programmatically as a **Python API**.
 
-### 1. Hatchling Build Plugin
+### 1. Hatchling Build Plugin (Zero Config)
 
-Declare `gitversioned` in `pyproject.toml` as a build-system requirement and version source:
+Declare `gitversioned` in `pyproject.toml` as a build requirement and version source, then enable the build hook plugin to automatically bundle the generated `version.py` as an artifact (even if git-ignored):
 
 ```toml
+# pyproject.toml
 [build-system]
 requires = ["hatchling", "gitversioned"]
 build-backend = "hatchling.build"
 
+[project]
+name = "my-package"
+dynamic = ["version"]
+
 [tool.hatch.version]
 source = "gitversioned"
+
+# Automatically registers the generated version file as a build artifact
+[tool.hatch.build.hooks.gitversioned]
 ```
 
-### 2. Setuptools Build Plugin
+Expose the dynamic version directly in your package root:
 
-Enable versioning in a Setuptools project by declaring `gitversioned` in `pyproject.toml` and setting your version dynamic:
+<!-- mdformat-off -->
+
+<!--phmdoctest-skip-->
+
+```python
+# src/my_package/__init__.py
+from .version import __version__
+```
+
+<!-- mdformat-on -->
+
+### 2. Setuptools Build Plugin (Zero Config)
+
+Setuptools supports zero-config dynamic versioning using `gitversioned = True` or declarative overrides. The plugin automatically finalizes options and injects the output file into distribution package data.
+
+=== "pyproject.toml"
 
 ```toml
 [build-system]
-requires = ["setuptools>=61.0", "gitversioned"]
+requires = ["setuptools>=64.0", "gitversioned"]
 build-backend = "setuptools.build_meta"
 
 [project]
+name = "my-package"
 dynamic = ["version"]
 ```
 
-### 3. Maturin Build Plugin
+=== "setup.cfg"
 
-Declare `gitversioned` in `pyproject.toml` as a build-system requirement, specify it as the build backend wrapper, and set up a placeholder version in `Cargo.toml`:
+```ini
+[metadata]
+name = my-package
+
+[options]
+setup_requires =
+    gitversioned
+gitversioned = True
+```
+
+=== "setup.py"
+
+<!-- mdformat-off -->
+
+<!--phmdoctest-skip-->
+
+```python
+from setuptools import setup
+
+if __name__ == "__main__":
+    setup(
+        name="my-package",
+        setup_requires=["gitversioned"],
+        gitversioned=True,
+    )
+```
+
+<!-- mdformat-on -->
+
+### 3. Maturin Build Plugin (Zero Config)
+
+For Rust-based Python projects, wrap Maturin in `pyproject.toml` and configure a placeholder version in `Cargo.toml`. The plugin will automatically calculate and synchronize versions across both languages:
 
 **`pyproject.toml`**
 
@@ -132,6 +187,7 @@ requires = ["maturin>=1.0,<2.0", "gitversioned"]
 build-backend = "gitversioned.plugins.maturin_plugin"
 
 [project]
+name = "my-package"
 dynamic = ["version"]
 ```
 
@@ -145,13 +201,16 @@ version = "0.0.0"  # Will be dynamically synchronized during builds
 
 ### 4. Command Line Interface (CLI)
 
-Install the package to use the CLI standalone to resolve or write versions:
+Install the package to use the CLI standalone to resolve, format, or write versions:
 
 ```bash
 pip install gitversioned
 
-# Resolve and print only the version string
+# Calculate and print only the resolved PEP 440 version string
 gitversioned calculate
+
+# Preview how the formatted version Strategy compiles
+gitversioned format
 
 # Resolve and write a generated version file
 gitversioned write --output src/package/version.py
@@ -159,11 +218,10 @@ gitversioned write --output src/package/version.py
 
 ### 5. Multi-File / Overrides Versioning
 
-Synchronize multiple files simultaneously during a single build or CLI run by declaring overrides in your configuration:
-
-**`pyproject.toml`**
+Synchronize multiple files simultaneously (e.g., Dockerfiles, web applications, cargo manifests) during a single build or CLI run:
 
 ```toml
+# pyproject.toml
 [tool.gitversioned]
 output = "src/package/version.py"
 
@@ -191,29 +249,19 @@ settings = Settings()
 repo = GitRepository(settings.project_root)
 env = BuildEnvironment(project_root=settings.project_root)
 
-version, _, _ = resolve_version(settings, repo, env)
-print(f"Resolved version: {version}")
+version, resolved_type, git_ref = resolve_version(settings, repo, env)
+print(f"Resolved version: {version} (Type: {resolved_type})")
 ```
 
 ### Configure Archive Support (Recommended)
 
-To resolve the version when users download a repository ZIP file (e.g., from GitHub) where the `.git` directory is missing:
+To resolve the version when users download a repository ZIP file (e.g., from GitHub) where the `.git` directory is missing, run:
 
-1. Create a `.git_archival.txt` file in your repository root:
-   ```text
-   commit_sha: $Format:%H$
-   short_sha: $Format:%h$
-   timestamp: $Format:%aI$
-   author_name: $Format:%an$
-   author_email: $Format:%ae$
-   ref_names: $Format:%D$
-   commit_message:
-   $Format:%B$
-   ```
-1. Enable variable substitution by adding the following to your `.gitattributes` file:
-   ```text
-   .git_archival.txt export-subst
-   ```
+```bash
+gitversioned init-archive
+```
+
+This automatically initializes the `.git_archival.txt` template and enables variable substitution (`export-subst`) in `.gitattributes`.
 
 For full options and onboarding, see the **[Getting Started guide](https://github.com/markurtz/git-versioned/blob/main/docs/getting-started/index.md)**.
 

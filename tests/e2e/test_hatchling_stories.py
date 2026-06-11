@@ -1008,9 +1008,8 @@ class TestHatchlingGranularAutoIncrementScoping:
         result = run_build(repo_helper.path)
         assert result.returncode == 0
         wheel_version = get_wheel_version(repo_helper.path)
-        # Default behavior: without auto_increment, it defaults to no
-        # core segment bump (starts with 1.0.0)
-        assert wheel_version.startswith("1.0.0")
+        # Default behavior: dev auto_increment defaults to patch bump
+        assert wheel_version.startswith("1.0.1")
 
     @pytest.mark.sanity
     def test_invalid_initialization_values(

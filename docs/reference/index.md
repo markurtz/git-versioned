@@ -25,15 +25,16 @@ The Reference section contains the complete technical documentation for `gitvers
 `gitversioned` can also be used programmatically in your own Python scripts:
 
 ```python
-from gitversioned import Settings, configure_logger, logger
-from gitversioned.logging import LoggingSettings
+from gitversioned import Settings, configure_logger
+from gitversioned.logging import logger
 
 # Initialize the global logger
-configure_logger(LoggingSettings(enabled=True, level="INFO"))
+configure_logger(enabled=True, level="INFO")
 
 # Load application settings
-settings = Settings(environment="production")
+settings = Settings()
 
 # Log the current configuration
 logger.info("Application initialized with settings: {}", settings)
 ```
+
