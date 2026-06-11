@@ -363,7 +363,7 @@ def resolve_from_git_source(
             version = _extract_versions(patterns, text)[0]
             matches.append((version, reference))
         except VersionResolutionError as ver_err:
-            logger.warning(
+            logger.info(
                 f"Could not extract version from git {type_} '{text}' using "
                 f"patterns {patterns}: {ver_err}"
             )
@@ -452,7 +452,7 @@ def resolve_sources_from_archive(
                 versions = _extract_versions(pattern, attr_val)
                 break
             except ValueError:
-                logger.warning(f"Could not extract version from {source}: {reference}")
+                logger.info(f"Could not extract version from {source}: {reference}")
 
     if not versions:
         raise VersionResolutionError(

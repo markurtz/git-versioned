@@ -186,6 +186,10 @@ def configure_logger(  # noqa: C901, PLR0912, PLR0915
     if not settings.enabled:
         logger.disable("gitversioned")
         intercept_standard_logging(False)
+        if isinstance(_state["handler_id"], int):
+            with contextlib.suppress(ValueError):
+                logger.remove(_state["handler_id"])
+            _state["handler_id"] = None
         return
 
     logger.enable("gitversioned")

@@ -257,7 +257,7 @@ def _get_maturin() -> types.ModuleType:
         configure_logger(
             enabled=True,
             clear_loggers=True,
-            level="INFO",
+            level="WARNING",
             otel_formatting="auto",
             filter=False,
             enqueue=True,

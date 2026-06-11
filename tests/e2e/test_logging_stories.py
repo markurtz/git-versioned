@@ -389,8 +389,19 @@ print("OK")
         :param valid_instances: Injected shared context fixture.
         """
         repo_helper = valid_instances["repo"]
+        repo_helper.tag("v0.1.0")
         clean_dist(repo_helper.path)
+
+        # 1. By default, INFO/DEBUG logs should be silent and not pollute stderr
         result = run_build(repo_helper.path)
+        assert result.returncode == 0
+        assert "[gitversioned:hatch]" not in result.stderr
+        assert "[gitversioned:hatch]" not in result.stdout
+
+        # 2. When explicitly configured at INFO level, logs should be routed to stderr and match format
+        clean_dist(repo_helper.path)
+        env = {"GITVERSIONED__LOGGING__LEVEL": "INFO"}
+        result = run_build(repo_helper.path, env=env)
         assert result.returncode == 0
         # Logs should not pollute stdout
         assert "[gitversioned:hatch]" not in result.stdout
@@ -424,7 +435,7 @@ print("OK")
     @pytest.mark.regression
     def test_hatch_protect_native_sinks(self, valid_instances: dict[str, Any]) -> None:
         """
-        Assert Hatchling plugin preserves existing sinks by enforcing clear_loggers=False (AC 2.4).
+        Assert Hatchling plugin clears existing sinks by enforcing clear_loggers=True (AC 2.4).
 
         :param valid_instances: Injected shared context fixture.
         """
@@ -439,9 +450,8 @@ from gitversioned.plugins.hatchling_plugin import GitVersionedVersionSource
 source = GitVersionedVersionSource("{str(repo_helper.path)}", {{}})
 source.get_version_data()
 
-# Pre-existing loguru handlers should not be cleared, so parent_logs collects the plugin output
-assert len(parent_logs) > 0
-assert any("get_version_data called" in msg or "gitversioned computed version" in msg for msg in parent_logs)
+# Pre-existing loguru handlers should be cleared by default, so parent_logs should be empty
+assert len(parent_logs) == 0
 print("SUCCESS")
         """
 
@@ -583,11 +593,11 @@ from loguru import logger
 from gitversioned.plugins.setuptools_plugin import finalize_distribution_options
 from setuptools import Distribution
 
-captured = []
-logger.add(captured.append, format="{message}")
-
 dist = Distribution({"name": "test_pkg", "version": "0.0.0"})
 finalize_distribution_options(dist)
+
+captured = []
+logger.add(captured.append, format="{message}")
 
 # Verify handler injection
 root_logger = logging.getLogger()
@@ -609,12 +619,14 @@ print("SUCCESS")
         self, valid_instances: dict[str, Any]
     ) -> None:
         """
-        Assert clear_loggers=False preserves sinks and format matches tag layout (AC 3.3, 3.4).
+        Assert clear_loggers=True removes pre-existing sinks and format matches tag layout (AC 3.3, 3.4).
 
         :param valid_instances: Injected shared context fixture.
         """
         valid_instances["repo"]
         snippet = """
+import os
+os.environ["GITVERSIONED__LOGGING__LEVEL"] = "INFO"
 from loguru import logger
 from gitversioned.plugins.setuptools_plugin import finalize_distribution_options
 from setuptools import Distribution
@@ -625,9 +637,8 @@ logger.add(parent_logs.append, format="{message}")
 dist = Distribution({"name": "test_pkg", "version": "0.0.0"})
 finalize_distribution_options(dist)
 
-# Verification 1: Parent sinks preserved
-assert len(parent_logs) > 0
-assert any("Finalizing distribution options" in msg or "Resolving version sources" in msg for msg in parent_logs)
+# Verification 1: Parent sinks cleared
+assert len(parent_logs) == 0
 print("SUCCESS")
         """
         result = run_python_snippet(snippet)
