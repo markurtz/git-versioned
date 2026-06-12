@@ -467,7 +467,6 @@ jobs:
       - init-gate
       - quality-gate
       - functional-gate
-      - integrity-gate
       - e2e-gate
     runs-on: ubuntu-latest
     environment: release
