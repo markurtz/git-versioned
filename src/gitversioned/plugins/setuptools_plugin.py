@@ -24,7 +24,7 @@ from typing import Any, cast
 from packaging.utils import canonicalize_name
 from setuptools import Distribution
 
-from gitversioned.compat import DistutilsSetupError
+from gitversioned.compat import is_distutils_setup_error, raise_distutils_setup_error
 from gitversioned.logging import autolog, configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
@@ -72,11 +72,11 @@ def setup_keywords(distribution: Distribution, attribute: str, value: Any) -> No
 
     if attribute != "gitversioned":
         logger.error(f"Unknown keyword argument: {attribute}")
-        raise DistutilsSetupError(f"Unknown keyword argument: {attribute}")
+        raise_distutils_setup_error(f"Unknown keyword argument: {attribute}")
 
     if not isinstance(value, (dict, bool)):
         logger.error("gitversioned keyword argument must be a dict or bool")
-        raise DistutilsSetupError("gitversioned must be a dict or bool")
+        raise_distutils_setup_error("gitversioned must be a dict or bool")
 
     cast("Any", distribution).gitversioned_config = (
         {} if isinstance(value, bool) else value
@@ -116,7 +116,7 @@ def finalize_distribution_options(distribution: Distribution) -> None:
 
     project_root, source_root, package_name = _resolve_project_context(distribution)
     if not package_name:
-        raise DistutilsSetupError("Could not determine package name.")
+        raise_distutils_setup_error("Could not determine package name.")
 
     # Check for an established version to avoid redundant Git resolution
     established_version = _extract_established_version(distribution, project_root)
@@ -162,10 +162,12 @@ def finalize_distribution_options(distribution: Distribution) -> None:
             )
 
     except Exception as error:
-        if isinstance(error, DistutilsSetupError):
+        if is_distutils_setup_error(error):
             raise
         logger.exception("Unexpected failure during version resolution")
-        raise DistutilsSetupError(f"Failed to resolve version: {error}") from error
+        raise_distutils_setup_error(
+            f"Failed to resolve version: {error}", from_exception=error
+        )
 
 
 @autolog

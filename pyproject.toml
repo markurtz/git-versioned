@@ -261,6 +261,22 @@ builder = true
 template = "python"
 python = "3.10"
 
+[tool.hatch.envs.py311]
+template = "python"
+python = "3.11"
+
+[tool.hatch.envs.py312]
+template = "python"
+python = "3.12"
+
+[tool.hatch.envs.py313]
+template = "python"
+python = "3.13"
+
+[tool.hatch.envs.py314]
+template = "python"
+python = "3.14"
+
 [tool.hatch.envs.python.scripts]
 lint = [
   "ruff check {args:{env:PYTHON_TARGETS}}",

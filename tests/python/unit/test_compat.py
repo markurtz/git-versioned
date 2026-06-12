@@ -44,16 +44,18 @@ def restore_compat_module() -> Any:
 def test_smoke_module_exports() -> None:
     """Verify that compat exposes the expected variables and matches expected types."""
     assert compat.__all__ == [
-        "DistutilsSetupError",
+        "is_distutils_setup_error",
         "maturin",
         "opentelemetry_trace",
         "psutil",
+        "raise_distutils_setup_error",
         "tomllib",
     ]
-    assert hasattr(compat, "DistutilsSetupError")
+    assert hasattr(compat, "is_distutils_setup_error")
     assert hasattr(compat, "maturin")
     assert hasattr(compat, "opentelemetry_trace")
     assert hasattr(compat, "psutil")
+    assert hasattr(compat, "raise_distutils_setup_error")
     assert hasattr(compat, "tomllib")
 
 
@@ -142,3 +144,14 @@ def test_regression_tomllib_all_unavailable(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setitem(sys.modules, "tomli", cast("Any", None))
     importlib.reload(compat)
     assert compat.tomllib is None
+
+
+@pytest.mark.sanity
+def test_raise_and_check_distutils_setup_error() -> None:
+    """Verify raising and checking of distutils setup errors works dynamically."""
+    with pytest.raises(Exception) as exc_info:
+        compat.raise_distutils_setup_error("Test setup error")
+
+    assert compat.is_distutils_setup_error(exc_info.value) is True
+    assert str(exc_info.value) == "Test setup error"
+    assert compat.is_distutils_setup_error(ValueError("Not a setup error")) is False

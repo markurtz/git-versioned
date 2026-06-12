@@ -24,8 +24,8 @@ inputs:
     required: false
     default: "functional"
   test-category:
-    description: "Test category: smoke, sanity, regression, or all (supports combinations\
-      \ like 'smoke or sanity')"
+    description: "Test category: smoke, sanity, regression, or all (regression/all runs all\
+      \ tests, other categories filter using pytest keyword matching -k)"
     required: false
     default: "all"
   force-run:
@@ -71,8 +71,8 @@ runs:
       env:
         TEST_CATEGORY: ${{ inputs.test-category }}
       run: |-
-        if [ "$TEST_CATEGORY" != "all" ] && [ -n "$TEST_CATEGORY" ]; then
-          echo "args=-m \"$TEST_CATEGORY\"" >> "$GITHUB_OUTPUT"
+        if [ "$TEST_CATEGORY" != "all" ] && [ "$TEST_CATEGORY" != "regression" ] && [ -n "$TEST_CATEGORY" ]; then
+          echo "args=-k \"$TEST_CATEGORY\"" >> "$GITHUB_OUTPUT"
         else
           echo "args=" >> "$GITHUB_OUTPUT"
         fi
