@@ -14,7 +14,7 @@ import importlib
 import types
 from typing import Annotated
 
-__all__ = ["maturin", "opentelemetry_trace", "psutil", "tomllib"]
+__all__ = ["DistutilsSetupError", "maturin", "opentelemetry_trace", "psutil", "tomllib"]
 
 _maturin: types.ModuleType | None = None
 try:
@@ -45,6 +45,19 @@ try:
 except ImportError:
     _psutil = None
 
+_DistutilsSetupError: type[Exception]
+try:
+    import setuptools.errors
+
+    _DistutilsSetupError = setuptools.errors.SetupError
+except ImportError:
+    try:
+        import distutils.errors
+
+        _DistutilsSetupError = distutils.errors.DistutilsSetupError
+    except ImportError:
+        _DistutilsSetupError = Exception
+
 maturin: Annotated[
     types.ModuleType | None,
     "Enables the maturin build backend wrapper. Provides the ``maturin`` "
@@ -70,3 +83,8 @@ tomllib: Annotated[
     "``pyproject.toml``. Provides the standard library ``tomllib``, the "
     "third-party ``tomli``, or ``None``.",
 ] = _tomllib
+
+DistutilsSetupError: Annotated[
+    type[Exception],
+    "The SetupError exception class resolved from setuptools or distutils.",
+] = _DistutilsSetupError

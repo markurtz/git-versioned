@@ -43,7 +43,14 @@ def restore_compat_module() -> Any:
 @pytest.mark.smoke
 def test_smoke_module_exports() -> None:
     """Verify that compat exposes the expected variables and matches expected types."""
-    assert compat.__all__ == ["maturin", "opentelemetry_trace", "psutil", "tomllib"]
+    assert compat.__all__ == [
+        "DistutilsSetupError",
+        "maturin",
+        "opentelemetry_trace",
+        "psutil",
+        "tomllib",
+    ]
+    assert hasattr(compat, "DistutilsSetupError")
     assert hasattr(compat, "maturin")
     assert hasattr(compat, "opentelemetry_trace")
     assert hasattr(compat, "psutil")

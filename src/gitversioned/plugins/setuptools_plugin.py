@@ -18,13 +18,13 @@ from __future__ import annotations
 
 import email
 import os
-from distutils.errors import DistutilsSetupError
 from pathlib import Path
 from typing import Any, cast
 
 from packaging.utils import canonicalize_name
 from setuptools import Distribution
 
+from gitversioned.compat import DistutilsSetupError
 from gitversioned.logging import autolog, configure_logger, logger
 from gitversioned.settings import Settings
 from gitversioned.utils import BuildEnvironment, GitRepository
