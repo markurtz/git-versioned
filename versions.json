@@ -7,11 +7,16 @@
     ]
   },
   {
-    "version": "main-04ace01",
-    "title": "main-04ace01",
+    "version": "main-4ec615e",
+    "title": "main-4ec615e",
     "aliases": [
       "dev"
     ]
+  },
+  {
+    "version": "main-04ace01",
+    "title": "main-04ace01",
+    "aliases": []
   },
   {
     "version": "v0.3.0",
