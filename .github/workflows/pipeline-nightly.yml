@@ -68,7 +68,9 @@ jobs:
       full_matrix: ${{ steps.parse.outputs.full_matrix }}
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Check for recent commits
         id: check
         run: |
@@ -97,7 +99,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run Project Quality
         uses: ./.github/actions/project/quality
         with:
@@ -114,7 +118,9 @@ jobs:
         python-version: ${{ fromJSON(needs.init-gate.outputs.full_matrix) }}
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run Python Quality
         uses: ./.github/actions/python/quality
         with:
@@ -127,7 +133,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run OCI Quality
         uses: ./.github/actions/oci/quality
         with:
@@ -154,7 +162,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run Project Functional Tests
         uses: ./.github/actions/project/tests
         with:
@@ -172,7 +182,9 @@ jobs:
         python-version: ${{ fromJSON(needs.init-gate.outputs.full_matrix) }}
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run Python Functional Tests
         id: run-tests
         uses: ./.github/actions/python/tests
@@ -208,7 +220,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run Project Link Checks
         uses: ./.github/actions/project/tests
         with:
@@ -234,7 +248,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run Python Build
         uses: ./.github/actions/python/build
         with:
@@ -254,7 +270,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run OCI Build
         id: build
         uses: ./.github/actions/oci/build
@@ -289,7 +307,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Run Project E2E Tests
         uses: ./.github/actions/project/tests
         with:
@@ -308,7 +328,9 @@ jobs:
         python-version: ${{ fromJSON(needs.init-gate.outputs.full_matrix) }}
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Download Build Artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -337,7 +359,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Download OCI Image Tarball
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -377,7 +401,9 @@ jobs:
       attestations: write
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Download All Built Wheels
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -398,7 +424,9 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Get commit info
         id: vars
         run: |
@@ -424,7 +452,9 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/utility/checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Get commit info
         id: vars
         run: |
