@@ -2249,7 +2249,7 @@ Your PR must pass all checks before it can be merged. We require strict adherenc
 <li>
 <p><strong>Inputs:</strong> Requires entering a version tag matching strict semver (e.g., <code>v1.2.0</code>).</p>
 </li>
-<li><strong>Branch Constraints:</strong> Can only be started on the <code>main</code> branch or a <code>releases/*</code> branch. If triggered on any other branch, the run instantly skips all jobs and exits.</li>
+<li><strong>Branch Constraints:</strong> Can only be started on the <code>main</code> branch or a <code>releases/*</code> branch. If triggered on any other branch or tag ref via <code>workflow_dispatch</code>, the workflow fails the <code>init-gate</code> job and exits.</li>
 <li><strong>Process:</strong> The workflow runs all quality, testing, and integrity checks. If they pass, it automatically tags the current commit with the entered version and pushes it to origin.</li>
 <li>
 <p><strong>Unified Release Publishing:</strong> Pushing the tag using the job's <code>GITHUB_TOKEN</code> successfully creates the remote tag without triggering recursive pipeline runs. The publishing jobs (<code>publish-python</code> and <code>publish-oci</code>) then execute immediately within the same manual run as soon as the tagging step succeeds. No Personal Access Tokens (PATs) or manual trigger restarts are required.</p>
