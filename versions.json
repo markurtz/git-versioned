@@ -9,6 +9,11 @@
   {
     "version": "main-6001799",
     "title": "main-6001799",
+    "aliases": []
+  },
+  {
+    "version": "main-42138a2",
+    "title": "main-42138a2",
     "aliases": [
       "dev"
     ]
