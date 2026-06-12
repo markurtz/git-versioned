@@ -1,0 +1,53 @@
+---
+# Copyright 2026 markurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: "Checkout & Tag Repository"
+description: "Checks out repository and injects a local version tag for release validation."
+inputs:
+  fetch-depth:
+    description: "Number of commits to fetch (0 = all history)."
+    required: false
+    default: "0"
+  token:
+    description: "GitHub token or PAT."
+    required: false
+    default: ${{ github.token }}
+  sparse-checkout:
+    description: "Sparse checkout path patterns."
+    required: false
+    default: ""
+  sparse-checkout-cone-mode:
+    description: "Sparse checkout cone mode."
+    required: false
+    default: "true"
+  version-tag:
+    description: "Version tag to inject locally if workflow_dispatch."
+    required: false
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+        token: ${{ inputs.token }}
+        sparse-checkout: ${{ inputs.sparse-checkout }}
+        sparse-checkout-cone-mode: ${{ inputs.sparse-checkout-cone-mode }}
+    - name: Inject local release tag
+      if: inputs.version-tag != ''
+      shell: bash
+      run: |-
+        git tag -d "${{ inputs.version-tag }}" 2>/dev/null || true
+        git tag "${{ inputs.version-tag }}"
