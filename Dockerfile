@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM python:3.10-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 
 # Set working directory
 WORKDIR /app
@@ -49,7 +49,7 @@ RUN hatch build
 # ==============================================================================
 # Stage 2: Runtime Stage (Minimal & Secure)
 # ==============================================================================
-FROM python:3.10-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 # Define standard OCI build parameters
 ARG BUILD_DATE
