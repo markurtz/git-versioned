@@ -51,7 +51,7 @@ Releasing a new version can be done in two ways:
    A maintainer triggers the `CI — Release` workflow manually via the GitHub Actions UI.
 
    - **Inputs:** Requires entering a version tag matching strict semver (e.g., `v1.2.0`).
-   - **Branch Constraints:** Can only be started on the `main` branch or a `releases/*` branch. If triggered on any other branch, the run instantly skips all jobs and exits.
+   - **Branch Constraints:** Can only be started on the `main` branch or a `releases/*` branch. If triggered on any other branch or tag ref via `workflow_dispatch`, the workflow fails the `init-gate` job and exits.
    - **Process:** The workflow runs all quality, testing, and integrity checks. If they pass, it automatically tags the current commit with the entered version and pushes it to origin.
    - **Unified Release Publishing:** Pushing the tag using the job's `GITHUB_TOKEN` successfully creates the remote tag without triggering recursive pipeline runs. The publishing jobs (`publish-python` and `publish-oci`) then execute immediately within the same manual run as soon as the tagging step succeeds. No Personal Access Tokens (PATs) or manual trigger restarts are required.
 

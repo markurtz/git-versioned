@@ -52,7 +52,7 @@ name: "CI — Release"
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"      # Strict semver: v1.2.3
+      - "v[0-9]*.[0-9]*.[0-9]*"      # Semver tags with optional pre-release (GHA glob matching)
   workflow_dispatch:
     inputs:
       version_tag:
@@ -67,6 +67,9 @@ permissions:
   attestations: write
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  VERSION_TAG: ${{ github.event.inputs.version_tag }}
+  GITHUB_REF_VAL: ${{ github.ref }}
+  GITHUB_EVENT_NAME_VAL: ${{ github.event_name }}
 jobs:
 
   # ── Stage 0: Pipeline Initialization ───────────────────────────────────────
@@ -83,25 +86,31 @@ jobs:
       - name: Validate Trigger and Branch/Tag Constraints
         shell: bash
         run: |
-          REF="${{ github.ref }}"
-          EVENT="${{ github.event_name }}"
+          REF="$GITHUB_REF_VAL"
+          EVENT="$GITHUB_EVENT_NAME_VAL"
           echo "Validating execution constraints..."
           echo "GitHub Ref: $REF"
           echo "Trigger Event: $EVENT"
 
-          # 1. Version tag pattern check (e.g., refs/tags/v1.2.3)
-          if [[ "$REF" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          # 1. Version tag pattern check (e.g., refs/tags/v1.2.3 or refs/tags/v9.9.9-test) - ONLY for push events
+          if [[ "$EVENT" == "push" && "$REF" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
             echo "SUCCESS: Valid version tag trigger."
             exit 0
           fi
 
-          # 2. Branch trigger check (main or releases/*)
-          if [[ "$REF" == "refs/heads/main" || "$REF" =~ ^refs/heads/releases/ ]]; then
-            if [[ "$EVENT" == "workflow_dispatch" ]]; then
-              echo "SUCCESS: Valid manual branch dispatch trigger."
-              exit 0
+          # 2. Branch trigger check (main or releases/*) for manual runs
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            if [[ "$REF" == "refs/heads/main" || "$REF" =~ ^refs/heads/releases/ ]]; then
+              VERSION_TAG="$VERSION_TAG"
+              if [[ "$VERSION_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+                echo "SUCCESS: Valid manual branch dispatch trigger with version tag '$VERSION_TAG'."
+                exit 0
+              else
+                echo "ERROR: Provided version_tag '$VERSION_TAG' does not match the required semver pattern vX.Y.Z[-suffix]"
+                exit 1
+              fi
             else
-              echo "ERROR: Branch release pathways must be triggered via workflow_dispatch."
+              echo "ERROR: Manual runs are only permitted on 'main' or 'releases/*' branches."
               exit 1
             fi
           fi
@@ -133,8 +142,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run Project Quality
         uses: ./.github/actions/project/quality
         with:
@@ -156,8 +165,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run Python Quality
         uses: ./.github/actions/python/quality
         with:
@@ -175,8 +184,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run OCI Quality
         uses: ./.github/actions/oci/quality
         with:
@@ -206,8 +215,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run Project Functional Tests
         uses: ./.github/actions/project/tests
         with:
@@ -230,8 +239,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run Python Functional Tests
         id: run-tests
         uses: ./.github/actions/python/tests
@@ -270,8 +279,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run Project Link Checks
         uses: ./.github/actions/project/tests
         with:
@@ -300,8 +309,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run Python Build
         uses: ./.github/actions/python/build
         with:
@@ -326,8 +335,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run OCI Build
         id: build
         uses: ./.github/actions/oci/build
@@ -366,8 +375,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Run Project E2E Tests
         uses: ./.github/actions/project/tests
         with:
@@ -392,8 +401,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Download Build Artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -428,8 +437,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Download OCI Image Tarball
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -486,8 +495,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Tag and Push Release Tag
         if: github.event_name == 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/')
         uses: ./.github/actions/utility/tag-release
@@ -514,8 +523,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Download All Built Wheels
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -541,8 +550,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Download OCI Image Tarball
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -568,8 +577,8 @@ jobs:
       - name: Inject local release tag
         if: github.event.inputs.version_tag != ''
         run: |-
-          git tag -d "${{ github.event.inputs.version_tag }}" 2>/dev/null || true
-          git tag "${{ github.event.inputs.version_tag }}"
+          git tag -d "$VERSION_TAG" 2>/dev/null || true
+          git tag "$VERSION_TAG"
       - name: Download Python test coverage
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
