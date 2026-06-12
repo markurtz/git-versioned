@@ -23,7 +23,7 @@
 #      [ ] 2. MAIN (Post-merge validation, main branch docs)
 #      [ ] 3. NIGHTLY (Daily check, pre-release publish, nightly docs)
 #   -> [x] 4. WEEKLY (Weekly regression checks) <--- CURRENT WORKFLOW
-#      [ ] 5. RELEASE (Production PyPI & OCI publish, versioned docs)
+#      [ ] 5. RELEASE (Production PyPI & OCI publish, versioned docs, manual trigger option)
 #      [ ] 6. UTILITY: CLEANUP (Daily stale docs/OCI image cleanup)
 #      [ ] 7. UTILITY: PR COMMENTER (Coverage & builds reporting on PRs)
 #
@@ -46,6 +46,8 @@ on:
 permissions:
   contents: read
   security-events: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 jobs:
 
   # ── Stage 0: Pipeline Initialization ───────────────────────────────────────

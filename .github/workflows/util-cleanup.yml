@@ -23,7 +23,7 @@
 #      [ ] 2. MAIN (Post-merge validation, main branch docs)
 #      [ ] 3. NIGHTLY (Daily check, pre-release publish, nightly docs)
 #      [ ] 4. WEEKLY (Weekly regression checks)
-#      [ ] 5. RELEASE (Production PyPI & OCI publish, versioned docs)
+#      [ ] 5. RELEASE (Production PyPI & OCI publish, versioned docs, manual trigger option)
 #   -> [x] 6. UTILITY: CLEANUP (Daily stale docs/OCI image cleanup) <--- CURRENT WORKFLOW
 #      [ ] 7. UTILITY: PR COMMENTER (Coverage & builds reporting on PRs)
 #
@@ -45,6 +45,8 @@ on:
 permissions:
   contents: write
   packages: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 jobs:
   cleanup-docs:
     runs-on: ubuntu-latest
