@@ -233,7 +233,18 @@ class GitRepository:
 
         :return: True if the repository path is a valid Git work tree, False otherwise.
         """
-        return self._execute_command(["rev-parse", "--is-inside-work-tree"]) == "true"
+        if self._execute_command(["rev-parse", "--is-inside-work-tree"]) != "true":
+            return False
+
+        show_toplevel = self._execute_command(["rev-parse", "--show-toplevel"])
+        if not show_toplevel:
+            return False
+
+        try:
+            root_dir = Path(show_toplevel).resolve()
+            return self.base_path.resolve().is_relative_to(root_dir)
+        except Exception:  # noqa: BLE001
+            return False
 
     @property
     def root_directory(self) -> Path:
@@ -265,6 +276,8 @@ class GitRepository:
 
         :return: Remote origin URL, or empty string if not set.
         """
+        if not self.is_available:
+            return ""
         return self._execute_command(["config", "--get", "remote.origin.url"])
 
     @property
@@ -294,6 +307,8 @@ class GitRepository:
 
         :return: List of paths with uncommitted changes.
         """
+        if not self.is_available:
+            return []
         output = self._execute_command(["status", "--porcelain"])
         dirty = []
         for line in output.splitlines():

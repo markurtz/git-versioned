@@ -304,19 +304,25 @@ class TestGitRepository:
     @pytest.mark.smoke
     def test_is_available(self) -> None:
         repo_instance = GitRepository()
-        mock_result = MagicMock()
-        mock_result.stdout = "true\n"
-        with patch("subprocess.run", return_value=mock_result) as mock_run:
-            assert repo_instance.is_available is True
-            mock_run.assert_called_once()
+        mock_avail = MagicMock(stdout="true\n")
+        mock_root = MagicMock(stdout=f"{repo_instance.base_path}\n")
 
-        mock_result.stdout = "false\n"
-        with patch("subprocess.run", return_value=mock_result) as mock_run:
+        def mock_run(cmd, *args: Any, **kwargs: Any) -> Any:
+            if "--is-inside-work-tree" in cmd:
+                return mock_avail
+            return mock_root
+
+        with patch("subprocess.run", side_effect=mock_run) as mock_run_spy:
+            assert repo_instance.is_available is True
+            assert mock_run_spy.call_count == 2
+
+        mock_not_avail = MagicMock(stdout="false\n")
+        with patch("subprocess.run", return_value=mock_not_avail):
             assert repo_instance.is_available is False
 
     @pytest.mark.smoke
     def test_root_directory(self) -> None:
-        repo_instance = GitRepository()
+        repo_instance = GitRepository("/mock/root/dir")
         mock_avail = MagicMock()
         mock_avail.stdout = "true\n"
         mock_root = MagicMock()
@@ -341,7 +347,7 @@ class TestGitRepository:
 
     @pytest.mark.smoke
     def test_repository_name(self) -> None:
-        repo_instance = GitRepository()
+        repo_instance = GitRepository("/mock/root/some-folder")
 
         # Scenario 1: Remote origin URL ends with .git
         with patch.object(
@@ -385,11 +391,20 @@ class TestGitRepository:
     @pytest.mark.smoke
     def test_remote_origin_url(self) -> None:
         repo_instance = GitRepository()
-        mock_result = MagicMock()
-        mock_result.stdout = "git@github.com:user/project.git\n"
-        with patch("subprocess.run", return_value=mock_result) as mock_run:
+        mock_avail = MagicMock(stdout="true\n")
+        mock_root = MagicMock(stdout=f"{repo_instance.base_path}\n")
+        mock_url = MagicMock(stdout="git@github.com:user/project.git\n")
+
+        def mock_run(cmd, *args: Any, **kwargs: Any) -> Any:
+            if "--is-inside-work-tree" in cmd:
+                return mock_avail
+            elif "--show-toplevel" in cmd:
+                return mock_root
+            return mock_url
+
+        with patch("subprocess.run", side_effect=mock_run) as mock_run_spy:
             assert repo_instance.remote_origin_url == "git@github.com:user/project.git"
-            mock_run.assert_called_once()
+            assert mock_run_spy.call_count == 3
 
         # Test subprocess exception handling in _execute_command
         with patch(
@@ -404,12 +419,15 @@ class TestGitRepository:
 
         # Case 1: Available and count returns 15
         mock_avail = MagicMock(stdout="true\n")
+        mock_root = MagicMock(stdout=f"{repo_instance.base_path}\n")
         mock_count = MagicMock(stdout="15\n")
 
         def mock_run_calls(*args: Any, **kwargs: Any) -> Any:
             cmd = args[0]
             if "--is-inside-work-tree" in cmd:
                 return mock_avail
+            elif "--show-toplevel" in cmd:
+                return mock_root
             return mock_count
 
         with patch("subprocess.run", side_effect=mock_run_calls):
@@ -427,6 +445,8 @@ class TestGitRepository:
             cmd = args[0]
             if "--is-inside-work-tree" in cmd:
                 return mock_avail
+            elif "--show-toplevel" in cmd:
+                return mock_root
             return mock_bad_count
 
         with patch("subprocess.run", side_effect=mock_run_bad_calls):
@@ -454,17 +474,27 @@ class TestGitRepository:
     @pytest.mark.smoke
     def test_dirty_files(self) -> None:
         repo_instance = GitRepository()
+        mock_avail = MagicMock(stdout="true\n")
+        mock_root = MagicMock(stdout=f"{repo_instance.base_path}\n")
         mock_output = MagicMock()
         mock_output.stdout = (
             " M modified.txt\n?? untracked.txt\nR  old_file.txt -> new_file.txt\n"
         )
-        with patch("subprocess.run", return_value=mock_output) as mock_run:
+
+        def mock_run(cmd, *args: Any, **kwargs: Any) -> Any:
+            if "--is-inside-work-tree" in cmd:
+                return mock_avail
+            elif "--show-toplevel" in cmd:
+                return mock_root
+            return mock_output
+
+        with patch("subprocess.run", side_effect=mock_run) as mock_run_spy:
             dirty = repo_instance.dirty_files
             assert len(dirty) == 3
             assert dirty[0] == (repo_instance.base_path / "modified.txt").resolve()
             assert dirty[1] == (repo_instance.base_path / "untracked.txt").resolve()
             assert dirty[2] == (repo_instance.base_path / "new_file.txt").resolve()
-            mock_run.assert_called_once()
+            assert mock_run_spy.call_count == 3
 
     @pytest.mark.smoke
     def test_current_commit(self) -> None:
@@ -606,10 +636,14 @@ class TestGitRepository:
         ]
         mock_process.__enter__.return_value = mock_process
 
+        mock_root = MagicMock(stdout=f"{repo_instance.base_path}\n")
+
         def mock_run_calls(*args: Any, **kwargs: Any) -> Any:
             cmd = args[0]
             if "--is-inside-work-tree" in cmd:
                 return mock_avail
+            elif "--show-toplevel" in cmd:
+                return mock_root
             return mock_count
 
         with (
@@ -659,10 +693,14 @@ class TestGitRepository:
 
         mock_distance = MagicMock(stdout="3\n")
 
+        mock_root = MagicMock(stdout=f"{repo_instance.base_path}\n")
+
         def mock_run_calls(*args: Any, **kwargs: Any) -> Any:
             cmd = args[0]
             if "--is-inside-work-tree" in cmd:
                 return mock_avail
+            elif "--show-toplevel" in cmd:
+                return mock_root
             elif "rev-list" in cmd:
                 return mock_distance
             return mock_count
@@ -699,10 +737,14 @@ class TestGitRepository:
         ]
         mock_process.__enter__.return_value = mock_process
 
+        mock_root = MagicMock(stdout=f"{repo_instance.base_path}\n")
+
         def mock_run_calls(*args: Any, **kwargs: Any) -> Any:
             cmd = args[0]
             if "--is-inside-work-tree" in cmd:
                 return mock_avail
+            elif "--show-toplevel" in cmd:
+                return mock_root
             return mock_count
 
         mock_commit = MagicMock(commit_sha="sha1")

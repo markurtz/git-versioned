@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir uv hatch
 
-ARG VERSION=0.1.3.dev10+9eea393
+ARG VERSION=0.3.1
 
 # Copy package manifests (utilizing optional copy for Cargo files to be robust)
 COPY pyproject.toml README.md LICENSE NOTICE ./
