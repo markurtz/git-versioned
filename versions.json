@@ -1,10 +1,15 @@
 [
   {
-    "version": "nightly-20260529",
-    "title": "nightly-20260529",
+    "version": "nightly-20260612",
+    "title": "nightly-20260612",
     "aliases": [
       "nightly"
     ]
+  },
+  {
+    "version": "nightly-20260529",
+    "title": "nightly-20260529",
+    "aliases": []
   },
   {
     "version": "main-42138a2",
