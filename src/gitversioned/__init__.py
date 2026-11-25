@@ -11,51 +11,68 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Unless otherwise noted, all files in this directory and its subdirectories
-# are licensed under the Apache License, Version 2.0.
 
 """
-Opinionated PEP 440 Python versioning for Git repos and submodules.
+Versions from git tags for Python, Rust and npm projects in one repository.
 
-Provides an automated, deterministic system for generating rich version information from
-Git repository metadata. It enforces CI/User authority and creates version files with
-deep metadata for auditability, integrating natively with Hatch and Setuptools.
+gitversioned resolves the version of a checkout from its release tags, stamps it
+into every manifest with scoped text edits, validates Conventional Commit titles
+and drives a reviewed release: changelog, release pull request and tag.
 
 Example:
 ::
-    from gitversioned import Settings, resolve_version
-    from gitversioned.utils import BuildEnvironment, GitRepository
+    from gitversioned import get_version, load_config, resolve
 
-    version, _, ref = resolve_version(
-        Settings(), GitRepository(), BuildEnvironment()
-    )
-    print("Current version:", version)
+    print(get_version())
+    resolved = resolve(load_config())
+    print(resolved.version.semver(), resolved.type)
 """
 
 from __future__ import annotations
 
-from .logging import LoggingSettings, configure_logger
-from .settings import Settings
-from .utils import BuildEnvironment, GitRepository
-from .versioning import (
-    resolve_version,
-    resolve_version_output,
-    resolve_version_output_to_stream,
+from pathlib import Path
+
+from gitversioned.config import Config, load_config
+from gitversioned.errors import (
+    CheckFailedError,
+    ConfigError,
+    EnvironmentProblemError,
+    GitVersionedError,
+    NothingToReleaseError,
 )
+from gitversioned.model import Version
+from gitversioned.release import ReleasePlan, plan_release
+from gitversioned.resolve import Resolved, resolve
+from gitversioned.targets import stamp
 
 __all__ = [
-    "BuildEnvironment",
-    "GitRepository",
-    "LoggingSettings",
-    "Settings",
+    "CheckFailedError",
+    "Config",
+    "ConfigError",
+    "EnvironmentProblemError",
+    "GitVersionedError",
+    "NothingToReleaseError",
+    "ReleasePlan",
+    "Resolved",
+    "Version",
     "__version__",
-    "configure_logger",
-    "resolve_version",
-    "resolve_version_output",
-    "resolve_version_output_to_stream",
+    "get_version",
+    "load_config",
+    "plan_release",
+    "resolve",
+    "stamp",
 ]
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
-configure_logger()
+
+def get_version(root: Path | str | None = None, *, standard: str = "pep440") -> str:
+    """
+    Resolve the version of a project as text.
+
+    :param root: Project folder; defaults to the current one.
+    :param standard: ``pep440`` or ``semver``.
+    :return: The version of the checkout.
+    """
+    config = load_config(Path(root) if root is not None else None)
+    return resolve(config).version.render(standard)  # type: ignore[arg-type]

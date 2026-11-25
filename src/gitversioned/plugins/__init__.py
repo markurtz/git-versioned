@@ -1,45 +1,52 @@
-r"""
-Build system plugins for integrating gitversioned with Python build backends.
+# Copyright 2026 markurtz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-This package provides the integration plugins required to connect the core
-git-versioned version resolution logic with standard Python build backends,
-such as Hatchling, Setuptools, and Maturin. These plugins serve as build system hooks
-and entry points that intercept the build lifecycle to query and inject
-dynamically generated PEP 440 version strings into the distribution metadata.
-
-Build systems discover and load these plugins using standardized packaging
-entry points. The submodules handle the backend-specific API calls and map
-the build configuration options defined in files like ``pyproject.toml`` to
-the underlying versioning parameters.
-
-Examples
---------
-Configure Hatchling to use the gitversioned plugin within ``pyproject.toml``:
-
-.. code-block:: toml
-
-   [build-system]
-   requires = ["hatchling", "git-versioned"]
-   build-backend = "hatchling.build"
-
-   [tool.hatch.version]
-   source = "gitversioned"
-
-Configure Maturin with overridden configurations within ``pyproject.toml``:
-
-.. code-block:: toml
-
-   [build-system]
-   requires = ["maturin>=1.0,<2.0", "git-versioned"]
-   build-backend = "gitversioned.plugins.maturin_plugin"
-
-   [tool.gitversioned]
-   output = "src/my_package/version.py"
-
-   [tool.gitversioned.overrides.cargo]
-   output = "Cargo.toml"
-   output_strategies.type = "regex"
-   output_strategies.pattern = '''
-   (?ms)^\[package\].*?^(\s*version\s*=\s*)(["\'])(?P<version>[^"\']+)\2
-   '''
 """
+Build backend integrations: Hatchling, setuptools and Maturin.
+
+Each integration resolves the version once and writes the generated
+``version.py``, so a build needs no gitversioned settings at all.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from gitversioned.config import load_config
+from gitversioned.resolve import Resolved, resolve
+from gitversioned.targets import Change, stamp
+
+__all__ = ["resolve_for_build"]
+
+
+def resolve_for_build(
+    root: Path | str, *, write: bool = True
+) -> tuple[Resolved, list[Change]]:
+    """
+    Resolve the version for a build and write the generated module.
+
+    :param root: Project folder being built.
+    :param write: Write the generated ``version.py`` when the project has one.
+    :return: The resolved version and the files written.
+    """
+    config = load_config(Path(root))
+    resolved = resolve(config)
+    changes: list[Change] = []
+    if write:
+        changes = [
+            change
+            for change in stamp(config, resolved, generated_only=True)
+            if change.written or not change.diff
+        ]
+    return resolved, changes

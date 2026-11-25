@@ -1,8 +1,0 @@
-# Generated version file
-src/hatchling_example/version.py
-
-# Build artifacts
-dist/
-*.egg-info/
-__pycache__/
-*.pyc

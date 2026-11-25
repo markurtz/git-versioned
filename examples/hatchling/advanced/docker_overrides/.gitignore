@@ -1,8 +1,0 @@
-# Generated version file
-src/hatchling_docker_overrides/version.py
-
-# Build artifacts
-dist/
-*.egg-info/
-__pycache__/
-*.pyc
