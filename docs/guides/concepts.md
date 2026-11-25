@@ -15,7 +15,9 @@ ecosystem expects.
 
 A development version is the next patch after the last release, dated with the
 commit date so the same commit always gives the same version. A nightly has no
-hash, so it can be uploaded to a package index.
+hash, so it can be uploaded to a package index. The hash is the first seven
+characters of the commit, lengthened only in the rare case where those would be
+all digits with a leading zero, which Python packaging tools would renumber.
 
 ## Where the version comes from
 

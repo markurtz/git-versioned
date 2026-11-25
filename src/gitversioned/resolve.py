@@ -55,6 +55,9 @@ __all__ = [
 BuildType = Literal["release", "dev", "nightly"]
 
 
+_SHORT_SHA = 7
+
+
 @dataclass
 class Resolved:
     """
@@ -93,9 +96,24 @@ class Resolved:
     @property
     def short_sha(self) -> str | None:
         """
-        :return: The first seven characters of the commit hash.
+        Shorten the commit hash for the local part of a version.
+
+        Python packaging tools read an all-digit local part as a number and drop
+        its leading zeros, so a hash that would be shortened to such a value is
+        lengthened until it holds a letter.
+
+        :return: At least the first seven characters of the commit hash.
         """
-        return self.sha[:7] if self.sha else None
+        if not self.sha:
+            return None
+        length = _SHORT_SHA
+        while (
+            length < len(self.sha)
+            and self.sha[:length].isdigit()
+            and self.sha.startswith("0")
+        ):
+            length += 1
+        return self.sha[:length]
 
 
 def tag_name(template: str, version: Version) -> str:

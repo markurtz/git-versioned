@@ -263,7 +263,7 @@ class TestS2NoSilentWrongVersion:
         plain.path = folder
         assert (
             plain.run("version", "--standard", "pep440").first
-            == "1.4.1.dev20261125+0123456"
+            == "1.4.1.dev20261125+0123456789a"
         )
 
     @pytest.mark.sanity
