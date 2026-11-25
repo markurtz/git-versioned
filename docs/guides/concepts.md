@@ -1,105 +1,88 @@
-# Concepts & Resolution
+# Concepts
 
-`gitversioned` provides an intelligent engine that calculates PEP 440 compliant version strings dynamically based on the state of your Git repository and project configuration. This document explains the underlying concepts of how `gitversioned` evaluates sources, determines the build environment, and applies auto-increments.
+## One version, two spellings
 
-______________________________________________________________________
+gitversioned keeps one version per checkout and prints it the way each
+ecosystem expects.
 
-## The Resolution Algorithm
+| Build       | PEP 440 (Python)                  | SemVer (Rust, npm, Helm, OCI)      |
+| ----------- | --------------------------------- | ---------------------------------- |
+| Release     | `1.2.0`                           | `1.2.0`                            |
+| Pre-release | `1.2.0rc1`                        | `1.2.0-rc.1`                       |
+| Development | `1.2.1.dev20261125+abc1234`       | `1.2.1-dev.20261125+abc1234`       |
+| Nightly     | `1.3.0.dev20261125`               | `1.3.0-nightly.20261125`           |
+| Dirty tree  | `1.2.1.dev20261125+abc1234.dirty` | `1.2.1-dev.20261125+abc1234.dirty` |
 
-When a build starts, `gitversioned` follows a strict evaluation order to determine the final version string.
+A development version is the next patch after the last release, dated with the
+commit date so the same commit always gives the same version. A nightly has no
+hash, so it can be uploaded to a package index.
 
-1. **Source Evaluation:** Inspect configured sources (tags, branches, commits, files) in priority order until a match is found.
-1. **Environment Detection:** Determine if the repository state implies a release, development, or pre-release build.
-1. **Auto-Increment Calculation:** If the current working tree is ahead of the matched source, bump the requested version segment (`major`, `minor`, or `patch`).
-1. **Template Application:** Apply the resolved version, Git metadata, and environment variables into the final formatting template to produce the output string and file.
+## Where the version comes from
 
-______________________________________________________________________
+The first source that answers wins:
 
-## 1. Source Evaluation Priority
+1. **A pin.** A `VERSION` argument, `GITVERSIONED__VERSION`, or
+   `version = "1.2.3"` in the settings.
+1. **Git tags.** The highest release tag reachable from `HEAD` that matches the
+   tag template, plus the number of commits since.
+1. **The archive file.** `.git_archival.txt`, filled in by `git archive`, for
+   source tarballs downloaded from GitHub. Files written for setuptools-scm are
+   read too.
+1. **Package metadata.** `PKG-INFO` in an unpacked sdist.
+1. **The fallback.** `0.1.0` unless configured, with a warning.
 
-The `source_type` configuration setting defines an ordered list of places to look for a version string. By default, `source_type = ["auto"]` expands dynamically based on the availability of Git:
+There are no version files to keep in sync and no version committed between
+releases. A tag is the only thing that makes a release.
 
-- **When Git is active/available:** `gitversioned` prioritizes Git tags and references before falling back to static files or custom functions: `["tag", "branch", "commit", "file", "function"]`.
-- **When Git is unavailable (e.g., downstream installations or ZIP downloads):** Git resolution is bypassed entirely to save resources: `["file", "function"]`.
+## Warn on a laptop, fail in CI
 
-`gitversioned` iterates through the expanded list in order. As soon as it extracts a valid version from one of these sources (using the corresponding `regex_*` configuration), the search stops.
+When the answer cannot be trusted (a shallow clone with no tag in reach, no git
+history at all) gitversioned warns and uses the fallback on a developer
+machine. In CI, detected by the `CI` environment variable, the same situation
+exits with code 3 so a wrong version is never published.
 
-### Example Flow & Fallbacks
+## How the next version is chosen
 
-If `source_type = ["tag", "file"]`:
+`version --next` and `release` read the Conventional Commit subjects since the
+last release.
 
-1. `gitversioned` first checks the repository for Git tags matching the `regex_tag` pattern.
-1. If it finds matches (e.g., `v1.2.0`), it selects the tag that is closest (has the fewest commits) to the current `HEAD`.
-1. If no matching tags exist or Git is not available, it falls back to inspecting the file defined by `version_source_file` (defaulting to `version.txt`).
-   - **Smart Fallback:** If `version_source_file` is not found, and Git is unavailable, `gitversioned` automatically falls back to inspecting `settings.output` (e.g., `version.py`). This allows downstream installations to successfully resolve their versions from pre-generated dynamic output files.
-1. **Archive Fallback:** If all configured sources fail to resolve a version (or if the `.git` directory is entirely absent, such as in a GitHub ZIP download), `gitversioned` will attempt to parse version metadata from the file specified by `version_source_archive` (defaulting to `.git_archival.txt`).
+| Commit                                                            | Level |
+| ----------------------------------------------------------------- | ----- |
+| `feat!: ...` or a `BREAKING CHANGE:` footer                       | major |
+| `feat: ...`                                                       | minor |
+| `fix`, `perf`, `refactor`, `docs`, `build`, `revert`, `deprecate` | patch |
+| `chore`, `ci`, `test`, `release`, merge commits                   | none  |
 
-______________________________________________________________________
+Below 1.0.0 every level shifts down one: a breaking change is a minor bump and
+a feature is a patch bump. An explicit `--bump` is taken as written.
 
-## 2. Environment Detection (`version_type`)
+## Stamping
 
-Once the base version and the corresponding Git reference are established, `gitversioned` calculates the `version_type` to dictate the suffix of the final version string.
+`version --write` puts the version into every target with scoped text edits.
+Only the characters of the version change; comments, ordering, quoting and line
+endings are kept. Because a stamped manifest differs from git only in its
+version, gitversioned does not count it as a dirty tree, so builds that stamp
+first and resolve later agree.
 
-If `version_type` is set to `"auto"` (the default), `gitversioned` inspects the repository state:
+## The release flow
 
-- **Clean HEAD:** If the current `HEAD` exactly matches the resolved Git reference (e.g., you checked out the `v1.2.0` tag directly) and there are **no uncommitted changes**, the `version_type` is resolved as `release`. This generates a clean PEP 440 version (e.g., `1.2.0`).
-- **Dirty or Ahead:** If there are uncommitted changes, or if `HEAD` has commits beyond the matched reference, the `version_type` defaults to `dev`.
-
-You can forcefully override this mechanism by setting `version_type` in your configuration to `release`, `dev`, `pre`, `alpha`, `nightly`, or `post`.
-
-______________________________________________________________________
-
-## 3. Auto-Increment Logic
-
-When building development or nightly versions, the repository is often ahead of the base version. Re-using the same base version for continuous builds can lead to naming collisions in package registries.
-
-The `[tool.gitversioned.auto_increment]` setting allows you to bump the base version before applying the suffix.
-
-### Mechanics
-
-If the repository is ahead of the matched Git reference (`distance_from_head > 0`), the engine checks the auto-increment target for the active `version_type`.
-
-> [!NOTE]
-> If the active `version_type` is `alpha` or `nightly`, and no auto-increment level is explicitly defined for them under `auto_increment`, `gitversioned` automatically falls back to checking the level configured for `pre`.
-
-**Configuration Example:**
-
-```toml
-[tool.gitversioned.auto_increment]
-dev = "minor"
-pre = "patch"
+```text
+commits on main ──► gitversioned release --pr ──► release pull request
+                                                    │  review, edit, merge
+                                                    ▼
+                    gitversioned release --tag ──► tag v1.5.0 ──► publish jobs
 ```
 
-**Scenario:**
+The release pull request holds one commit: the changelog section and the
+stamped manifests. It is rebuilt on every push to the release branch, so it
+always shows what the next release would be. Merging it is the decision to
+release; tagging the merge is what makes the version.
 
-- Base Version Resolved: `1.2.3`
-- Current state: `HEAD` is 5 commits ahead of the tag. Uncommitted changes exist.
-- Active `version_type`: `dev` (Resolved automatically)
+## The changelog
 
-**Evaluation:**
-
-1. Since the distance is `> 0` and `version_type` is `dev`, the target is `minor`.
-1. The engine splits `1.2.3` into its components.
-1. It increments the minor segment and zeroes out all subsequent segments.
-   - `major`: `1`
-   - `minor`: `2 + 1 = 3`
-   - `patch`: `0`
-1. The new base version becomes `1.3.0`.
-
-Finally, the dev template is applied to `1.3.0`, generating a string like `1.3.0.dev20260507+abc1234`.
-
-______________________________________________________________________
-
-## 4. Templating and Output
-
-After all version components are calculated, `gitversioned` passes a rich context dictionary into the formatting templates.
-
-The context contains:
-
-- `version`: The resolved `packaging.version.Version` object.
-- `repo`: Metadata about the Git repository (e.g., `dirty_files`, `current_branch`).
-- `ref`: Metadata about the matched reference (e.g., `commit_sha`, `author_name`).
-- `config`: The full `Settings` object.
-- `env`: The build environment (OS variables, build dates).
-
-For details on how to write these templates and customize the output strings, see the [Templates & Formatting Guide](templates.md).
+Sections follow Keep a Changelog (Added, Changed, Deprecated, Removed, Fixed,
+Security) with entries grouped by scope. `chore`, `ci`, `test` and `release`
+commits are left out unless they are breaking. When `gh` is available, the pull
+request title replaces a squash commit's subject, and a `## Changelog` block in
+a pull request body replaces the generated entry. A final release replaces the
+sections of its release candidates.

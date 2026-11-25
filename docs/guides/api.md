@@ -1,237 +1,129 @@
 # Python API Guide
 
-`gitversioned` can be imported and executed programmatically in your custom Python tools, scripts, and build hooks. This guide provides detailed examples for the core resolution functions: `resolve_version`, `resolve_version_output`, and `resolve_version_output_to_stream`.
+Everything the command line does is available from Python. The top-level
+package exports the stable surface.
 
-______________________________________________________________________
+| Name                               | What it is                                            |
+| ---------------------------------- | ----------------------------------------------------- |
+| `get_version(root, standard=)`     | The version of a project as text.                     |
+| `load_config(start)`               | The validated settings for a project.                 |
+| `resolve(config, ...)`             | The resolved version with its source, tag and commit. |
+| `stamp(config, resolved, ...)`     | Write the version into every target.                  |
+| `plan_release(config, ...)`        | The next release: version, tag, changelog section.    |
+| `Version`                          | A version that prints as PEP 440 or SemVer.           |
+| `GitVersionedError` and subclasses | Errors, each with the exit code the CLI would use.    |
 
-## 1. `resolve_version`
+## Get the version
 
-`resolve_version` is the core resolution entry point. It evaluates the project settings, queries the configured VCS or file sources, applies auto-incrementing logic, and returns a tuple containing:
-
-- `version`: A packaging-compatible `Version` object representing the resolved version.
-- `resolved_type`: A string representing the resolved build type (e.g. `"release"`, `"dev"`, `"pre"`).
-- `git_ref`: An optional `GitReference` object containing detailed commit and tag metadata.
-
-### Example Usage:
+<!--phmdoctest-skip-->
 
 ```python
-# Copyright 2026 Mark Kurtz
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+from gitversioned import get_version
 
-from gitversioned import Settings, GitRepository, BuildEnvironment
-from gitversioned.versioning import resolve_version
-
-# 1. Initialize configuration settings (loads pyproject.toml / env vars / defaults)
-settings = Settings()
-
-# 2. Initialize Git repository and environment helpers
-repository = GitRepository(settings.project_root)
-environment = BuildEnvironment(project_root=settings.project_root)
-
-# 3. Resolve the version components
-version, resolved_type, git_ref = resolve_version(
-    settings=settings,
-    repository=repository,
-    environment=environment,
-)
-
-print(f"Calculated Version: {version}")
-print(f"Resolved build type: {resolved_type}")
-
-if git_ref:
-    print(f"Commit SHA: {git_ref.commit_sha}")
-    print(f"Distance from last tag: {git_ref.distance_from_head}")
-    print(f"Is HEAD commit: {git_ref.is_head_commit}")
+print(get_version())  # 1.4.1.dev20261125+60439dc
+print(get_version(standard="semver"))  # 1.4.1-dev.20261125+60439dc
+print(get_version("path/to/project"))
 ```
 
-______________________________________________________________________
+## Resolve with detail
 
-## 2. `resolve_version_output`
-
-`resolve_version_output` resolves the version and formats it according to the configured output strategy (e.g., matching the `release` or `dev` templates). It returns the rendered content string without writing any files to disk. It returns a tuple containing:
-
-- `content`: The fully rendered version string or template content as a string.
-- `version`: The resolved `Version` object.
-- `resolved_type`: The resolved build type string.
-- `git_ref`: The optional `GitReference` object.
-
-### Example Usage:
+<!--phmdoctest-skip-->
 
 ```python
-# Copyright 2026 Mark Kurtz
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+from gitversioned import load_config, resolve
 
-from gitversioned import Settings, GitRepository, BuildEnvironment
-from gitversioned.versioning import resolve_version_output
+config = load_config()
+resolved = resolve(config)
 
-settings = Settings()
-repository = GitRepository(settings.project_root)
-environment = BuildEnvironment(project_root=settings.project_root)
+print(resolved.version.pep440())  # 1.4.1.dev20261125+60439dc
+print(resolved.type)  # dev, nightly or release
+print(resolved.source)  # tag, archive, metadata, pin or fallback
+print(resolved.tag, resolved.distance, resolved.sha)
+print(resolved.warnings)
 
-# Resolve and render the template output
-content, version, resolved_type, git_ref = resolve_version_output(
-    settings=settings,
-    repository=repository,
-    environment=environment,
-)
-
-print(f"Resolved version: {version}")
-print("Formatted Content Output:")
-print("-" * 40)
-print(content)
-print("-" * 40)
+nightly = resolve(config, build_type="nightly")
+pinned = resolve(config, pin="2.0.0")
 ```
 
-______________________________________________________________________
+## Stamp files
 
-## 3. `resolve_version_output_to_stream`
-
-`resolve_version_output_to_stream` resolves the version, renders it according to the configured output strategy, and writes the resulting formatted text directly to the target output file configured in the settings. It returns a tuple containing:
-
-- `output_path`: The absolute path to the file written (or `None` if output writing was disabled).
-- `content`: The formatted content string that was written.
-- `version`: The resolved `Version` object.
-- `resolved_type`: The resolved build type string.
-- `git_ref`: The optional `GitReference` object.
-
-### Example Usage:
+<!--phmdoctest-skip-->
 
 ```python
-# Copyright 2026 Mark Kurtz
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+from gitversioned import load_config, resolve, stamp
 
-import tempfile
-from pathlib import Path
-
-from gitversioned import Settings, GitRepository, BuildEnvironment
-from gitversioned.versioning import resolve_version_output_to_stream
-
-# Customize output path programmatically using a temporary directory
-with tempfile.TemporaryDirectory() as temp_dir:
-    settings = Settings(
-        project_root=Path(temp_dir),
-        output="src/my_package/__version__.py",
-    )
-    repository = GitRepository(settings.project_root)
-    environment = BuildEnvironment(project_root=settings.project_root)
-
-    # Resolve, format, and write to disk
-    output_path, content, version, resolved_type, git_ref = resolve_version_output_to_stream(
-        settings=settings,
-        repository=repository,
-        environment=environment,
-    )
-
-    if output_path:
-        print(f"Successfully generated version file at: {output_path}")
-        print(f"Calculated Version: {version}")
-    else:
-        print("Writing version file was disabled (no output path set).")
+config = load_config()
+for change in stamp(config, resolve(config), dry_run=True):
+    print(change.path, change.old, "->", change.new)
 ```
 
-______________________________________________________________________
+Each `Change` has `path`, `old`, `new`, `diff`, `commit` and `written`.
 
-## Programmable Logging & Telemetry
+## Plan a release
 
-`gitversioned` provides a robust, loguru-powered logging subsystem. You can customize logging behavior programmatically using `configure_logger`.
-
-### 1. Basic Logging Setup
-
-To initialize logging, import `configure_logger` and pass settings. You can pass a `LoggingSettings` object or use inline keyword argument overrides:
+<!--phmdoctest-skip-->
 
 ```python
-import sys
-from gitversioned.logging import LoggingSettings, configure_logger
+from gitversioned import NothingToReleaseError, load_config, plan_release
 
-# Option A: Initialize with LoggingSettings
-configure_logger(
-    LoggingSettings(
-        enabled=True,
-        level="DEBUG",
-        sink=sys.stderr,
-    )
-)
-
-# Option B: Initialize using keyword overrides directly
-configure_logger(
-    enabled=True,
-    level="INFO",
-    clear_loggers=True,
-    sink=sys.stderr
-)
+try:
+    plan = plan_release(load_config(), use_github=False)
+except NothingToReleaseError:
+    print("nothing to release")
+else:
+    print(plan.version.pep440(), plan.tag, plan.level)
+    print(plan.section)  # the changelog section, as Markdown
 ```
 
-### 2. Advanced Logging & Sinks
+## Work with versions
 
-The logging system supports asynchronous queueing, clearing parent handlers, standard Python `logging` interception, and OpenTelemetry-compliant JSON formatting:
+`Version` needs no repository, so it is useful on its own for parsing,
+comparing and converting.
 
 ```python
-import sys
-from gitversioned.logging import configure_logger, OtelSink
+from gitversioned import Version
 
-# Configure asynchronous OpenTelemetry-compliant JSON logging
-configure_logger(
-    enabled=True,
-    level="INFO",
-    otel_formatting="enable",  # Serializes all logs to OpenTelemetry JSON
-    enqueue=True,              # Enables thread-safe asynchronous queueing
-    clear_loggers=True,         # Removes any existing active logger sinks
-    sink=sys.stderr
-)
+version = Version.parse("1.2.0-rc.1")
+print(version.pep440())
+print(version.semver())
+print(version.is_final)
+print(version.bump("minor").pep440())
+print(Version.try_parse("not a version"))
+
+names = ["1.2.0", "1.2.0rc1", "1.2.0.dev1", "1.1.9"]
+print(sorted(names, key=lambda name: Version.parse(name).sort_key()))
 ```
 
-- **Standard Logging Interception:** When `enabled=True` is set, `gitversioned` automatically routes standard library log statements (from `import logging`) through the Loguru pipeline using `InterceptHandler`.
-- **OpenTelemetry Sink (`OtelSink`):** If `otel_formatting="enable"` (or `"auto"` when `opentelemetry` is installed) is active, loguru records are intercepted by `OtelSink`, serialized into standard OpenTelemetry JSON format, and written to the target stream or file.
+```
+1.2.0rc1
+1.2.0-rc.1
+False
+1.3.0
+None
+['1.1.9', '1.2.0.dev1', '1.2.0rc1', '1.2.0']
+```
 
-### 3. Function Telemetry with `@autolog`
+## Errors
 
-You can auto-instrument functions in your tools and scripts using the `@autolog` decorator. This automatically logs function calls, argument inputs, outputs, and any raised exceptions with trace details:
+| Error                     | Exit code | Raised when                                     |
+| ------------------------- | --------- | ----------------------------------------------- |
+| `CheckFailedError`        | 1         | A check failed.                                 |
+| `NothingToReleaseError`   | 1         | No commit since the last release calls for one. |
+| `ConfigError`             | 2         | Settings are invalid or live in two homes.      |
+| `EnvironmentProblemError` | 3         | Git or `gh` cannot give a trustworthy answer.   |
+
+All of them derive from `GitVersionedError`.
+
+## Logging
+
+gitversioned logs to the standard library logger named `gitversioned` and adds
+no handler of its own, so it is silent until you configure logging. To get the
+same output as the command line:
+
+<!--phmdoctest-skip-->
 
 ```python
-from gitversioned.logging import autolog
+from gitversioned.logging import configure_logging
 
-# Decorate a function using default settings (logs exceptions at ERROR level)
-@autolog
-def calculate_next_release(major: int, minor: int) -> str:
-    return f"{major}.{minor + 1}.0"
-
-# Decorate a function with custom exception log levels
-@autolog(exception_log_level="WARNING")
-def parse_version_metadata(data: dict) -> str:
-    if "version" not in data:
-        raise KeyError("version missing")
-    return data["version"]
+configure_logging(1)  # -1 errors only, 0 warnings, 1 info, 2 debug
 ```

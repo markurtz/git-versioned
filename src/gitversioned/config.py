@@ -178,17 +178,23 @@ class Config(BaseModel):
         """
         Resolve the allowed scopes, reading the scopes file when one is named.
 
+        Package names are always allowed once any scope is restricted.
+
         :return: Scope names; an empty list allows any scope.
         :raises ConfigError: If the scopes file is missing or not valid TOML.
         """
         if isinstance(self.scopes, list):
-            return list(self.scopes)
-        path = self.root / self.scopes
-        try:
-            data = tomllib.loads(path.read_text(encoding="utf-8"))
-        except (OSError, tomllib.TOMLDecodeError) as error:
-            raise ConfigError(f"cannot read scopes file {path}: {error}") from error
-        return [key for key, value in data.items() if isinstance(value, dict)]
+            scopes = list(self.scopes)
+        else:
+            path = self.root / self.scopes
+            try:
+                data = tomllib.loads(path.read_text(encoding="utf-8"))
+            except (OSError, tomllib.TOMLDecodeError) as error:
+                raise ConfigError(f"cannot read scopes file {path}: {error}") from error
+            scopes = [key for key, value in data.items() if isinstance(value, dict)]
+        if scopes:
+            scopes += [name for name in self.packages if name not in scopes]
+        return scopes
 
     @classmethod
     def key_names(cls) -> list[str]:

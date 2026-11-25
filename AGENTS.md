@@ -20,23 +20,40 @@ This file provides repository-specific context, setup instructions, executable c
 
 ## System Overview
 
-`gitversioned` is an opinionated PEP 440-compliant Python versioning tool for Git repositories and submodules. It enforces CI and user authority over versioning, and generates structured `version.py` files with deep metadata for full auditability.
+`gitversioned` gives a repository one version, taken from its git tags. It resolves that version, stamps it into every Python, Rust, npm, Helm and container manifest with scoped text edits, validates Conventional Commit titles and drives a reviewed release (changelog, release pull request, tag). The command line has three commands, `version`, `check` and `release`, plus an optional `init`.
 
 - **Primary Language:** Python 3.10+
 - **Configuration & Build Backend:** Hatch (using `hatchling.build`)
-- **Key Dependencies:** Pydantic / Pydantic-Settings v2, Loguru, Typer, Packaging, Setuptools
+- **Runtime Dependencies:** Pydantic v2 and Typer (plus `tomli` on Python 3.10). Logging uses the standard library. Do not add runtime dependencies without a strong reason.
 
 ## Core Directories & Architecture
 
-- `src/gitversioned/`: Core Python library.
-  - `__main__.py`: CLI entrypoint (subcommands: `calculate`, `format`, `write`).
-  - `settings.py`: Pydantic settings schema for project options.
-  - `plugins/`: Integration modules for Hatchling and Setuptools.
-  - `utils/`: Git, environment, and Pydantic validation helpers.
-  - `versioning/`: Version calculation, template rendering, and output file writers.
-- `tests/`: Organized into `python/unit/` (isolated logic), `python/integration/` (subsystem interactions), and `e2e/` (installed package & CLI integration).
-- `docs/`: MkDocs Material documentation source.
+- `src/gitversioned/`: The library, one flat package.
+  - `cli.py`: The Typer app and the four commands. `__main__.py` only calls it.
+  - `model.py`: `Version`, printed as PEP 440 or SemVer.
+  - `config.py`: The settings model (twelve root keys, `[[targets]]`, `[packages]`), its homes and `GITVERSIONED__KEY` overrides.
+  - `git.py`: All git access, the archive file and sdist metadata.
+  - `resolve.py`: Resolves the version of a checkout.
+  - `commits.py`: Conventional Commit parsing and bump rules.
+  - `editors.py`, `targets.py`: Locating version values in files, discovery and stamping.
+  - `changelog.py`, `github.py`, `release.py`: Changelog sections, the `gh` CLI wrapper, release planning, the release pull request and tagging.
+  - `checks.py`: Findings for `check`.
+  - `scaffold.py`: The `init` step.
+  - `errors.py`: Errors, each carrying its exit code (1 check failed, 2 usage or config, 3 environment).
+  - `plugins/`: Hatchling, setuptools and Maturin build integrations.
+- `tests/`: `unit/` (isolated logic), `integration/` (settings and build backends) and `e2e/` (one class per user story, run through the CLI in real git repositories built by `tests/conftest.py`).
+- `examples/`: Runnable projects per backend plus a polyglot repository, tested by `examples/test_examples.py`.
+- `docs/`: Zensical documentation source.
+- `scripts/`: Developer and CI helpers, including `build_binary.py` and `generate_llms_full.py`.
 - `.github/workflows/`: CI/CD workflows (prefixed with `pipeline-` and `util-`).
+
+### Design Rules
+
+- The surface is deliberately small. Do not add a command, a root setting or an option without an explicit request; behaviour that every repository should share is fixed in code, not configurable.
+- Results go to stdout and everything else to stderr. Every command supports `--json`.
+- File edits are scoped text edits that change only the version value. Never rewrite a manifest through a parser and serializer.
+- Tests for new behaviour belong in `tests/e2e` as a user story when the behaviour is visible from the command line.
+- After changing a guide, the source or `pyproject.toml`, run `python scripts/generate_llms_full.py`.
 
 ## Environment & Developer Workflows
 
@@ -62,7 +79,7 @@ Tests are tiered. Run targeted tests or full suite:
 # Run unit tests only
 .venv/bin/hatch run python:tests-unit
 # Alternatively, via pytest directly:
-.venv/bin/pytest tests/python/unit
+.venv/bin/pytest tests/unit
 
 # Run integration tests only
 .venv/bin/hatch run python:tests-int
@@ -87,7 +104,7 @@ Run formatting and quality gates before committing:
 .venv/bin/hatch run python:lint
 .venv/bin/hatch run project:lint
 
-# Run static type checks (Mypy via Ty)
+# Run static type checks (ty)
 .venv/bin/hatch run python:types
 
 # Run pre-commit hooks manually on all files
@@ -102,6 +119,9 @@ Run formatting and quality gates before committing:
 
 # Build package distributions (sdist and wheel)
 .venv/bin/hatch build
+
+# Build the standalone binary into dist/bin/ (needs pyinstaller)
+.venv/bin/python scripts/build_binary.py
 ```
 
 ## Security & Behavior Boundaries

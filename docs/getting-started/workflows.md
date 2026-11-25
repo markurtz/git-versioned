@@ -1,37 +1,72 @@
 # Workflows
 
-This page walks through the most common end-to-end usage patterns for `gitversioned`. Each workflow is a self-contained user story — pick the one that matches your use case.
+The common stories, end to end.
 
-## Workflow 1 — CI/CD Integration
-
-**Goal:** Integrate `gitversioned` into a GitHub Actions pipeline.
+## A build that always has the right version
 
 ```yaml
-# .github/workflows/run.yml
-name: Run gitversioned
-
-on: [push]
-
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up environment
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install gitversioned
-        run: |
-          # Or optionally using uv: uv pip install gitversioned
-          pip install gitversioned
-
-      - name: Write version metadata
-        run: gitversioned write
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- run: pipx run build
 ```
 
-**Need more?** See the [Guides](../guides/index.md) section for in-depth task-specific documentation or browse the [Examples](../examples/index.md) for runnable code.
+With gitversioned in `build-system.requires`, a tag build is `1.2.0` and every
+other build is a development version such as `1.2.1.dev20261125+abc1234`.
+
+## Every manifest in step
+
+```bash
+gitversioned version --write
+cargo build --release --locked
+npm pack
+docker build --build-arg VERSION="$(gitversioned version --standard semver)" .
+```
+
+One command stamps `Cargo.toml`, `Cargo.lock`, `package.json`, `Chart.yaml`,
+`CITATION.cff` and the Dockerfile label, each in its own spelling.
+
+## A reviewed release
+
+1. Pull requests merge to `main` with Conventional Commit titles, checked by
+   `gitversioned check "$TITLE"`.
+1. On every push to `main`, `gitversioned release --pr` opens or updates the
+   release pull request: the changelog section and the stamped manifests.
+1. A maintainer reviews, edits the changelog if needed and merges.
+1. `gitversioned release --tag` tags the merge, and the tag starts the publish
+   jobs.
+
+The full workflow files are in the
+[GitHub Workflows Guide](../guides/github-workflows.md).
+
+## A release candidate
+
+Add the label `release:rc` to the release pull request. It becomes
+`release: v1.5.0-rc.1`; each further merge and tag gives `rc.2`, `rc.3`. Remove
+the label to release `1.5.0`, whose changelog section replaces the candidates'.
+
+## Nightly builds
+
+```bash
+gitversioned version --write --type nightly
+python -m build
+```
+
+A nightly is the next release with the date, such as `1.5.0.dev20261125`, and
+has no commit hash, so package indexes accept it.
+
+## One package of a monorepo
+
+```toml
+[packages.web]
+path = "packages/web"
+tag = "web-v{version}"
+```
+
+```bash
+gitversioned version -p web
+gitversioned release -p web --pr
+```
+
+The package is versioned from its own tags and only the commits that touch its
+folder count.

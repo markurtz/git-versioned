@@ -23,7 +23,7 @@ limitations under the License.
 </p>
 
 <p align="center">
-  <em>Simple, predictable, and opinionated versioning for Python projects.</em>
+  <em>One version for the whole repository, from git tags: resolved, stamped, checked and released.</em>
 </p>
 
 <p align="center">
@@ -61,47 +61,72 @@ ______________________________________________________________________
 
 ## Overview
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/user-flow-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/user-flow-light.svg">
-    <img alt="User Flow Diagram" src="https://raw.githubusercontent.com/markurtz/git-versioned/main/docs/assets/branding/user-flow-light.svg" width="800">
-  </picture>
-</p>
+GitVersioned gives a repository one version, taken from its git tags, and keeps
+every manifest in step with it. It covers the whole path from a commit to a
+published release with three commands.
 
-GitVersioned is a PEP 440-compliant Python versioning tool for Git repositories. It leverages Git history and CI environments as the ultimate source of truth to provide predictable, automated release versioning with zero runtime dependencies.
+| Command                | Job                                                                     |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `gitversioned version` | Print the version, print the next one, or stamp it into every manifest. |
+| `gitversioned check`   | Validate the setup, a pull request title, a commit range or a tag.      |
+| `gitversioned release` | Plan a release, open the release pull request, tag the merge.           |
 
 ### Why GitVersioned?
 
-GitVersioned is designed with a core mission: **to trust the user and CI/CD flows above all else, while strictly enforcing packaging standards.** Rather than relying on rigid, heuristic-based version guessing, it prioritizes user and pipeline authority. At the same time, it strictly validates and normalizes all resolved versions against standard specifications (PEP 440 and SemVer 2) to guarantee complete compatibility across the Python packaging ecosystem and broader ecosystems.
-
-- **Predictability & Authority First:** Enforces CI-driven and user-defined authority, giving you total control over the versioning flow, while strictly validating against PEP 440 and SemVer 2 to ensure absolute compatibility with pip, PyPI, and external packaging tools.
-- **Unified Multi-File Synchronization:** Update multiple version targets—such as Python modules (`version.py`), Cargo manifests (`Cargo.toml`), and deployment manifests (`Dockerfile`)—simultaneously with a single build or write command, simplifying build processes and unifying version resolution.
-- **Flexible Invocation & Rich Integration:** Run seamlessly as a build plugin for Hatchling, Setuptools, or Maturin, execute standalone from the terminal via an active CLI, or programmatically import versioning logic through a clean Python API.
-- **Deep Auditing & Customization:** Provides 25+ configuration settings, custom function hooks, and ExStr template formats to generate structured metadata tracking Git commits, branches, dirty states, and environment parameters.
+- **One tool for a polyglot repository.** Python, Rust, npm, Helm, citation
+  files and container labels are stamped by one command, each in the spelling
+  its ecosystem expects (PEP 440 or SemVer).
+- **Tags are the only source of truth.** No version is committed between
+  releases and there is no version file to keep in sync. Source tarballs and
+  sdists still resolve correctly.
+- **Reviewed releases.** The next version and the changelog come from
+  Conventional Commits and arrive as a pull request you can read, edit and
+  merge. Tagging the merge is the release.
+- **Small surface.** Three commands, twelve settings, and no configuration at
+  all for the common case.
+- **Safe in CI.** A shallow clone or missing history warns on a laptop and
+  fails in CI, so a wrong version is never published.
+- **Edits that leave files alone.** Only the version value changes: comments,
+  key order, quoting and line endings survive, and stamped files never make
+  the tree count as dirty.
 
 ### Ecosystem Comparison
 
-| Tool               | Versioning Authority & Control                                                        | Build Backends                                                                           | Configuration, Sources & Outputs                                                                    | Invocation Pathways                                                                             |
-| :----------------- | :------------------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------- |
-| **`GitVersioned`** | **User/CI-First.** Predictable release rules with strict PEP 440/SemVer 2 validation. | **Universal.** Native Hatchling, Setuptools, Maturin (Rust), and OCI/Dockerfile support. | **Extensive.** Resolves from Git, archives, env, files, or custom hooks. Outputs to multiple files. | **Plugin, Wrapper, CLI, or API.** High versatility across all scripting and build environments. |
-| `setuptools-scm`   | Guess-based. Heuristic version incrementing with no strict custom control.            | Setuptools-only. Tightly coupled to standard Python packaging setup.                     | VCS tags primary. Environment overrides are manual; single Python module output.                    | Build hook only. Tightly bound to python packaging build runs.                                  |
-| `versioneer`       | Rigidbody. Rigid tag-plus-distance logic with minimal user-defined authority.         | Legacy Setuptools. Rigidity limits adoption to standard setup scripts.                   | VCS-only. Hardcoded metadata; outputs to a single vendored Python script.                           | Vendored file. Requires copying ~2k lines of python code into the repo.                         |
-| `versioningit`     | VCS-bound. Configurable but places compliance validation on the user.                 | Multi-backend. Python-only; requires custom wrapper config per backend.                  | Modular. Customizable sources but limited to single Python file output.                             | Python API & plugin hooks. Lacks a standalone CLI/API shell executable.                         |
-| `hatch-vcs`        | Guess-based. Inherits setuptools-scm's tag-based guessing logic.                      | Hatchling-only. Inapplicable to Setuptools, Maturin, or non-Python.                      | SCM-bound. Resolves from SCM; outputs strictly to Python targets.                                   | Build hook only. Operates strictly inside Hatchling environment execution.                      |
+| Tool               | Version from tags | Python builds                          | Rust and npm manifests | Commit checks | Release PR and changelog | Monorepo packages |
+| :----------------- | :---------------- | :------------------------------------- | :--------------------- | :------------ | :----------------------- | :---------------- |
+| **`GitVersioned`** | Yes               | Hatchling, setuptools, Maturin         | Yes, with `Cargo.lock` | Yes           | Yes, via `gh`            | Yes               |
+| `setuptools-scm`   | Yes               | setuptools (Hatchling via `hatch-vcs`) | No                     | No            | No                       | Limited           |
+| `release-please`   | No, committed     | No                                     | Yes                    | No            | Yes                      | Yes               |
+| `release-plz`      | No, committed     | No                                     | Rust only              | No            | Yes                      | Cargo workspaces  |
+| `commitizen`       | No, committed     | No                                     | By pattern             | Yes           | Changelog only           | Limited           |
+| `semantic-release` | Yes               | By plugin                              | By plugin              | By plugin     | No pull request          | By plugin         |
 
 ## Quick Start
 
-GitVersioned supports multiple integration paths: as a build plugin for **Hatchling**, **Setuptools**, or **Maturin**, via a standalone **CLI**, or programmatically as a **Python API**.
+```bash
+uvx gitversioned version     # or: pipx run gitversioned version
+```
 
-### 1. Hatchling Build Plugin (Zero Config)
+### 1. Print the version
 
-Declare `gitversioned` in `pyproject.toml` as a build requirement and version source, then enable the build hook plugin to automatically bundle the generated `version.py` as an artifact (even if git-ignored):
+```console
+$ gitversioned version
+1.4.1.dev20261125+60439dc
+$ gitversioned version --standard semver
+1.4.1-dev.20261125+60439dc
+$ gitversioned version --next
+1.5.0
+```
+
+On a tag the output is the tag's version. After it, the output is a development
+version: the next patch, the commit date and the commit hash.
+
+### 2. Build Python packages from the tag
 
 ```toml
 # pyproject.toml
 [build-system]
-requires = ["hatchling", "gitversioned"]
+requires = ["hatchling", "gitversioned>=0.4"]
 build-backend = "hatchling.build"
 
 [project]
@@ -111,178 +136,132 @@ dynamic = ["version"]
 [tool.hatch.version]
 source = "gitversioned"
 
-# Automatically registers the generated version file as a build artifact
 [tool.hatch.build.hooks.gitversioned]
 ```
 
-Expose the dynamic version directly in your package root:
+Setuptools opts in by listing `gitversioned` in `build-system.requires`. Maturin
+uses `build-backend = "gitversioned.plugins.maturin"`.
 
-<!-- mdformat-off -->
+### 3. Stamp every other manifest
 
-<!--phmdoctest-skip-->
-
-```python
-# src/my_package/__init__.py
-from .version import __version__
+```console
+$ gitversioned version --write
+1.4.1.dev20261125+60439dc
+  CITATION.cff            1.4.1-dev.20261125+60439dc
+  Dockerfile              1.4.1-dev.20261125+60439dc
+  charts/demo/Chart.yaml  1.4.1-dev.20261125+60439dc
+  crates/cli/Cargo.toml   1.4.1-dev.20261125+60439dc
+  crates/core/Cargo.toml  1.4.1-dev.20261125+60439dc
+  src/demo/version.py     1.4.1.dev20261125+60439dc
+  Cargo.lock              1.4.1-dev.20261125+60439dc
 ```
 
-<!-- mdformat-on -->
+### 4. Check titles and commits
 
-### 2. Setuptools Build Plugin (Zero Config)
-
-Setuptools supports zero-config dynamic versioning using `gitversioned = True` or declarative overrides. The plugin automatically finalizes options and injects the output file into distribution package data.
-
-=== "pyproject.toml"
-
-```toml
-[build-system]
-requires = ["setuptools>=64.0", "gitversioned"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "my-package"
-dynamic = ["version"]
+```console
+$ gitversioned check "feat(core): add streaming parser"
+ok
+$ gitversioned check "added a thing"
+fail  title  'added a thing' is not a Conventional Commit title. Expected type(scope): subject.
+$ gitversioned check
+ok    config   .config/gitversioned.toml
+ok    git      full history, 1 release tags, latest v1.4.0
+ok    targets  CITATION.cff, Dockerfile, charts/demo/Chart.yaml, ...
 ```
 
-=== "setup.cfg"
+### 5. Release
 
-```ini
-[metadata]
-name = my-package
+```console
+$ gitversioned release
+release   1.5.0  (minor, from commits, from 1.4.0)
+tag       v1.5.0
 
-[options]
-setup_requires =
-    gitversioned
-gitversioned = True
+## 1.5.0 - 2026-11-25
+
+### Added
+
+- **core**: add streaming parser
+
+### Fixed
+
+- **cli**: exit code on empty input
+
+$ gitversioned release --pr      # open or update the release pull request
+$ gitversioned release --tag     # after it merges: tag and push
 ```
-
-=== "setup.py"
-
-<!-- mdformat-off -->
-
-<!--phmdoctest-skip-->
-
-```python
-from setuptools import setup
-
-if __name__ == "__main__":
-    setup(
-        name="my-package",
-        setup_requires=["gitversioned"],
-        gitversioned=True,
-    )
-```
-
-<!-- mdformat-on -->
-
-### 3. Maturin Build Plugin (Zero Config)
-
-For Rust-based Python projects, wrap Maturin in `pyproject.toml` and configure a placeholder version in `Cargo.toml`. The plugin will automatically calculate and synchronize versions across both languages:
-
-**`pyproject.toml`**
-
-```toml
-[build-system]
-requires = ["maturin>=1.0,<2.0", "gitversioned"]
-build-backend = "gitversioned.plugins.maturin_plugin"
-
-[project]
-name = "my-package"
-dynamic = ["version"]
-```
-
-**`Cargo.toml`**
-
-```toml
-[package]
-name = "my_rust_package"
-version = "0.0.0"  # Will be dynamically synchronized during builds
-```
-
-### 4. Command Line Interface (CLI)
-
-Install the package to use the CLI standalone to resolve, format, or write versions:
-
-```bash
-pip install gitversioned
-
-# Calculate and print only the resolved PEP 440 version string
-gitversioned calculate
-
-# Preview how the formatted version Strategy compiles
-gitversioned format
-
-# Resolve and write a generated version file
-gitversioned write --output src/package/version.py
-```
-
-### 5. Multi-File / Overrides Versioning
-
-Synchronize multiple files simultaneously (e.g., Dockerfiles, web applications, cargo manifests) during a single build or CLI run:
-
-```toml
-# pyproject.toml
-[tool.gitversioned]
-output = "src/package/version.py"
-
-[tool.gitversioned.overrides.cargo]
-output = "Cargo.toml"
-output_strategies = { type = "regex", pattern = '(?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2' }
-
-[tool.gitversioned.overrides.docker]
-output = "Dockerfile"
-output_strategies = { type = "regex", pattern = 'ARG VERSION="(?P<version>.*?)"' }
-```
-
-Running `gitversioned write` or building your package will automatically calculate the version and update `src/package/version.py`, `Cargo.toml`, and `Dockerfile` in-place!
 
 ### 6. Python API
 
-Integrate version resolution directly inside Python scripts:
+<!--phmdoctest-skip-->
 
 ```python
-from gitversioned import Settings
-from gitversioned.utils import GitRepository, BuildEnvironment
-from gitversioned.versioning import resolve_version
+from gitversioned import get_version, load_config, resolve
 
-settings = Settings()
-repo = GitRepository(settings.project_root)
-env = BuildEnvironment(project_root=settings.project_root)
-
-version, resolved_type, git_ref = resolve_version(settings, repo, env)
-print(f"Resolved version: {version} (Type: {resolved_type})")
+print(get_version())
+resolved = resolve(load_config())
+print(resolved.version.semver(), resolved.type, resolved.source)
 ```
 
-### Configure Archive Support (Recommended)
+For the full walkthrough, see the **[Getting Started guide](https://github.com/markurtz/git-versioned/blob/main/docs/getting-started/index.md)**.
 
-To resolve the version when users download a repository ZIP file (e.g., from GitHub) where the `.git` directory is missing, run:
+## Configuration
 
-```bash
-gitversioned init-archive
+Everything is optional. Settings live in one of `.config/gitversioned.toml`,
+`gitversioned.toml`, `pyproject.toml`, `Cargo.toml`, `package.json` or
+`setup.cfg`.
+
+```toml
+# .config/gitversioned.toml (the values shown are the defaults)
+version = "auto"            # or a pinned version
+fallback = "0.1.0"          # before the first tag
+tag = "v{version}"
+annotated = false
+branch = "main"
+dev = "patch"               # base of development builds
+nightly = "next"            # base of nightly builds
+date = "commit"             # or "build"
+local = true                # +hash on development builds
+changelog = "CHANGELOG.md"  # or false
+scopes = []                 # any scope; or a list, or a TOML file
+
+[[targets]]                 # a file discovery cannot recognise
+path = "docs/install.md"
+pattern = 'my-tool@(?P<version>[0-9][^\s`]*)'
+
+[packages.web]              # a package with its own tags and releases
+path = "packages/web"
+tag = "web-v{version}"
 ```
 
-This automatically initializes the `.git_archival.txt` template and enables variable substitution (`export-subst`) in `.gitattributes`.
-
-For full options and onboarding, see the **[Getting Started guide](https://github.com/markurtz/git-versioned/blob/main/docs/getting-started/index.md)**.
+Any setting can be overridden from the environment as `GITVERSIONED__KEY`. See
+the **[Configuration Guide](https://github.com/markurtz/git-versioned/blob/main/docs/guides/configuration.md)**.
 
 ## Core Concepts
 
-GitVersioned is built using modern Python tooling, enforcing strict code quality standards with Ruff and Mypy, and providing a robust Pydantic-driven settings architecture for configuration resolution.
+- **Sources, in order:** a pin, git tags, the archive file for source
+  tarballs, sdist metadata, then the fallback.
+- **Bump rules:** a breaking change is major, `feat` is minor, other releasable
+  types are patch; below 1.0.0 each level shifts down one.
+- **Release flow:** commits on `main`, a release pull request on
+  `release/next`, a tag on the merge.
 
-### Component Architecture
+### Repository Layout
 
-The repository is structured to separate documentation, application logic, and testing cleanly:
-
-- `src/gitversioned/`: The primary application source code. Contains core logic for Git interaction, version resolution, and template generation.
-  - `plugins/`: Native integrations for build backends like Hatchling (`hatchling_plugin.py`) and Setuptools (`setuptools_plugin.py`).
-- `tests/`: Comprehensive test suite ensuring reliability, organized into `unit/`, `integration/`, and `e2e/`.
-- `docs/`: Source code for the MkDocs Material documentation site, including step-by-step guides, references, and getting started tutorials.
-- `examples/`: Runnable reference projects demonstrating real-world configurations across various build systems and workflows.
-- `.github/workflows/`: Advanced CI/CD pipelines governing the project lifecycle, built around reusable workflow templates.
+- `src/gitversioned/`: the package. `cli.py` holds the commands; `resolve.py`,
+  `targets.py`, `commits.py`, `changelog.py`, `checks.py` and `release.py` hold
+  the logic; `plugins/` holds the Hatchling, setuptools and Maturin backends.
+- `tests/`: `unit/`, `integration/` and `e2e/`, with one end-to-end class per
+  user story.
+- `examples/`: runnable projects for each backend and a polyglot repository.
+- `docs/`: the documentation site.
+- `.github/workflows/`: the CI/CD pipelines.
 
 ## Advanced Usage
 
-Please check the [`examples/`](https://github.com/markurtz/git-versioned/tree/main/examples/) directory for advanced examples and configurations.
+See the [`examples/`](https://github.com/markurtz/git-versioned/tree/main/examples/)
+directory and the [guides](https://github.com/markurtz/git-versioned/tree/main/docs/guides).
+Coming from 0.3? Read the
+[Migration Guide](https://github.com/markurtz/git-versioned/blob/main/docs/guides/migration.md).
 
 ## General
 

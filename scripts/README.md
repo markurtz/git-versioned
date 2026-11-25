@@ -55,7 +55,14 @@ If you are adding or modifying a script in this directory, please ensure it adhe
 
 ## Available Scripts
 
-*Currently, there are no utility scripts in this directory.*
+| Script                  | Purpose                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `add_headers.py`        | Adds the Apache 2.0 header to source files that lack it.                         |
+| `build_binary.py`       | Builds a standalone `gitversioned` executable with PyInstaller into `dist/bin/`. |
+| `check_links.py`        | Checks the links in Markdown files.                                              |
+| `generate_llms_full.py` | Regenerates `llms-full.txt` from the configuration, source and guides.           |
+| `generate_doc_tests.py` | Turns the Python snippets in the docs into tests under `.tests/docs`.            |
+| `run_oci.py`            | Runs the container lint, security and structure tools.                           |
 
 ## Contributing
 

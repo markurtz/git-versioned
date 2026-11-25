@@ -158,3 +158,60 @@ class TestRootDiscovery:
         config = load_config(nested)
         assert config.root == tmp_path.resolve()
         assert config.branch == "trunk"
+
+
+class TestScopes:
+    """The allowed scopes, from a list, a file and the package names."""
+
+    @pytest.mark.sanity
+    def test_package_names_join_restricted_scopes(self, tmp_path: Path) -> None:
+        """A package name is a valid scope once scopes are restricted."""
+        (tmp_path / "gitversioned.toml").write_text(
+            'scopes = ["core"]\n[packages.web]\npath = "packages/web"\n',
+            encoding="utf-8",
+        )
+        assert load_config(tmp_path).allowed_scopes() == ["core", "web"]
+
+    @pytest.mark.sanity
+    def test_unrestricted_stays_unrestricted(self, tmp_path: Path) -> None:
+        """Packages alone do not restrict scopes."""
+        (tmp_path / "gitversioned.toml").write_text(
+            '[packages.web]\npath = "packages/web"\n', encoding="utf-8"
+        )
+        assert load_config(tmp_path).allowed_scopes() == []
+
+    @pytest.mark.regression
+    def test_scopes_file(self, tmp_path: Path) -> None:
+        """The table names of a TOML file are the scopes."""
+        (tmp_path / "scopes.toml").write_text(
+            '[core]\npaths = ["src"]\n[docs]\n', encoding="utf-8"
+        )
+        (tmp_path / "gitversioned.toml").write_text(
+            'scopes = "scopes.toml"\n', encoding="utf-8"
+        )
+        assert load_config(tmp_path).allowed_scopes() == ["core", "docs"]
+
+
+class TestDiscoverySkips:
+    """Example, test and vendored folders are not stamped unless listed."""
+
+    @pytest.mark.regression
+    def test_examples_are_skipped_but_can_be_listed(self, tmp_path: Path) -> None:
+        """A manifest under examples/ is found only as a listed target."""
+        from gitversioned.targets import discover
+
+        manifest = tmp_path / "examples" / "demo" / "package.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text('{"name": "demo", "version": "0.0.0"}\n', encoding="utf-8")
+        (tmp_path / "package.json").write_text(
+            '{"name": "root", "version": "0.0.0"}\n', encoding="utf-8"
+        )
+        found = [target.path.name for target in discover(load_config(tmp_path))]
+        assert found == ["package.json"]
+        (tmp_path / "gitversioned.toml").write_text(
+            '[[targets]]\npath = "examples/demo/package.json"\ncommit = false\n',
+            encoding="utf-8",
+        )
+        targets = discover(load_config(tmp_path))
+        assert len(targets) == 2
+        assert not next(t for t in targets if "examples" in t.path.parts).commit

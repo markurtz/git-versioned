@@ -1,46 +1,57 @@
 # GitVersioned
 
-> Opinionated PEP 440 Python versioning for Git repos and submodules.
+> One version for a whole repository, from git tags: resolved, stamped into every manifest, checked and released.
 
-`gitversioned` enforces CI and user authority over versioning, and generates rich `version.py` files with deep metadata for full auditability.
-For complete, merged context containing the full codebase and all guides, see [llms-full.txt](llms-full.txt).
+`gitversioned` resolves the version of a checkout from its release tags, stamps it into Python, Rust, npm, Helm and container manifests with scoped text edits, validates Conventional Commit titles and drives a reviewed release (changelog, release pull request, tag). It has three commands: `version`, `check` and `release`.
+For the merged project configuration, source and guides, see [llms-full.txt](llms-full.txt).
 
 ## Primary Documentation Links
 - [Documentation Home](https://markurtz.github.io/git-versioned/): Main site home page
-- [Getting Started](https://markurtz.github.io/git-versioned/getting-started/): Onboarding, installation, and setup
-- [Concepts & Architecture](https://markurtz.github.io/git-versioned/guides/concepts/): PEP 440, dirty state checks, and metadata fields
-- [Configuration Guide](https://markurtz.github.io/git-versioned/guides/configuration/): Setting overrides via `pyproject.toml`
-- [CLI Guide](https://markurtz.github.io/git-versioned/guides/cli/): Standalone CLI usage and subcommands
-- [Python API Guide](https://markurtz.github.io/git-versioned/guides/api/): Programmatic python usage
-- [Integration: Hatchling](https://markurtz.github.io/git-versioned/guides/hatchling/): Hatch versioning plugin integration
-- [Integration: Setuptools](https://markurtz.github.io/git-versioned/guides/setuptools/): Setuptools versioning hook integration
-- [Integration: Maturin](https://markurtz.github.io/git-versioned/guides/maturin/): Maturin versioning wrapper integration
+- [Getting Started](https://markurtz.github.io/git-versioned/getting-started/): Installation, quick start and common workflows
+- [CLI Guide](https://markurtz.github.io/git-versioned/guides/cli/): Every command and option, with real output
+- [Configuration Guide](https://markurtz.github.io/git-versioned/guides/configuration/): The twelve settings, targets, packages and environment overrides
+- [Concepts](https://markurtz.github.io/git-versioned/guides/concepts/): Version sources, bump rules, stamping and the release flow
+- [Python API Guide](https://markurtz.github.io/git-versioned/guides/api/): Programmatic use
+- [Integration: Hatchling](https://markurtz.github.io/git-versioned/guides/hatchling/): Version source and build hook
+- [Integration: Setuptools](https://markurtz.github.io/git-versioned/guides/setuptools/): Opt-in integration
+- [Integration: Maturin](https://markurtz.github.io/git-versioned/guides/maturin/): Wrapper build backend
+- [GitHub Workflows](https://markurtz.github.io/git-versioned/guides/github-workflows/): Title checks, release pull request, tagging
+- [Migrating from 0.3](https://markurtz.github.io/git-versioned/guides/migration/): What changed in 0.4
 - [API Reference Documentation](https://markurtz.github.io/git-versioned/reference/): Complete API reference
 
 ## Architectural Topography
 
 ### Configuration & Entrypoints
-- [pyproject.toml](pyproject.toml): Project settings, environment scripts, and PEP 518/621 metadata.
-- [AGENTS.md](AGENTS.md): Foundational agent development guidelines, build commands, and security boundaries.
-- [CLAUDE.md](CLAUDE.md): Direct pointer routing assistants to `AGENTS.md`.
-- [src/gitversioned/__main__.py](src/gitversioned/__main__.py): Standalone CLI entrypoint. Exposes subcommands:
-  - `calculate`: Computes and outputs the PEP 440 version string only.
-  - `format`: Formats and prints rendered template outputs to stdout.
-  - `write`: Resolves version and writes it directly to the designated output file (e.g. `version.py`).
+- [pyproject.toml](pyproject.toml): Project metadata, Hatch environments and tool settings.
+- [AGENTS.md](AGENTS.md): Agent development guidelines, commands and security boundaries.
+- [CLAUDE.md](CLAUDE.md): Pointer to `AGENTS.md`.
+- [src/gitversioned/cli.py](src/gitversioned/cli.py): The command line. Commands:
+  - `version`: print the version, the next one (`--next`), or stamp files (`--write`).
+  - `check`: validate the setup, a title, a commit range (`--commits`) or a tag (`--tag`).
+  - `release`: plan a release, update the working tree (`--write`), open the pull request (`--pr`), tag (`--tag`).
+  - `init`: optional setup of the archive file.
 
 ### Core Library Modules
-- [src/gitversioned/settings.py](src/gitversioned/settings.py): Pydantic schemas validating configuration fields.
-- [src/gitversioned/logging.py](src/gitversioned/logging.py): Loguru logging setup and stdout/stderr separation.
-- [src/gitversioned/plugins/hatchling_plugin.py](src/gitversioned/plugins/hatchling_plugin.py): Hook for Hatch builds.
-- [src/gitversioned/plugins/setuptools_plugin.py](src/gitversioned/plugins/setuptools_plugin.py): Hook for Setuptools builds.
-- [src/gitversioned/plugins/maturin_plugin.py](src/gitversioned/plugins/maturin_plugin.py): Hook wrapper for Maturin builds.
-- [src/gitversioned/utils/git.py](src/gitversioned/utils/git.py): Git repository information extraction via subprocess hooks.
-- [src/gitversioned/utils/environment.py](src/gitversioned/utils/environment.py): Target environment configuration resolver.
-- [src/gitversioned/versioning/entrypoints.py](src/gitversioned/versioning/entrypoints.py): Package endpoints for resolving and writing versions.
-- [src/gitversioned/versioning/generation.py](src/gitversioned/versioning/generation.py): Version file template compilation and formatting.
-- [src/gitversioned/versioning/sources.py](src/gitversioned/versioning/sources.py): Git state and environment variable version resolvers.
+- [src/gitversioned/model.py](src/gitversioned/model.py): `Version`, printed as PEP 440 or SemVer.
+- [src/gitversioned/config.py](src/gitversioned/config.py): The settings model, its homes and environment overrides.
+- [src/gitversioned/git.py](src/gitversioned/git.py): Git access through subprocess, the archive file and sdist metadata.
+- [src/gitversioned/resolve.py](src/gitversioned/resolve.py): Resolves the version of a checkout from its sources.
+- [src/gitversioned/commits.py](src/gitversioned/commits.py): Conventional Commit parsing and bump rules.
+- [src/gitversioned/editors.py](src/gitversioned/editors.py): Span locators for TOML, JSON and YAML values.
+- [src/gitversioned/targets.py](src/gitversioned/targets.py): Discovery and stamping of the files that hold a version.
+- [src/gitversioned/changelog.py](src/gitversioned/changelog.py): Changelog entries and sections.
+- [src/gitversioned/checks.py](src/gitversioned/checks.py): Validation of the setup, titles, commits and tags.
+- [src/gitversioned/github.py](src/gitversioned/github.py): The GitHub side, through the `gh` CLI.
+- [src/gitversioned/release.py](src/gitversioned/release.py): Release planning, the release pull request and tagging.
+- [src/gitversioned/scaffold.py](src/gitversioned/scaffold.py): The `init` step.
+- [src/gitversioned/errors.py](src/gitversioned/errors.py): Errors and their exit codes.
+- [src/gitversioned/logging.py](src/gitversioned/logging.py): Standard library logging setup.
+- [src/gitversioned/plugins/hatchling.py](src/gitversioned/plugins/hatchling.py): Hatchling version source and build hook.
+- [src/gitversioned/plugins/setuptools.py](src/gitversioned/plugins/setuptools.py): Setuptools integration.
+- [src/gitversioned/plugins/maturin.py](src/gitversioned/plugins/maturin.py): Maturin wrapper backend.
 
 ### Testing Suite Tiers
-- [tests/python/unit/](tests/python/unit/): Fully isolated unit tests for individual functions and classes.
-- [tests/python/integration/](tests/python/integration/): Component integration checks.
-- [tests/e2e/](tests/e2e/): High-level integration tests executing CLI flows and package builds.
+- [tests/unit/](tests/unit/): Isolated tests of the version model, editors and commit rules.
+- [tests/integration/](tests/integration/): Settings loading and build backends.
+- [tests/e2e/](tests/e2e/): One class per user story, run through the command line in real git repositories.
+- [examples/](examples/): Runnable projects, each covered by `examples/test_examples.py`.

@@ -1,0 +1,12 @@
+[package]
+name = "demo-maturin"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.23"

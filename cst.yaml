@@ -54,10 +54,10 @@ commandTests:
       - "--help"
     expectedOutput:
       - "Usage: gitversioned.*"
-      - "calculate"
-      - "format"
-      - "write"
-      - "overrides"
+      - "version"
+      - "check"
+      - "release"
+      - "init"
   - name: "Verify gitversioned module help command works"
     command: "python"
     args:
@@ -66,28 +66,28 @@ commandTests:
       - "--help"
     expectedOutput:
       - "Usage: python -m gitversioned.*"
-      - "calculate"
-      - "format"
-      - "write"
-      - "overrides"
-  - name: "Verify gitversioned CLI binary calculate command works"
+      - "version"
+      - "check"
+      - "release"
+      - "init"
+  - name: "Verify gitversioned CLI binary version command works"
     command: "gitversioned"
     args:
-      - "calculate"
+      - "version"
     expectedOutput:
       - "0\\.1\\.0"
-  - name: "Verify gitversioned module calculate command works"
+  - name: "Verify gitversioned module version command works"
     command: "python"
     args:
       - "-m"
       - "gitversioned"
-      - "calculate"
+      - "version"
     expectedOutput:
       - "0\\.1\\.0"
-  - name: "Verify gitversioned CLI binary format command works"
+  - name: "Verify gitversioned check reports the setup"
     command: "gitversioned"
     args:
-      - "format"
+      - "check"
+      - "--warn"
     expectedOutput:
-      - "Auto-generated version file from git-versioned"
-      - "__version__ = \"0\\.1\\.0\""
+      - "config"

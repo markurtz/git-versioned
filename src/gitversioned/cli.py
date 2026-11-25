@@ -37,7 +37,7 @@ from typing import Annotated, Any, cast
 
 import typer
 
-from gitversioned import git
+from gitversioned import __version__, git
 from gitversioned.checks import (
     Finding,
     check_commits,
@@ -99,6 +99,28 @@ _PRE = ("rc", "beta", "alpha")
 _TYPES = ("dev", "nightly", "release")
 _STANDARDS = ("pep440", "semver")
 _MAX_LISTED = 5
+
+
+def _print_version(value: bool) -> None:
+    """Print the version of gitversioned itself and stop."""
+    if value:
+        typer.echo(f"gitversioned v{__version__}")
+        raise typer.Exit
+
+
+@app.callback()
+def _root(
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            help="Print the version of gitversioned itself.",
+            callback=_print_version,
+            is_eager=True,
+        ),
+    ] = False,
+) -> None:
+    """Versions from git tags, stamped into every manifest, checked and released."""
 
 
 def _choice(value: str | None, allowed: tuple[str, ...], flag: str) -> str | None:

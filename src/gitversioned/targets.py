@@ -71,6 +71,13 @@ _SKIP_DIRS = {
     "build",
     ".git",
     "site",
+    "examples",
+    "tests",
+    "test",
+    "testdata",
+    "fixtures",
+    "vendor",
+    "third_party",
 }
 _DOCKER_LABEL = re.compile(
     r"""org\.opencontainers\.image\.version\s*=\s*(?P<q>["']?)(?P<value>[^"'\s\\]+)(?P=q)"""

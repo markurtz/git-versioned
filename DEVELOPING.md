@@ -211,14 +211,14 @@ Code coverage runs collect data during test executions and format them into huma
 #### Unit Testing (`tests-unit` / `tests-unit-cov`)
 
 - **Methodology & Rationale**:
-  - **Python**: Runs isolated tests under `tests/python/unit` via `pytest`. Focuses on validating individual modules and class behaviors.
+  - **Python**: Runs isolated tests under `tests/unit` via `pytest`. Focuses on validating individual modules and class behaviors.
 - **Expected Outputs & Locations**:
   - **Python**: Outputs `coverage/python/coverage_tests-unit.md`.
 
 #### Integration Testing (`tests-int` / `tests-int-cov`)
 
 - **Methodology & Rationale**:
-  - **Python**: Runs tests under `tests/python/integration` via `pytest` to verify interactions between Python modules.
+  - **Python**: Runs tests under `tests/integration` via `pytest` to verify interactions between Python modules.
   - **Project**: Runs documentation code block tests. It utilizes `scripts/generate_doc_tests.py` to parse Markdown files and compile code block assertions under `.tests/docs` (`DOC_TESTS_PATH`), which are then executed using `pytest`.
 - **Expected Outputs & Locations**:
   - **Python**: Outputs `coverage/python/coverage_tests-int.md`.
@@ -295,15 +295,15 @@ Hatch environments make it easy to target a specific test directory, sub-package
 
 - **Run all tests in a specific file**:
   ```bash
-  hatch run python:tests-unit tests/python/unit/test_settings.py
+  hatch run python:tests-unit tests/unit/test_model.py
   ```
 - **Run tests in a specific sub-package / directory**:
   ```bash
-  hatch run python:tests-unit tests/python/unit/compat/
+  hatch run python:tests-unit tests/unit/
   ```
 - **Run functional tests for a specific integration file**:
   ```bash
-  hatch run python:tests-func tests/python/integration/test_utils.py
+  hatch run python:tests-func tests/integration/test_config.py
   ```
 
 ### Documentation Workflows
@@ -347,6 +347,12 @@ These workflows handle compiling code and building containerized runtimes for di
 - **Tools / Methodology / Rationale**: Uses [Hatchling](https://pypi.org/project/hatchling/) (configured under `[build-system]` in `pyproject.toml`) to bundle Python distribution wheel and source packages.
 - **Command**: `hatch build`
 - **Expected Outputs & Locations**: Built source distributions and `.whl` files output to the `dist/` directory.
+
+#### Standalone Binary Build
+
+- **Tools / Methodology / Rationale**: Uses [PyInstaller](https://pyinstaller.org/) to bundle the command line into one executable for repositories without a Python toolchain.
+- **Command**: `pip install pyinstaller && python scripts/build_binary.py`
+- **Expected Outputs & Locations**: One file under `dist/bin/`, named for the platform, such as `gitversioned-linux-x86_64`.
 
 #### OCI Container Image Build
 

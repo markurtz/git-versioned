@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64", "gitversioned>=0.4"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "demo-setuptools"
+dynamic = ["version"]
+description = "A setuptools project versioned from git tags."
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.gitversioned]
+fallback = "0.1.0"
+changelog = "CHANGELOG.md"
+scopes = ["core", "docs"]

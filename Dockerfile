@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir uv hatch
 
-ARG VERSION=0.3.1
+ARG VERSION=0.4.0
 
 # Copy package manifests (utilizing optional copy for Cargo files to be robust)
 COPY pyproject.toml README.md LICENSE NOTICE ./
@@ -54,7 +54,7 @@ FROM python:3.10-slim-bookworm
 # Define standard OCI build parameters
 ARG BUILD_DATE
 ARG GIT_SHA
-ARG VERSION=0.1.3.dev10+9eea393
+ARG VERSION=0.4.0
 
 # OCI Metadata Labels
 LABEL org.opencontainers.image.created=$BUILD_DATE \
@@ -67,7 +67,7 @@ LABEL org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.vendor="markurtz" \
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.title="git-versioned" \
-      org.opencontainers.image.description="Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation."
+      org.opencontainers.image.description="Versions from git tags for Python, Rust and npm projects in one repository: resolve, stamp every manifest, check Conventional Commits and drive a reviewed release with a changelog."
 
 # Define standard production runtime environment variables
 ENV APP_ENV=production \

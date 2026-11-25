@@ -1,19 +1,19 @@
 # Guides
 
-This section contains task-oriented how-to guides for `gitversioned`. Unlike the [Getting Started](../getting-started/index.md) section, which is structured as a linear onboarding path, these guides are standalone — jump to whichever one is relevant to your current task.
+Task-oriented guides for `gitversioned`. Unlike [Getting Started](../getting-started/index.md), which is a linear path, each guide stands alone.
 
 ## Available Guides
 
 <div class="grid" markdown>
 
 <div class="card" markdown>
-:material-file-code-outline: **Templates & Formatting**
+:material-console: **Command Line**
 
 ______________________________________________________________________
 
-A deep dive into formatting strings, output file generation, and the rich build context available for template evaluation.
+The three commands, `version`, `check` and `release`, with real output for every pathway.
 
-[:octicons-arrow-right-24: Templates Guide](templates.md)
+[:octicons-arrow-right-24: CLI Guide](cli.md)
 
 </div>
 
@@ -22,64 +22,64 @@ A deep dive into formatting strings, output file generation, and the rich build 
 
 ______________________________________________________________________
 
-A deep dive into all configuration options, file formats, and environment variables supported by `gitversioned`.
+Every setting, the files that get stamped, packages with their own version, and environment overrides.
 
 [:octicons-arrow-right-24: Configuration Guide](configuration.md)
 
 </div>
 
 <div class="card" markdown>
-:material-puzzle-outline: **Hatchling Integration**
+:material-brain: **Concepts**
 
 ______________________________________________________________________
 
-Step-by-step instructions for integrating `gitversioned` natively with the Hatchling build backend.
-
-[:octicons-arrow-right-24: Hatchling Guide](hatchling.md)
-
-</div>
-
-<div class="card" markdown>
-:material-puzzle-outline: **Setuptools Integration**
-
-______________________________________________________________________
-
-Step-by-step instructions for integrating `gitversioned` natively with the Setuptools build backend.
-
-[:octicons-arrow-right-24: Setuptools Guide](setuptools.md)
-
-</div>
-
-<div class="card" markdown>
-:material-puzzle-outline: **Maturin Integration**
-
-______________________________________________________________________
-
-Step-by-step instructions for integrating `gitversioned` natively with the Maturin build backend.
-
-[:octicons-arrow-right-24: Maturin Guide](maturin.md)
-
-</div>
-
-<div class="card" markdown>
-:material-brain: **Concepts & Resolution**
-
-______________________________________________________________________
-
-A deep dive into how `gitversioned` resolves sources, determines environments, and calculates auto-increments.
+Where the version comes from, how the next one is chosen, and how a release flows from commits to a tag.
 
 [:octicons-arrow-right-24: Concepts Guide](concepts.md)
 
 </div>
 
 <div class="card" markdown>
-:material-console: **Command-Line Interface (CLI)**
+:material-puzzle-outline: **Hatchling**
 
 ______________________________________________________________________
 
-A task-oriented guide on how to use `gitversioned` from the command line, with examples for pre-build invocation and Docker integration.
+Version a pure Python project from git tags at build time.
 
-[:octicons-arrow-right-24: CLI Guide](cli.md)
+[:octicons-arrow-right-24: Hatchling Guide](hatchling.md)
+
+</div>
+
+<div class="card" markdown>
+:material-puzzle-outline: **Setuptools**
+
+______________________________________________________________________
+
+Opt a setuptools project in, and move over from setuptools-scm.
+
+[:octicons-arrow-right-24: Setuptools Guide](setuptools.md)
+
+</div>
+
+<div class="card" markdown>
+:material-puzzle-outline: **Maturin**
+
+______________________________________________________________________
+
+Build Rust extensions with the version stamped into `Cargo.toml` for the build only.
+
+[:octicons-arrow-right-24: Maturin Guide](maturin.md)
+
+</div>
+
+<div class="card" markdown>
+:material-github: **GitHub Workflows**
+
+______________________________________________________________________
+
+Title checks, the release pull request, tagging and publishing.
+
+[:octicons-arrow-right-24: Workflows Guide](github-workflows.md)
 
 </div>
 
@@ -88,13 +88,24 @@ A task-oriented guide on how to use `gitversioned` from the command line, with e
 
 ______________________________________________________________________
 
-Instructions and code examples showing how to import and use the programmatic Python API of `gitversioned` in scripts.
+Resolve, stamp and plan releases from Python, and work with versions directly.
 
 [:octicons-arrow-right-24: API Guide](api.md)
+
+</div>
+
+<div class="card" markdown>
+:material-swap-horizontal: **Migrating from 0.3**
+
+______________________________________________________________________
+
+What changed in 0.4 and what to replace it with.
+
+[:octicons-arrow-right-24: Migration Guide](migration.md)
 
 </div>
 
 </div>
 
 !!! tip "Contributing a Guide"
-Have a workflow or pattern worth documenting? See the [Contributing Guide](../community/contributing.md) to learn how to add a new guide to this section.
+Have a workflow worth documenting? See the [Contributing Guide](../community/contributing.md).

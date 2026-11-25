@@ -84,7 +84,9 @@ class TestTomlSpan:
     @pytest.mark.regression
     def test_replace_keeps_everything_else(self) -> None:
         """Replacing a span changes only the value."""
-        start, end = toml_span(TOML, ["package", "version"])  # type: ignore[misc]
+        span = toml_span(TOML, ["package", "version"])
+        assert span is not None
+        start, end = span
         changed = TOML[:start] + "9.9.9" + TOML[end:]
         assert changed == TOML.replace('version = "1.0.0"', 'version = "9.9.9"')
         assert "# keep me" in changed

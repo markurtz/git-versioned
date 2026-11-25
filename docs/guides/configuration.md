@@ -1,312 +1,191 @@
 # Configuration Guide
 
-`gitversioned` is designed to be fully configurable to adapt to any project's release strategy. While the default settings work seamlessly for most standard semantic versioning (PEP 440) workflows, you can finely tune how versions are extracted, incremented, and outputted.
+gitversioned works with no configuration. Everything below is optional, and the
+whole surface is twelve settings, a list of extra files and a table of
+packages.
 
-This guide explores all configuration options available and demonstrates how to leverage them in different scenarios.
+## Where settings live
 
-______________________________________________________________________
+Settings live in exactly one of these places, searched in this order from the
+folder the command runs in up to the repository root:
 
-## Configuration Sources
+| Home                        | Table                                                                    |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `.config/gitversioned.toml` | The whole file                                                           |
+| `gitversioned.toml`         | The whole file                                                           |
+| `pyproject.toml`            | `[tool.gitversioned]`                                                    |
+| `Cargo.toml`                | `[workspace.metadata.gitversioned]` or `[package.metadata.gitversioned]` |
+| `package.json`              | `"gitversioned"`                                                         |
+| `setup.cfg`                 | `[tool:gitversioned]`                                                    |
 
-`gitversioned` uses a hierarchy of configuration sources. The tool aggregates and prioritizes configuration in the following order (from lowest to highest priority):
+Two homes in the same folder is an error that names both, so a setting can
+never be silently shadowed. An unknown key is also an error, and it names the
+nearest valid key.
 
-1. **`setup.cfg`**: Under the `[tool:gitversioned]` section.
-1. **`pyproject.toml`**: Under the `[tool.gitversioned]` table.
-1. **`.env` files**: Variables prefixed with `GITVERSIONED__` (e.g., `GITVERSIONED__FORMAT_DEV="dev{ref.short_sha}"`).
-1. **Environment Variables**: Variables prefixed with `GITVERSIONED__` (e.g., `export GITVERSIONED__AUTO_INCREMENT='{"dev": "patch"}'`).
+## The settings
 
-Most users will define their configuration in `pyproject.toml`.
+| Key         | Default                | What it does                                                                     |
+| ----------- | ---------------------- | -------------------------------------------------------------------------------- |
+| `version`   | `"auto"`               | A pinned version, or `auto` to resolve from git.                                 |
+| `fallback`  | `"0.1.0"`              | The base version before the first tag exists.                                    |
+| `tag`       | `"v{version}"`         | The tag template; also how release tags are recognised.                          |
+| `annotated` | `false`                | Create annotated tags that carry the changelog section.                          |
+| `branch`    | `"main"`               | The branch releases are cut from and release pull requests target.               |
+| `dev`       | `"patch"`              | The base of a development build: `patch`, `minor`, `major` or `next`.            |
+| `nightly`   | `"next"`               | The base of a nightly build; `next` is the next release from commits.            |
+| `date`      | `"commit"`             | The date in dev and nightly versions: `commit` (reproducible) or `build`.        |
+| `local`     | `true`                 | Add `+<hash>` to development builds.                                             |
+| `changelog` | `"CHANGELOG.md"`       | The changelog file, or `false` to turn it off.                                   |
+| `types`     | The twelve types below | The commit types `check` accepts.                                                |
+| `scopes`    | `[]` (any scope)       | The allowed scopes, or the path of a TOML file whose table names are the scopes. |
 
-______________________________________________________________________
+The default types are `feat`, `fix`, `perf`, `refactor`, `docs`, `test`,
+`build`, `ci`, `chore`, `revert`, `deprecate` and `release`.
 
-## Source & Resolution Options
-
-These settings determine **where** `gitversioned` looks to find the base version string.
-
-### `source_type`
-
-Controls the priority order of sources used to extract the version.
-
-- **Type:** List of strings
-- **Default:** `["auto"]` (Expands to: `file`, `function`, `tag`, `branch`, `commit`)
-- **Options:** `tag`, `branch`, `commit`, `file`, `function`, `auto`
-
-> [!NOTE]
-> If `gitversioned` fails to extract a version from all configured sources (or if the `.git` directory is entirely absent, such as in a GitHub ZIP download), it will automatically attempt an **Archive Fallback**.
-
-```toml
-# Only resolve versions from Git tags or a hardcoded file.
-[tool.gitversioned]
-source_type = ["tag", "file"]
-```
-
-### `version`
-
-Explicit version override. If set to anything other than `"auto"`, the dynamic resolution process is completely bypassed and this version is used directly.
-
-- **Type:** String
-- **Default:** `"auto"`
-
-### `version_source_file`
-
-The file to inspect when the `file` source type is evaluated.
-
-- **Type:** String (Path)
-- **Default:** `"version.txt"`
-
-### `version_source_function`
-
-A Python module and function to execute when the `function` source type is evaluated. The function must accept `**kwargs` (including `settings`, `repo`, and `env`) and return a tuple containing a `Version` object and an optional `GitReference` object.
-
-- **Type:** String (Format: `module.path:function_name`)
-- **Default:** `None`
-
-### `version_source_archive`
-
-The file to inspect when the archive fallback mechanism is triggered (e.g., when the repository is downloaded as a ZIP file without a `.git` directory).
-
-- **Type:** String (Path)
-- **Default:** `".git_archival.txt"`
-
-### Regex Patterns
-
-When evaluating Git sources or files, `gitversioned` uses regex to capture the major, minor, and patch numbers. You can provide a list of patterns to match against. Your regex MUST use named capture groups: `(?P<major>\d+)`, `(?P<minor>\d+)`, and `(?P<patch>\d+)` (or `micro`).
-
-- **`regex_tag`**: Matches against Git tag names.
-- **`regex_branch`**: Matches against the current branch name.
-- **`regex_commit`**: Matches against commit messages.
-- **`regex_file`**: Matches against the contents of `version_source_file`.
-- **`regex_archive`**: Matches against the contents of `version_source_archive` during the archive fallback.
+### Example: every setting
 
 ```toml
-[tool.gitversioned]
-# Match tags like "v1.2.3" or "release/1.2.3"
-regex_tag = [
-    '^(?:release/)?v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$'
-]
-```
-
-______________________________________________________________________
-
-## Output & Generation Options
-
-Once the base version is resolved, these settings control how it is transformed and written to disk.
-
-### `version_type`
-
-Forces a specific build type. By default, `gitversioned` intelligently decides this based on repository state (e.g., clean HEAD = `release`, dirty/detached = `dev`).
-
-- **Type:** String
-- **Default:** `"auto"`
-- **Options:** `auto`, `release`, `dev`, `pre`, `alpha`, `nightly`, `post`
-
-### `dirty_ignore`
-
-A list of file paths to ignore when `gitversioned` checks if the repository is in a "dirty" state (which normally forces a `dev` version type). The `output` and `version_source_file` are always automatically ignored. This is particularly useful for configuration files that might be modified during build processes.
-
-- **Type:** List of strings
-- **Default:** `[]`
-
-```toml
-[tool.gitversioned]
-# Ignore changes to these files when checking dirty state
-dirty_ignore = ["poetry.lock", "tests/sandbox/"]
-```
-
-### `auto_increment`
-
-Determines which segment of the version string is incremented for pre-releases and development builds when the repository is ahead of the last version source.
-
-- **Type:** Dictionary (Mapping string release types to string increment targets)
-- **Default:** `{"dev": "patch", "pre": "minor"}`
-- **Keys:** `release`, `dev`, `pre`, `alpha`, `nightly`, `post`
-- **Values:** `major`, `minor`, `micro` (or `patch`, `bug`)
-
-> [!NOTE]
-> If the resolved build type is `alpha` or `nightly`, and no auto-increment level is explicitly defined for them, `gitversioned` falls back to the configuration set for `pre`.
-
-```toml
-[tool.gitversioned.auto_increment]
-# Automatically bump the patch version for dev builds instead of minor.
+# .config/gitversioned.toml
+version = "auto"
+fallback = "0.1.0"
+tag = "v{version}"
+annotated = false
+branch = "main"
 dev = "patch"
+nightly = "next"
+date = "commit"
+local = true
+changelog = "CHANGELOG.md"
+types = ["feat", "fix", "perf", "refactor", "docs", "test", "build", "ci", "chore", "revert", "deprecate", "release"]
+scopes = ["core", "cli", "docs"]
 ```
 
-### `output`
-
-The file path where the generated version metadata module will be written. If you want to disable file generation entirely, set this to an empty string.
-
-- **Type:** String
-- **Default:** `"version.py"`
+The same settings in the other homes:
 
 ```toml
+# pyproject.toml
 [tool.gitversioned]
-# Place the output file inside your package directory
-output = "src/my_package/version.py"
+tag = "v{version}"
+scopes = ["core", "cli", "docs"]
 ```
-
-### `version_standard`
-
-The standard formatting layout used to normalize and compile the version string.
-
-- **Type:** String
-- **Default:** `"pep440"`
-- **Options:** `pep440`, `semver2`
 
 ```toml
-[tool.gitversioned]
-version_standard = "semver2"
+# Cargo.toml
+[workspace.metadata.gitversioned]
+tag = "v{version}"
+scopes = ["core", "cli", "docs"]
 ```
 
-### `output_strategies`
-
-Configures the output formatting, templating, and text-replacement actions executed when generating the version file. This can be configured as a single strategy or a dictionary mapping specific `version_type` outputs (such as `release` or `dev`) to separate strategy objects.
-
-- **Type:** Dictionary or Single Strategy Object
-- **Default:** Pre-configured to output full metadata files using template files for `release` and `dev` states.
-- **Strategy Types:**
-  - `template_str`: Formats an inline string pattern containing placeholder variables (e.g. `{version}`, `{repo.current_commit.commit_sha}`).
-  - `template_path`: Reads and formats an external template file relative to the project root.
-  - `regex`: Searches an existing file for a pattern containing a `(?P<version>...)` group and updates the matched version string in-place.
-
-```toml
-# Inline Template String Strategy
-[tool.gitversioned.output_strategies]
-type = "template_str"
-content = "__version__ = '{version}'"
-
-# Or partitioned by release state:
-[tool.gitversioned.output_strategies.release]
-type = "template_path"
-path = "templates/release.py.template"
-
-[tool.gitversioned.output_strategies.dev]
-type = "template_str"
-content = "__version__ = '{version}'"
+```json
+{
+  "name": "my-package",
+  "gitversioned": {
+    "tag": "v{version}",
+    "scopes": ["core", "cli", "docs"]
+  }
+}
 ```
-
-### `overrides`
-
-Defines override-based settings profiles. Each sub-key under `overrides` represents a named profile that can override any core configuration field. Overrides are particularly useful for projects targeting multiple distinct files, such as writing version data to both a Python package file and a Rust module or `Cargo.toml`.
-
-- **Type:** Dictionary of dictionaries
-- **Default:** `{}`
-
-#### `pyproject.toml` Syntax:
-
-```toml
-[tool.gitversioned.overrides.cargo]
-output = "Cargo.toml"
-output_strategies = { type = "regex", pattern = '(?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2' }
-```
-
-#### `setup.cfg` Syntax:
 
 ```ini
-[tool:gitversioned:overrides:cargo]
-output = Cargo.toml
-
-[tool:gitversioned:overrides:cargo:output_strategies]
-type = regex
-pattern = (?ms)^\[package\].*?^(\s*version\s*=\s*)([\'\"])(?P<version>[^\'\"]+)\2
+# setup.cfg
+[tool:gitversioned]
+tag = v{version}
+scopes = ["core", "cli", "docs"]
 ```
 
-Programmatically, overrides can be instantiated via `settings.get_overridden_settings("profile_name")`. From the CLI, overrides are executed using the `overrides` subcommand group: `gitversioned overrides profile_name [calculate|format|write]`.
+## Targets: the files that get stamped
 
-______________________________________________________________________
+Discovery finds these files on its own, among the files git tracks:
 
-## Logging & Telemetry Configuration
+| File                   | What is stamped                                                                                             | Spelling |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- | -------- |
+| `pyproject.toml`       | `project.version`, when it is static                                                                        | PEP 440  |
+| `<package>/version.py` | Generated, when the build uses gitversioned and the version is dynamic                                      | PEP 440  |
+| `Cargo.toml`           | `package.version` or `workspace.package.version`, and the versions of path dependencies on workspace crates | SemVer   |
+| `Cargo.lock`           | The entries of the workspace crates                                                                         | SemVer   |
+| `package.json`         | `version`                                                                                                   | SemVer   |
+| `tauri.conf.json`      | `version`                                                                                                   | SemVer   |
+| `Chart.yaml`           | `version` and `appVersion`                                                                                  | SemVer   |
+| `CITATION.cff` (root)  | `version`, and `date-released` on a release                                                                 | SemVer   |
+| `Dockerfile` (root)    | The `org.opencontainers.image.version` label, unless it is a `$VARIABLE`                                    | SemVer   |
 
-`gitversioned` provides a dedicated logging subsystem configured via the `LoggingSettings` schema. Parameters are read from environment variables prefixed with `GITVERSIONED__LOGGING__` or via direct programmatic setup.
+Files under `node_modules`, `target`, `dist`, `build`, `site`, `examples`,
+`tests`, `test`, `testdata`, `fixtures`, `vendor` and `third_party` are left
+alone. Edits are scoped text edits: only the version value changes, so
+comments, key order, quoting and line endings survive.
 
-### Logging Settings Reference
+List any other file with `[[targets]]`:
 
-| Option                | Type               | Default Value          | Environment Variable                     | Description                                                                                 |
-| :-------------------- | :----------------- | :--------------------- | :--------------------------------------- | :------------------------------------------------------------------------------------------ |
-| **`enabled`**         | `bool`             | `False`                | `GITVERSIONED__LOGGING__ENABLED`         | Enables or disables the global package logging.                                             |
-| **`clear_loggers`**   | `bool`             | `False`                | `GITVERSIONED__LOGGING__CLEAR_LOGGERS`   | Removes existing active Loguru logger sinks before setup if set to `True`.                  |
-| **`sink`**            | `str` / `Any`      | `sys.stderr`           | `GITVERSIONED__LOGGING__SINK`            | Target log output (e.g. `stdout`, `stderr`, or a file path string).                         |
-| **`level`**           | `str`              | `"WARNING"`            | `GITVERSIONED__LOGGING__LEVEL`           | The minimum severity level required for log messages to be emitted (e.g., `DEBUG`, `INFO`). |
-| **`otel_formatting`** | `str`              | `"auto"`               | `GITVERSIONED__LOGGING__OTEL_FORMATTING` | Controls OpenTelemetry-compliant JSON formatting (`auto`, `enable`, or `disable`).          |
-| **`format`**          | `str` / `callable` | Standard Loguru layout | `GITVERSIONED__LOGGING__FORMAT`          | The standard text template layout used to render log lines.                                 |
-| **`filter`**          | `Any`              | `True`                 | `GITVERSIONED__LOGGING__FILTER`          | Filtering criteria (e.g. module names). Defaults to filtering for `gitversioned` logs only. |
-| **`enqueue`**         | `bool`             | `True`                 | `GITVERSIONED__LOGGING__ENQUEUE`         | Enables asynchronous, thread-safe message queueing.                                         |
-| **`kwargs`**          | `dict`             | `{}`                   | `GITVERSIONED__LOGGING__KWARGS`          | Extra arguments passed directly to the Loguru sink handler registration.                    |
+```toml
+# A value in a TOML, JSON or YAML file, by dotted key
+[[targets]]
+path = "deploy/values.yaml"
+key = "image.tag"
+
+# Any text file, by a regular expression with a `version` group
+[[targets]]
+path = "docs/install.md"
+pattern = 'my-tool@(?P<version>[0-9][^\s`]*)'
+
+# A file discovery would skip, or one that should not be committed
+[[targets]]
+path = "examples/demo/package.json"
+commit = false
+```
+
+| Key       | Meaning                                                                                                          |
+| --------- | ---------------------------------------------------------------------------------------------------------------- |
+| `path`    | The file, relative to the project root. Required.                                                                |
+| `key`     | Dotted path of the value in a TOML, JSON or YAML file.                                                           |
+| `pattern` | Regular expression with a `version` group. Not together with `key`.                                              |
+| `commit`  | Whether the release pull request commits the file. Defaults to true for manifests and false for generated files. |
+
+## Packages: more than one version in a repository
+
+```toml
+[packages.core]
+path = "crates/core"              # follows the repository version
+
+[packages.web]
+path = "packages/web"
+tag = "web-v{version}"            # its own tags, version and release pull request
+```
+
+| Key    | Meaning                                                                |
+| ------ | ---------------------------------------------------------------------- |
+| `path` | The package folder, relative to the project root. Required.            |
+| `tag`  | A tag template. Without it the package follows the repository version. |
+
+A package with its own `tag` is versioned from its own tags, counts only the
+commits that touch its folder, and is left out of the repository's own version
+and stamping. Use `-p NAME` on any command to act on it. The package names are
+added to the allowed scopes.
+
+## Environment overrides
+
+Any setting can be overridden with `GITVERSIONED__<KEY>`. Lists and booleans
+are written as JSON.
 
 ```bash
-# Example: Verbose logging to stdout via environment overrides
-export GITVERSIONED__LOGGING__ENABLED=true
-export GITVERSIONED__LOGGING__LEVEL=DEBUG
-export GITVERSIONED__LOGGING__SINK=stdout
+GITVERSIONED__VERSION=1.2.3 python -m build       # pin the version for one build
+GITVERSIONED__LOCAL=false gitversioned version    # no +hash, e.g. for TestPyPI
+GITVERSIONED__TAG='release-{version}' gitversioned version
+GITVERSIONED__SCOPES='["core","cli"]' gitversioned check "feat(core): x"
+GITVERSIONED__BUMP=minor gitversioned release     # a level or an exact version
 ```
 
-______________________________________________________________________
+`gitversioned version --explain` lists how many keys were set and where the
+settings were read from.
 
-## Formatting Options
+## What is not configurable
 
-`gitversioned` provides formatting strings to construct the different segments of the PEP 440 compliant version.
+These are fixed on purpose, so every repository behaves the same way.
 
-- **`format_main`**: Base semantic version string.
-- **`format_dev`**: Dev suffix.
-- **`format_pre`**: Pre-release suffix.
-- **`format_post`**: Post-release suffix.
-
-For comprehensive details on customizing these formats and the available context variables, please read the [Templates & Formatting Guide](templates.md).
-
-______________________________________________________________________
-
-## Example Configurations
-
-### Scenario 1: Strict Tag-Based Releases
-
-In this scenario, a project only considers annotated Git tags as the source of truth. It outputs the file directly into the package structure and bumps the `patch` version for intermediate commits for dev releases and the `minor` version for pre-releases.
-
-```toml
-[tool.gitversioned]
-source_type = ["tag"]
-output = "src/my_application/__version__.py"
-
-[tool.gitversioned.auto_increment]
-dev = "patch"
-pre = "minor"
-```
-
-### Scenario 2: Legacy File Fallback
-
-A project migrating to `gitversioned` might want to prioritize Git tags, but fall back to a hardcoded `__init__.py` file if no tags exist in the current clone.
-
-```toml
-[tool.gitversioned]
-source_type = ["tag", "file"]
-version_source_file = "src/my_application/__init__.py"
-regex_file = [
-    # Look for: __version__ = "1.0.0"
-    '(?i)__version__\s*=\s*[\'"](?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)[\'"]'
-]
-```
-
-### Scenario 3: Monorepo Sub-Packages
-
-For projects with multiple packages in a single repository, you can filter tags using specific regexes so that each package only triggers version bumps on its specific tags (e.g., `pkgA-v1.0.0`).
-
-```toml
-[tool.gitversioned]
-source_type = ["tag"]
-# Only match tags that start with "pkgA-v"
-regex_tag = [
-    '^pkgA-v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$'
-]
-```
-
-### Scenario 4: Auto-Incrementing Releases
-
-By default, the `release` version type is strictly bound to a clean, exact Git match (e.g., a tagged commit). However, if your project resolves the version type to `release` while still being ahead of the base source (e.g., forced via `version_type = "release"` or through custom resolution), you can auto-increment the release segment.
-
-```toml
-[tool.gitversioned]
-source_type = ["tag"]
-version_type = "release"  # Force all builds to be parsed as releases
-
-[tool.gitversioned.auto_increment]
-# If we are 3 commits ahead of v1.5.0, this will generate 1.6.0
-release = "minor"
-```
+- **Bump rules.** A breaking change is major, `feat` is minor, every other
+  releasable type is patch. `chore`, `ci`, `test` and `release` commits and
+  merge commits do not release. Below 1.0.0 each level shifts down one.
+- **Release names.** The branch is `release/next`, the pull request title is
+  `release: <tag>`, and the labels are `release`, `release:rc` and
+  `release:major|minor|patch`.
+- **Changelog format.** Keep a Changelog sections, grouped by scope.
+- **Version sources.** Tags, the archive file, sdist metadata, or a pin.

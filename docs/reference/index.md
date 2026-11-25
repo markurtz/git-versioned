@@ -22,19 +22,17 @@ The Reference section contains the complete technical documentation for `gitvers
 
 ## Python API Usage
 
-`gitversioned` can also be used programmatically in your own Python scripts:
+`gitversioned` can be used from your own Python code:
+
+<!--phmdoctest-skip-->
 
 ```python
-from gitversioned import Settings, configure_logger
-from gitversioned.logging import logger
+from gitversioned import get_version, load_config, resolve
 
-# Initialize the global logger
-configure_logger(enabled=True, level="INFO")
+print(get_version())
 
-# Load application settings
-settings = Settings()
-
-# Log the current configuration
-logger.info("Application initialized with settings: {}", settings)
+resolved = resolve(load_config())
+print(resolved.version.semver(), resolved.type, resolved.source)
 ```
 
+See the [API Guide](../guides/api.md) for more.

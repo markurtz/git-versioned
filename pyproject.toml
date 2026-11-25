@@ -19,7 +19,7 @@ build-backend = "hatchling.build"
 [project]
 name = "gitversioned"
 dynamic = ["version"]
-description = "Opinionated PEP 440 Python versioning for Git repos and submodules. Enforces CI/User authority and generates rich version.py files with deep metadata for auditability. Native Hatch & Setuptools support. Simple, predictable, and foolproof automation."
+description = "Versions from git tags for Python, Rust and npm projects in one repository: resolve, stamp every manifest, check Conventional Commits and drive a reviewed release with a changelog."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
@@ -33,7 +33,6 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "loguru~=0.7",
   "pydantic~=2.0",
   "tomli~=2.0; python_version < '3.11'",
   "typer>=0.12",
@@ -42,20 +41,18 @@ dependencies = [
 [project.optional-dependencies]
 hatch = ["hatchling~=1.18"]
 maturin = ["maturin>=1.0,<2.0"]
-opentelemetry = ["opentelemetry-api>=1.0.0", "opentelemetry-sdk>=1.0.0"]
 
 [dependency-groups]
 test = [
   "pytest>=9.0.3,<10",
-  "pytest-asyncio>=1.4.0,<2",
   "pytest-cov>=7.1.0,<8",
   "pytest-mock>=3.15.1,<4",
-  "respx>=0.23.1,<1",
   "build",
   "wheel",
   "maturin>=1.0,<2.0",
 ]
 lint = [
+  "loguru~=0.7",
   "ty",
   "ruff>=0.15,<1",
   "mdformat>=1.0,<2",
@@ -85,6 +82,7 @@ security = [
   "pip-audit>=2.7,<3",
 ]
 environment = ["hatch>=1.12.0"]
+binary = ["pyinstaller>=6.0,<7"]
 dev = [
   { include-group = "test" },
   { include-group = "lint" },
@@ -121,7 +119,20 @@ path = "src/gitversioned/__init__.py"
 pattern = "(?m)^__version__[^=]*= *(['\"])v?(?P<version>.+?)\\1"
 
 [tool.gitversioned]
-scopes = ["core", "cli", "config", "targets", "release", "check", "plugins", "docs", "deps", "deps-dev", "ci", "tests"]
+scopes = [
+  "core",
+  "cli",
+  "config",
+  "targets",
+  "release",
+  "check",
+  "plugins",
+  "docs",
+  "deps",
+  "deps-dev",
+  "ci",
+  "tests",
+]
 
 [[tool.gitversioned.targets]]
 path = "src/gitversioned/__init__.py"
@@ -294,8 +305,8 @@ tests-func = "python -m pytest {env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS} {a
 tests-func-cov = [
   "python -c \"import pathlib; pathlib.Path('{env:PYTHON_COV_DIR}').mkdir(parents=True, exist_ok=True)\"",
   "python -m pytest --cov={env:PYTHON_SRC} --cov-context=test --cov-report=term --cov-report=markdown:{env:PYTHON_COV_DIR}/coverage_tests-func.md {env:PYTHON_UNIT_TESTS} {env:PYTHON_INT_TESTS} {args}",
-  "coverage report --contexts=\".*tests/python/unit/.*|^$\" --format=markdown > {env:PYTHON_COV_DIR}/coverage_tests-unit.md",
-  "coverage report --contexts=\".*tests/python/integration/.*|^$\" --format=markdown > {env:PYTHON_COV_DIR}/coverage_tests-int.md",
+  "coverage report --contexts=\".*tests/unit/.*|^$\" --format=markdown > {env:PYTHON_COV_DIR}/coverage_tests-unit.md",
+  "coverage report --contexts=\".*tests/integration/.*|^$\" --format=markdown > {env:PYTHON_COV_DIR}/coverage_tests-int.md",
   "python -c \"import pathlib; [p.write_text('\\n'.join(line for line in p.read_text().splitlines() if not line.startswith('Combined'))) for p in (pathlib.Path('{env:PYTHON_COV_DIR}/coverage_tests-unit.md'), pathlib.Path('{env:PYTHON_COV_DIR}/coverage_tests-int.md')) if p.exists()]\"",
 ]
 tests-unit = "python -m pytest {env:PYTHON_UNIT_TESTS} {args}"
@@ -315,7 +326,7 @@ tests-e2e-cov = [
 ]
 docs = [
   "python -c \"import pathlib; pathlib.Path('.docs').mkdir(exist_ok=True)\"",
-  "typer src/gitversioned/__main__.py utils docs --name gitversioned --output .docs/cli.md",
+  "typer src/gitversioned/cli.py utils docs --name gitversioned --output .docs/cli.md",
 ]
 
 # ==============================================================================
@@ -568,7 +579,6 @@ known-first-party = ["gitversioned", "tests"]
 
 [tool.pytest.ini_options]
 addopts = "-s -vvv --cache-clear"
-asyncio_mode = "auto"
 log_level = "WARNING"
 markers = [
   "smoke: quick tests to check basic functionality",

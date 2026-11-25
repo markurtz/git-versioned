@@ -31,7 +31,7 @@ are licensed under the Apache License, Version 2.0.
 
 # GitVersioned
 
-**Opinionated compliance-first versioning automation for Git repositories. Enforces CI/User authority and generates rich metadata. Supports Python, Rust (Maturin), Docker/OCI, and multi-file version synchronization via declarative overrides. Powered by a flexible CLI, programmatic API, and native build backend integrations.**
+**One version for the whole repository, from git tags. `gitversioned` resolves it, stamps it into every Python, Rust, npm, Helm and container manifest, checks Conventional Commit titles and drives a reviewed release with a changelog. Three commands: `version`, `check` and `release`.**
 
 [Get Started](getting-started/index.md){ .md-button .md-button--primary }
 [View on GitHub](https://github.com/markurtz/git-versioned){ .md-button }

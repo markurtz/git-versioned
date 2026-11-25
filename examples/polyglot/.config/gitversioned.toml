@@ -1,0 +1,16 @@
+# Every key here is optional; the values shown differ from the defaults only
+# where a comment says so.
+tag = "v{version}"
+branch = "main"
+changelog = "CHANGELOG.md"
+scopes = ["core", "cli", "web", "chart", "docs", "deps"] # default: any scope
+
+# A file discovery cannot recognise by name: say where the version is.
+[[targets]]
+path = "docs/install.md"
+pattern = 'demo-cli@(?P<version>[0-9][^\s`]*)'
+
+# A package with its own tag gets its own version line and release PR.
+[packages.web]
+path = "packages/web"
+tag = "web-v{version}"

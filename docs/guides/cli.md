@@ -1,207 +1,282 @@
-# Command-Line Interface (CLI) Guide
+# Command Line Guide
 
-The `gitversioned` CLI provides a standalone utility to calculate versions, test output formatting, and generate version files. It is useful for integration with languages other than Python, custom build pipelines, and containerized deployments.
+`gitversioned` has three commands, one per job, and an optional setup step.
 
-______________________________________________________________________
+| Command   | Job                                                                |
+| --------- | ------------------------------------------------------------------ |
+| `version` | Print the version, print the next one, or stamp it into the files. |
+| `check`   | Validate the repository setup, a title, a commit range or a tag.   |
+| `release` | Plan a release, open the release pull request, tag the merge.      |
+| `init`    | Optional: add the archive file and wire up the build backend.      |
 
-## Subcommands Reference
+Every command takes the same shared options.
 
-The CLI is structured into four primary subcommands, which accept any settings field as a command-line parameter (e.g., `--output`, `--version-type`).
+| Option              | Meaning                                             |
+| ------------------- | --------------------------------------------------- |
+| `-C`, `--root DIR`  | Run as if started in `DIR`.                         |
+| `-p`, `--package N` | Act on one package from `[packages]`.               |
+| `--json`            | Machine-readable output on stdout, errors included. |
+| `-v`, `-vv`         | More detail on stderr.                              |
+| `-q`, `--quiet`     | Errors only.                                        |
 
-### 1. `calculate`
+Results go to stdout and everything else goes to stderr, so
+`VERSION=$(gitversioned version)` is always safe.
 
-Resolves the project version and outputs only the calculated version string to `stdout`.
+## Exit codes
 
-```bash
-gitversioned calculate [OPTIONS]
-```
-
-- **Output:** E.g., `1.0.1.dev4+gabc1234`
-- **Use Case:** Extracting a dynamic version for use in shell scripts.
-
-### 2. `format`
-
-Resolves the version and outputs the rendered text of the configured output strategies to `stdout`. It does not write any files.
-
-```bash
-gitversioned format [OPTIONS]
-```
-
-- **Output:** Rendered template content.
-- **Use Case:** Debugging custom template strings or verifying output format patterns.
-
-### 3. `write`
-
-Resolves the version and writes the rendered output strategy directly to the designated file path (defaults to `version.py`).
-
-```bash
-gitversioned write [OPTIONS]
-```
-
-- **Output:** Confirmation message printed to `stdout`, and the file written to disk.
-- **Use Case:** Generating version files in CI/CD pipelines before packaging.
-
-### 4. `overrides`
-
-Runs nested commands under the context of a specific override profile configured under `[tool.gitversioned.overrides.<name>]`. The nested command will merge the override-specific properties on top of your default configuration.
-
-```bash
-gitversioned overrides [OVERRIDES_NAME] [SUBCOMMAND] [OPTIONS]
-```
-
-- **Positional Argument:** `OVERRIDES_NAME` — The name of the override configuration context to load (e.g., `cargo`).
-- **Subcommands:** `calculate`, `format`, or `write`.
-- **Use Case:** Executing multi-artifact generation pipelines from a single CLI command structure.
-
-For example, to write the version to a target configured under the `cargo` override block:
-
-```bash
-gitversioned overrides cargo write
-```
-
-### 5. `init-archive`
-
-Initializes Git archive fallback metadata template files in your repository root.
-
-```bash
-gitversioned init-archive
-```
-
-- **Output:** Creates `.git_archival.txt` and appends placeholder export settings to `.gitattributes`.
-- **Use Case:** Automating the setup of archive fallback version resolution for GitHub ZIP downloads.
+| Code | Meaning                                                                                       |
+| ---- | --------------------------------------------------------------------------------------------- |
+| 0    | Success.                                                                                      |
+| 1    | A check failed, or there is nothing to release.                                               |
+| 2    | Wrong usage or invalid configuration.                                                         |
+| 3    | The environment cannot give a trustworthy answer (shallow clone in CI, no git, `gh` missing). |
 
 ______________________________________________________________________
 
-## Detailed User Stories & Workflows
+## `version`
 
-### 1. Sourcing and Getting the Current Version
-
-This user story covers retrieving the dynamically resolved version for logging, environment tagging, or local diagnostics.
-
-To fetch the raw calculated version for your repository based on its Git state:
-
-```bash
-gitversioned calculate
+```text
+gitversioned version [VERSION] [--next] [--bump LEVEL] [--pre KIND]
+                     [--type TYPE] [--standard STD]
+                     [--write] [--dry-run] [--explain]
 ```
 
-Output:
+### Print the version of this checkout
 
 ```console
-1.0.1.dev5+g9a1e3a1
+$ gitversioned version
+1.4.1.dev20261125+60439dc
+$ gitversioned version --standard semver
+1.4.1-dev.20261125+60439dc
+$ gitversioned version --type nightly
+1.5.0.dev20261125
 ```
 
-You can customize the calculation on the fly by passing configuration overrides as command-line options. For example, if you want to preview what the version string would look like if you forced a `release` version type instead of the dynamically resolved `dev` version type:
+On a release tag the output is the tag's version. After the tag it is a
+development version: the next patch, the commit date and the short commit hash.
+A changed tracked file adds `.dirty`. The default spelling is PEP 440 when the
+project has a `pyproject.toml` with a `[project]` table, and SemVer otherwise.
 
-```bash
-gitversioned calculate --version-type release
-```
-
-Output:
+### Print the next release
 
 ```console
-1.1.0
+$ gitversioned version --next
+1.5.0
+$ gitversioned version --next --pre rc
+1.5.0rc1
+$ gitversioned version --next --bump major
+2.0.0
 ```
 
-You can also test custom formatting styles directly via the command line:
+`--next` reads the Conventional Commit subjects since the last release. It exits
+with code 1 when no commit since then calls for a release.
 
-```bash
-gitversioned calculate --format-main "{version.major}.{version.minor}"
-```
-
-Output:
+### See why
 
 ```console
-1.1
+$ gitversioned version --explain
+version   1.4.1.dev20261125+60439dc
+type      dev
+current   1.4.0  (tag v1.4.0, 60439dc, 2 commits since)
+why       minor: 1 patch, 1 minor
+  patch   fix(cli): exit code on empty input
+  minor   feat(core): add streaming parser
+note      base 1.4.0 from tag v1.4.0
+config    .config/gitversioned.toml  (6 keys set, 8 defaults)
 ```
 
-### 2. Injecting Custom Formats for Docker Build (Format Setup)
+### Stamp the files
 
-When building Docker container images, you often want to inject the dynamically resolved version as a build argument or tag the container with a custom format (e.g., a version string combined with a timestamp or commit hash).
+```console
+$ gitversioned version --write
+1.4.1.dev20261125+60439dc
+  CITATION.cff            1.4.1-dev.20261125+60439dc
+  Dockerfile              1.4.1-dev.20261125+60439dc
+  charts/demo/Chart.yaml  1.4.1-dev.20261125+60439dc
+  crates/cli/Cargo.toml   1.4.1-dev.20261125+60439dc
+  crates/core/Cargo.toml  1.4.1-dev.20261125+60439dc
+  src/demo/version.py     1.4.1.dev20261125+60439dc
+  Cargo.lock              1.4.1-dev.20261125+60439dc
+  docs/install.md         1.4.1-dev.20261125+60439dc
+```
 
-By using the `format` subcommand, you can render custom formats directly to `stdout` and capture them in shell variables.
+Each file gets the spelling its ecosystem expects. `--dry-run` prints a unified
+diff and changes nothing. Stamping never makes the tree count as dirty: a file
+whose only change is its version is ignored when the version is resolved again.
 
-#### Example: Tagging a Docker Image
+Pass a `VERSION` to use that version instead of resolving one, for example
+`gitversioned version 2.0.0 --write`.
 
-You want to tag your Docker image with a custom format: `my-app:<major>.<minor>-dev<commits_distance>`.
+### JSON
 
-1. Run the `format` command to resolve and print the custom format, using the inline `template_str` strategy:
-   ```bash
-   # Capture the custom version string
-   IMAGE_TAG=$(gitversioned format \
-     --output-strategies '{"type": "template_str", "content": "{version.major}.{version.minor}-dev{ref.distance_from_head}"}')
-   ```
-1. Build the Docker container, passing the resolved version to the tag:
-   ```bash
-   docker build -t "my-app:$IMAGE_TAG" .
-   ```
+```console
+$ gitversioned version --json
+{
+  "version": "1.4.1.dev20261125+60439dc",
+  "pep440": "1.4.1.dev20261125+60439dc",
+  "semver": "1.4.1-dev.20261125+60439dc",
+  "type": "dev",
+  "source": "tag",
+  "tag": "v1.4.0",
+  "distance": 2,
+  "sha": "60439dc",
+  "dirty": false,
+  "warnings": [],
+  "written": []
+}
+```
 
-#### Example: Passing the Version as a Build Argument
+______________________________________________________________________
 
-Alternatively, you can pass the version directly into the build environment:
+## `check`
+
+```text
+gitversioned check [TITLE] [--commits RANGE] [--tag NAME] [--file PATH] [--warn]
+```
+
+### The repository setup
+
+```console
+$ gitversioned check
+ok    config        .config/gitversioned.toml
+ok    git           full history, 1 release tags, latest v1.4.0
+ok    targets       CITATION.cff, Dockerfile, charts/demo/Chart.yaml, ...
+ok    scopes        core, cli, web, chart, docs, deps
+warn  archive file  .git_archival.txt is not set up, so source tarballs lose the version. Run `gitversioned init`.
+warn  github        gh is missing or not signed in: release --pr and pull request titles in the changelog are unavailable.
+```
+
+Problems that only warn on a laptop fail in CI (when the `CI` environment
+variable is set), with exit code 3. The usual one is a shallow clone: set
+`fetch-depth: 0` on `actions/checkout`.
+
+### A pull request title or commit message
+
+```console
+$ gitversioned check "feat(core): add a thing"
+ok
+$ gitversioned check "added a thing"
+fail  title  'added a thing' is not a Conventional Commit title. Expected type(scope): subject. Types: feat, fix, perf, ...
+$ gitversioned check --file .git/COMMIT_EDITMSG
+$ gitversioned check --commits origin/main..HEAD
+ok    commits  2 commits
+```
+
+`--file` reads the first line of a file, which is what a `commit-msg` hook
+passes. `--warn` reports problems and still exits 0.
+
+### A tag name
+
+```console
+$ gitversioned check --tag v1.5.0
+ok    tag  1.5.0, newer than v1.4.0
+```
+
+Use this in a workflow that runs when a tag is pushed, to reject tags that do
+not match the template or that are not newer than the last release.
+
+______________________________________________________________________
+
+## `release`
+
+```text
+gitversioned release [VERSION] [--bump LEVEL] [--pre KIND] [--write] [--pr] [--tag]
+```
+
+A release has three stages. Without a flag the command only shows the plan.
+
+### Plan
+
+```console
+$ gitversioned release
+release   1.5.0  (minor, from commits, from 1.4.0)
+tag       v1.5.0
+files     CHANGELOG.md, CITATION.cff, Dockerfile, charts/demo/Chart.yaml, crates/cli/Cargo.toml, crates/core/Cargo.toml, Cargo.lock, docs/install.md
+
+## 1.5.0 - 2026-11-25
+
+### Added
+
+- **core**: add streaming parser
+
+### Fixed
+
+- **cli**: exit code on empty input
+
+Nothing changed. Run with --write, --pr or --tag.
+```
+
+### `--write`: update the working tree
+
+Writes the changelog section and stamps every committed target. Nothing is
+committed, so this is the stage to use when you make the release commit
+yourself.
+
+### `--pr`: open or update the release pull request
+
+Rebuilds the branch `release/next` from the current commit with one commit
+titled `release: v1.5.0`, pushes it, and opens a pull request labelled
+`release`, or updates the one already open. The pull request body is the
+changelog section. Run it on every push to the release branch and the pull
+request always shows what the next release will be. It needs the GitHub CLI
+`gh`, signed in (`GH_TOKEN` in CI).
+
+Add the label `release:rc` to the pull request to make it a release candidate.
+Add `release:major`, `release:minor` or `release:patch` to a merged pull request
+to override the level its title would give.
+
+### `--tag`: tag the merged release
+
+Run on the release branch after the release pull request merges. It reads the
+tag from the release commit's subject, checks it is newer than the last
+release, creates it and pushes it. Pass a `VERSION` to tag `HEAD` by hand.
+
+### Choosing the version
+
+The first of these that is set decides:
+
+1. The `VERSION` argument.
+1. `--bump major|minor|patch`.
+1. `GITVERSIONED__BUMP` in the environment (a level or a version).
+1. A `release:major|minor|patch` label on a merged pull request.
+1. The commits since the last release.
+
+______________________________________________________________________
+
+## `init`
+
+```console
+$ gitversioned init
+wrote  .git_archival.txt
+edit   .gitattributes          + .git_archival.txt  export-subst
+```
+
+Adds the two things a repository needs for a version to survive a source
+tarball from GitHub, and adds `[tool.hatch.version] source = "gitversioned"` to
+a Hatchling project that does not have it yet. It only creates files or appends
+to them. Nothing else in gitversioned depends on it.
+
+______________________________________________________________________
+
+## Recipes
+
+### Git hook for commit messages
 
 ```bash
-# Capture the PEP 440 version
-VERSION=$(gitversioned calculate)
-
-# Build and pass the version argument
-docker build --build-arg APP_VERSION="$VERSION" -t my-app:latest .
+# .git/hooks/commit-msg
+gitversioned check --file "$1"
 ```
 
-Inside your `Dockerfile`, you can receive and embed this version metadata:
-
-```dockerfile
-FROM python:3.11-slim
-
-# Define build argument
-ARG APP_VERSION
-
-# Set environment variable
-ENV APP_VERSION=${APP_VERSION}
-
-WORKDIR /app
-COPY . .
-
-# Run your application, which prints the embedded version
-CMD ["python", "-c", "import os; print(f'Starting app v{os.environ[\"APP_VERSION\"]}')"]
-```
-
-### 3. Writing Version Strings with Custom Regex (Write Setup)
-
-In many multi-language or polyglot repositories, you need to update version strings inline within non-Python files (such as `Cargo.toml` for Rust, `package.json` for Node, or a legacy config file) before packaging or compilation.
-
-The `write` subcommand supports a `regex` strategy that parses an existing file, finds the version string via a regular expression pattern containing a `(?P<version>...)` named capture group, updates that group inline, and writes the file back.
-
-#### Example: Updating `Cargo.toml` Version In-Place
-
-Suppose you have a Rust package in your repository and need its `Cargo.toml` version field updated to match the dynamically calculated Git version:
-
-```toml
-# Cargo.toml (Before)
-[package]
-name = "my_rust_package"
-version = "0.0.0"
-```
-
-You can execute a regex-based search-and-replace using the CLI `write` subcommand:
+### Build a container with the right version
 
 ```bash
-gitversioned write \
-  --output Cargo.toml \
-  --output-strategies '{"type": "regex", "pattern": "(?ms)^(?P<prefix>\\[package\\].*?^version\\s*=\\s*[\'\"])(?P<version>[^\'\"]+)(?P<suffix>[\'\"])"}'
+gitversioned version --write
+docker build --build-arg VERSION="$(gitversioned version --standard semver)" .
 ```
 
-After running this command:
+### One package in a monorepo
 
-1. `gitversioned` resolves the version (e.g., `1.0.1.dev5+g9a1e3a1`).
-1. It reads `Cargo.toml` and locates the version pattern.
-1. It replaces the version string inside the `(?P<version>...)` capture group with the resolved version.
-1. It writes the updated contents back to `Cargo.toml` in-place.
-
-```toml
-# Cargo.toml (After)
-[package]
-name = "my_rust_package"
-version = "1.0.1.dev5+g9a1e3a1"
+```bash
+gitversioned version -p web
+gitversioned release -p web --pr
 ```
-
-This ensures that the Rust and Python components of a package are perfectly synchronized under the exact same VCS version without requiring manual file edits.

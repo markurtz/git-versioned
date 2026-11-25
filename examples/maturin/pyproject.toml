@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0", "gitversioned>=0.4"]
+build-backend = "gitversioned.plugins.maturin"
+
+[project]
+name = "demo-maturin"
+dynamic = ["version"]
+description = "A Rust extension versioned from git tags."
+requires-python = ">=3.10"
+
+[tool.maturin]
+python-source = "python"
+module-name = "demo_maturin._native"
+features = ["pyo3/extension-module"]

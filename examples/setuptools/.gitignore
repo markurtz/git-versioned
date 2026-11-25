@@ -1,0 +1,4 @@
+dist/
+build/
+*.egg-info/
+src/demo_setuptools/version.py

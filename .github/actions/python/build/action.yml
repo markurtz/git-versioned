@@ -68,8 +68,8 @@ runs:
       env:
         BUILD_TYPE: ${{ inputs.build-type }}
       run: |-
-        hatch run gitversioned write --version-type "$BUILD_TYPE"
-        VERSION=$(hatch run gitversioned calculate --version-type "$BUILD_TYPE")
+        hatch run gitversioned version --write --type "$BUILD_TYPE" --quiet
+        VERSION=$(hatch run gitversioned version --type "$BUILD_TYPE" --standard pep440)
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
     - name: Build Package
       if: steps.check.outputs.run == 'true'
