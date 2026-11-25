@@ -13,10 +13,7 @@
 # limitations under the License.
 
 """
-Logging setup: the standard library logger on standard error for the CLI.
-
-As a library gitversioned logs to the ``gitversioned`` logger and adds no
-handler of its own, so it stays silent until the application configures logging.
+Logging setup: loguru on standard error, sized by the ``-v`` and ``-q`` flags.
 
 Example:
 ::
@@ -27,19 +24,13 @@ Example:
 
 from __future__ import annotations
 
-import logging
 import sys
-from typing import Annotated
 
-__all__ = ["LOGGER_NAME", "configure_logging", "logger"]
+from loguru import logger
 
-LOGGER_NAME: Annotated[str, "Name of the logger every module writes to"] = (
-    "gitversioned"
-)
-logger: Annotated[logging.Logger, "The package logger"] = logging.getLogger(LOGGER_NAME)
-logger.addHandler(logging.NullHandler())
+__all__ = ["configure_logging"]
 
-_LEVELS = {-1: logging.ERROR, 0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
+_LEVELS = {-1: "ERROR", 0: "WARNING", 1: "INFO", 2: "DEBUG"}
 
 
 def configure_logging(verbosity: int = 0) -> None:
@@ -50,11 +41,10 @@ def configure_logging(verbosity: int = 0) -> None:
         information, ``2`` or more for debug output.
     """
     level = _LEVELS[max(-1, min(2, verbosity))]
-    for handler in list(logger.handlers):
-        if not isinstance(handler, logging.NullHandler):
-            logger.removeHandler(handler)
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(logging.Formatter("%(levelname)-7s %(message)s"))
-    logger.addHandler(handler)
-    logger.setLevel(level)
-    logger.propagate = False
+    logger.remove()
+    logger.add(
+        sys.stderr,
+        level=level,
+        format="<level>{level: <7}</level> {message}",
+        colorize=None,
+    )

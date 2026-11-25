@@ -24,7 +24,7 @@ This file provides repository-specific context, setup instructions, executable c
 
 - **Primary Language:** Python 3.10+
 - **Configuration & Build Backend:** Hatch (using `hatchling.build`)
-- **Runtime Dependencies:** Pydantic v2 and Typer (plus `tomli` on Python 3.10). Logging uses the standard library. Do not add runtime dependencies without a strong reason.
+- **Runtime Dependencies:** Pydantic v2, Typer and Loguru (plus `tomli` on Python 3.10). Do not add runtime dependencies without a strong reason.
 
 ## Core Directories & Architecture
 

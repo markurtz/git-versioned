@@ -36,6 +36,8 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from loguru import logger
+
 from gitversioned import git, github
 from gitversioned.changelog import (
     Entry,
@@ -51,7 +53,6 @@ from gitversioned.errors import (
     ConfigError,
     EnvironmentProblemError,
 )
-from gitversioned.logging import logger
 from gitversioned.model import Version
 from gitversioned.resolve import (
     Resolved,
@@ -523,5 +524,5 @@ def tag_release(
         repo.git("push", "-q", "origin", f"refs/tags/{name}")
         pushed = True
     else:
-        logger.info("no origin remote; tag %s was created locally only", name)
+        logger.info("no origin remote; tag {} was created locally only", name)
     return name, sha, pushed

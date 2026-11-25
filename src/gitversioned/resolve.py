@@ -35,11 +35,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
+from loguru import logger
+
 from gitversioned import git
 from gitversioned.commits import BumpPlan, next_version, plan_bump
 from gitversioned.config import Config
 from gitversioned.errors import EnvironmentProblemError, NothingToReleaseError
-from gitversioned.logging import logger
 from gitversioned.model import Version
 
 __all__ = [

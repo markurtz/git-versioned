@@ -45,7 +45,7 @@ For the merged project configuration, source and guides, see [llms-full.txt](llm
 - [src/gitversioned/release.py](src/gitversioned/release.py): Release planning, the release pull request and tagging.
 - [src/gitversioned/scaffold.py](src/gitversioned/scaffold.py): The `init` step.
 - [src/gitversioned/errors.py](src/gitversioned/errors.py): Errors and their exit codes.
-- [src/gitversioned/logging.py](src/gitversioned/logging.py): Standard library logging setup.
+- [src/gitversioned/logging.py](src/gitversioned/logging.py): Loguru logging setup for the command line.
 - [src/gitversioned/plugins/hatchling.py](src/gitversioned/plugins/hatchling.py): Hatchling version source and build hook.
 - [src/gitversioned/plugins/setuptools.py](src/gitversioned/plugins/setuptools.py): Setuptools integration.
 - [src/gitversioned/plugins/maturin.py](src/gitversioned/plugins/maturin.py): Maturin wrapper backend.

@@ -116,9 +116,7 @@ All of them derive from `GitVersionedError`.
 
 ## Logging
 
-gitversioned logs to the standard library logger named `gitversioned` and adds
-no handler of its own, so it is silent until you configure logging. To get the
-same output as the command line:
+gitversioned logs through Loguru. To get the same output as the command line:
 
 <!--phmdoctest-skip-->
 
