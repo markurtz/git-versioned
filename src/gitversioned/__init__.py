@@ -75,4 +75,4 @@ def get_version(root: Path | str | None = None, *, standard: str = "pep440") -> 
     :return: The version of the checkout.
     """
     config = load_config(Path(root) if root is not None else None)
-    return resolve(config).version.render(standard)  # type: ignore[arg-type]
+    return resolve(config).version.render(standard)

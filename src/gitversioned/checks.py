@@ -166,8 +166,9 @@ def check_tag(
             Finding(
                 "fail",
                 "tag",
-                f"{name!r} is not a release tag. Expected {pattern.replace('{version}', 'X.Y.Z')}"
-                " with an optional pre-release such as -rc.1.",
+                f"{name!r} is not a release tag. Expected "
+                f"{pattern.replace('{version}', 'X.Y.Z')} with an optional "
+                "pre-release such as -rc.1.",
             )
         ]
     repo = git.Repo.open(config.root)
@@ -190,15 +191,9 @@ def check_tag(
     return [Finding("ok", "tag", f"{version.pep440()}, first release")]
 
 
-def check_repo(config: Config) -> list[Finding]:
-    """
-    Check that the repository can give a trustworthy version.
-
-    :param config: The loaded configuration.
-    :return: One finding per area: config, git, targets, archive file, github.
-    """
-    findings = [Finding("ok", "config", config.home)]
-    repo = git.Repo.open(config.root)
+def _check_git(config: Config, repo: git.Repo | None) -> Finding:
+    """Report whether git history can give a trustworthy version."""
+    severity: Status = "fail" if git.is_ci() else "warn"
     if repo is None or repo.head() is None:
         has_other = (
             config.version != "auto"
@@ -206,113 +201,110 @@ def check_repo(config: Config) -> list[Finding]:
             or git.read_sdist_version(config.root) is not None
         )
         if has_other:
-            findings.append(
-                Finding(
-                    "ok",
-                    "git",
-                    "no repository; version comes from a pin, archive file or package metadata",
-                )
+            return Finding(
+                "ok",
+                "git",
+                "no repository; the version comes from a pin, the archive file or "
+                "package metadata",
             )
-        else:
-            findings.append(
-                Finding(
-                    "fail" if git.is_ci() else "warn",
-                    "git",
-                    "no git history here and no archive file, so builds use the "
-                    "fallback version. Set GITVERSIONED__VERSION to pin one.",
-                    exit_code=3,
-                )
-            )
-    else:
-        tags = release_tags(config.tag, list(repo.tags_merged()))
-        latest = max(tags, key=lambda tag: tags[tag].sort_key()) if tags else None
-        shallow = repo.is_shallow()
-        if shallow and not tags:
-            findings.append(
-                Finding(
-                    "fail" if git.is_ci() else "warn",
-                    "git",
-                    "shallow clone, no tags reachable. Set fetch-depth: 0 on "
-                    "actions/checkout.",
-                    exit_code=3,
-                )
-            )
-        elif shallow:
-            findings.append(
-                Finding(
-                    "warn",
-                    "git",
-                    f"shallow clone; latest reachable tag {latest}. Commit counts "
-                    "may be short. Set fetch-depth: 0 on actions/checkout.",
-                )
-            )
-        elif latest:
-            findings.append(
-                Finding(
-                    "ok",
-                    "git",
-                    f"full history, {len(tags)} release tags, latest {latest}",
-                )
-            )
-        else:
-            findings.append(
-                Finding(
-                    "warn",
-                    "git",
-                    f"no release tags match {config.tag!r}; versions start from "
-                    f"the fallback {config.fallback}.",
-                )
-            )
+        return Finding(
+            severity,
+            "git",
+            "no git history here and no archive file, so builds use the fallback "
+            "version. Set GITVERSIONED__VERSION to pin one.",
+            exit_code=3,
+        )
+    tags = release_tags(config.tag, list(repo.tags_merged()))
+    latest = max(tags, key=lambda tag: tags[tag].sort_key()) if tags else None
+    if repo.is_shallow() and not tags:
+        return Finding(
+            severity,
+            "git",
+            "shallow clone, no tags reachable. Set fetch-depth: 0 on actions/checkout.",
+            exit_code=3,
+        )
+    if repo.is_shallow():
+        return Finding(
+            "warn",
+            "git",
+            f"shallow clone; latest reachable tag {latest}. Commit counts may be "
+            "short. Set fetch-depth: 0 on actions/checkout.",
+        )
+    if latest:
+        return Finding(
+            "ok", "git", f"full history, {len(tags)} release tags, latest {latest}"
+        )
+    return Finding(
+        "warn",
+        "git",
+        f"no release tags match {config.tag!r}; versions start from the fallback "
+        f"{config.fallback}.",
+    )
+
+
+def _check_targets(config: Config) -> list[Finding]:
+    """Report the files that will be stamped and the allowed scopes."""
     try:
         targets = discover(config)
         for name in config.packages:
             targets += discover(config, package=name)
         scopes = config.allowed_scopes()
     except ConfigError as error:
-        findings.append(Finding("fail", "targets", str(error), exit_code=2))
-    else:
-        if targets:
-            names = ", ".join(
-                target.path.resolve().relative_to(config.root.resolve()).as_posix()
-                for target in targets
-            )
-            findings.append(Finding("ok", "targets", names))
-        else:
-            findings.append(Finding("warn", "targets", "no files to stamp were found."))
-        if scopes:
-            findings.append(Finding("ok", "scopes", ", ".join(scopes)))
-    if repo is not None:
-        archive = config.root / git.ARCHIVE_FILE
-        attributes = repo.top / ".gitattributes"
-        marked = attributes.is_file() and "export-subst" in attributes.read_text(
-            encoding="utf-8", errors="replace"
+        return [Finding("fail", "targets", str(error), exit_code=2)]
+    root = config.root.resolve()
+    names = ", ".join(
+        target.path.resolve().relative_to(root).as_posix() for target in targets
+    )
+    findings = [
+        Finding("ok", "targets", names)
+        if targets
+        else Finding("warn", "targets", "no files to stamp were found.")
+    ]
+    if scopes:
+        findings.append(Finding("ok", "scopes", ", ".join(scopes)))
+    return findings
+
+
+def _check_archive(config: Config, repo: git.Repo) -> Finding:
+    """Report whether source tarballs will keep their version."""
+    attributes = repo.top / ".gitattributes"
+    marked = attributes.is_file() and "export-subst" in attributes.read_text(
+        encoding="utf-8", errors="replace"
+    )
+    if (config.root / git.ARCHIVE_FILE).is_file() and marked:
+        return Finding(
+            "ok", "archive file", f"{git.ARCHIVE_FILE} and .gitattributes export-subst"
         )
-        if archive.is_file() and marked:
-            findings.append(
-                Finding(
-                    "ok",
-                    "archive file",
-                    f"{git.ARCHIVE_FILE} and .gitattributes export-subst",
-                )
-            )
-        else:
-            findings.append(
-                Finding(
-                    "warn",
-                    "archive file",
-                    f"{git.ARCHIVE_FILE} is not set up, so source tarballs lose the "
-                    "version. Run `gitversioned init`.",
-                )
-            )
-        if github.available(config.root):
-            findings.append(Finding("ok", "github", "gh is signed in"))
-        else:
-            findings.append(
-                Finding(
-                    "warn",
-                    "github",
-                    "gh is missing or not signed in: release --pr and pull request "
-                    "titles in the changelog are unavailable.",
-                )
-            )
+    return Finding(
+        "warn",
+        "archive file",
+        f"{git.ARCHIVE_FILE} is not set up, so source tarballs lose the version. "
+        "Run `gitversioned init`.",
+    )
+
+
+def _check_github(config: Config) -> Finding:
+    """Report whether the GitHub CLI is usable."""
+    if github.available(config.root):
+        return Finding("ok", "github", "gh is signed in")
+    return Finding(
+        "warn",
+        "github",
+        "gh is missing or not signed in: release --pr and pull request titles in "
+        "the changelog are unavailable.",
+    )
+
+
+def check_repo(config: Config) -> list[Finding]:
+    """
+    Check that the repository can give a trustworthy version.
+
+    :param config: The loaded configuration.
+    :return: One finding per area: config, git, targets, archive file, github.
+    """
+    repo = git.Repo.open(config.root)
+    findings = [Finding("ok", "config", config.home), _check_git(config, repo)]
+    findings += _check_targets(config)
+    if repo is not None and repo.head() is not None:
+        findings += [_check_archive(config, repo), _check_github(config)]
     return findings

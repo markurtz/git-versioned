@@ -65,7 +65,7 @@ def _apply(dist: Any) -> None:
     dist.metadata.version = resolved.version.pep440()
 
 
-def setup_keyword(dist: Any, keyword: str, value: Any) -> None:
+def setup_keyword(dist: Any, keyword: str, value: Any) -> None:  # noqa: ARG001
     """
     Handle ``setup(gitversioned=True)``.
 

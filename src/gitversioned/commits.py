@@ -36,7 +36,7 @@ from dataclasses import dataclass
 
 from gitversioned.errors import ConfigError, NothingToReleaseError
 from gitversioned.git import Commit
-from gitversioned.model import Level, PreKind, Version
+from gitversioned.model import Level, Version
 
 __all__ = [
     "NO_RELEASE_TYPES",
@@ -164,11 +164,11 @@ def plan_bump(commits: list[Commit]) -> BumpPlan:
     return BumpPlan(level=best, reasons=tuple(reasons))
 
 
-def _shift(level: Level, current: Version) -> Level:
+def _shift(level: str, current: Version) -> str:
     """Shift a commit-derived level down by one for a version below 1.0."""
     if current.major > 0:
         return level
-    return {"major": "minor", "minor": "patch", "patch": "patch"}[level]  # type: ignore[return-value]
+    return {"major": "minor", "minor": "patch", "patch": "patch"}[level]
 
 
 def env_bump() -> str | None:
@@ -186,7 +186,7 @@ def next_version(
     fallback: Version,
     explicit: str | None = None,
     bump: str | None = None,
-    pre: PreKind | None = None,
+    pre: str | None = None,
 ) -> Version:
     """
     Choose the next release version.
@@ -222,7 +222,7 @@ def next_version(
         elif current.pre is not None and level_name is None:
             target = current.release
         elif level_name is not None:
-            target = current.release.bump(level_name)  # type: ignore[arg-type]
+            target = current.release.bump(level_name)
         elif plan.level is None:
             raise NothingToReleaseError("Nothing to release: no releasable commits.")
         else:

@@ -69,7 +69,7 @@ class GitVersionedBuildHook(BuildHookInterface):
 
     PLUGIN_NAME = "gitversioned"
 
-    def initialize(self, version: str, build_data: dict[str, Any]) -> None:
+    def initialize(self, version: str, build_data: dict[str, Any]) -> None:  # noqa: ARG002
         """
         Write the generated module and add it to the build as an artifact.
 

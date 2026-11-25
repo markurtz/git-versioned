@@ -99,6 +99,11 @@ class Span:
     end: int
 
 
+def _no_spans(text: str) -> list[Span]:  # noqa: ARG001
+    """Locate nothing; the default for a generated file."""
+    return []
+
+
 @dataclass
 class Target:
     """
@@ -116,7 +121,7 @@ class Target:
     kind: str
     standard: Standard
     commit: bool
-    locate: Callable[[str], list[Span]] = field(default=lambda text: [], repr=False)
+    locate: Callable[[str], list[Span]] = field(default=_no_spans, repr=False)
     generated: bool = False
 
     def current(self, text: str) -> str | None:
@@ -257,75 +262,74 @@ def _pattern_locate(path: Path, pattern: str) -> Callable[[str], list[Span]]:
     ]
 
 
-def _by_name(path: Path) -> Target | None:
-    """Build the target for a file recognised by its name."""
-    name = path.name
-    if name == "pyproject.toml":
-        return Target(
-            path,
-            "pyproject",
-            "pep440",
-            True,
-            lambda text: _spans("version", toml_span(text, ["project", "version"])),
-        )
-    if name == "Cargo.toml":
-        return Target(path, "cargo", "semver", True, _cargo_locate)
-    if name == "package.json":
-        return Target(
-            path,
-            "npm",
-            "semver",
-            True,
-            lambda text: _spans("version", json_span(text, ["version"])),
-        )
-    if name == "tauri.conf.json":
-        return Target(
-            path,
-            "tauri",
-            "semver",
-            True,
-            lambda text: (
-                _spans("version", json_span(text, ["version"]))
-                or _spans("version", json_span(text, ["package", "version"]))
-            ),
-        )
-    if name == "Chart.yaml":
-        return Target(
-            path,
-            "helm",
-            "semver",
-            True,
-            lambda text: _spans(
-                "version", yaml_span(text, ["version"]), yaml_span(text, ["appVersion"])
-            ),
-        )
-    if name == "CITATION.cff":
-        return Target(
-            path,
-            "citation",
-            "semver",
-            True,
-            lambda text: (
-                _spans("version", yaml_span(text, ["version"]))
-                + _spans("date", yaml_span(text, ["date-released"]))
-            ),
-        )
-    if (
+def _pyproject_locate(text: str) -> list[Span]:
+    """Locate a static ``[project] version``."""
+    return _spans("version", toml_span(text, ["project", "version"]))
+
+
+def _npm_locate(text: str) -> list[Span]:
+    """Locate the top-level ``version`` of a package.json file."""
+    return _spans("version", json_span(text, ["version"]))
+
+
+def _tauri_locate(text: str) -> list[Span]:
+    """Locate the version of a Tauri config, in either schema."""
+    return _spans("version", json_span(text, ["version"])) or _spans(
+        "version", json_span(text, ["package", "version"])
+    )
+
+
+def _helm_locate(text: str) -> list[Span]:
+    """Locate the chart version and the application version."""
+    return _spans(
+        "version", yaml_span(text, ["version"]), yaml_span(text, ["appVersion"])
+    )
+
+
+def _citation_locate(text: str) -> list[Span]:
+    """Locate the version and the release date of a citation file."""
+    return _spans("version", yaml_span(text, ["version"])) + _spans(
+        "date", yaml_span(text, ["date-released"])
+    )
+
+
+def _docker_locate(text: str) -> list[Span]:
+    """Locate a literal OCI version label, skipping build argument references."""
+    return [
+        Span("version", match.start("value"), match.end("value"))
+        for match in _DOCKER_LABEL.finditer(text)
+        if not match["value"].startswith("$")
+    ]
+
+
+_NAMED: dict[str, tuple[str, Standard, Callable[[str], list[Span]]]] = {
+    "pyproject.toml": ("pyproject", "pep440", _pyproject_locate),
+    "Cargo.toml": ("cargo", "semver", _cargo_locate),
+    "package.json": ("npm", "semver", _npm_locate),
+    "tauri.conf.json": ("tauri", "semver", _tauri_locate),
+    "Chart.yaml": ("helm", "semver", _helm_locate),
+    "CITATION.cff": ("citation", "semver", _citation_locate),
+}
+
+
+def _is_dockerfile(name: str) -> bool:
+    """Tell whether a file name is a Dockerfile."""
+    return (
         name == "Dockerfile"
         or name.startswith("Dockerfile.")
         or name.endswith(".Dockerfile")
-    ):
-        return Target(
-            path,
-            "dockerfile",
-            "semver",
-            True,
-            lambda text: [
-                Span("version", match.start("value"), match.end("value"))
-                for match in _DOCKER_LABEL.finditer(text)
-            ],
-        )
-    return None
+    )
+
+
+def _by_name(path: Path) -> Target | None:
+    """Build the target for a file recognised by its name."""
+    if _is_dockerfile(path.name):
+        return Target(path, "dockerfile", "semver", True, _docker_locate)
+    found = _NAMED.get(path.name)
+    if found is None:
+        return None
+    kind, standard, locate = found
+    return Target(path, kind, standard, True, locate)
 
 
 def _python_module(pyproject: Path) -> Path | None:
@@ -397,47 +401,52 @@ def _candidates(config: Config, base: Path) -> list[Path]:
     return sorted(found)
 
 
-def discover(config: Config, *, package: str | None = None) -> list[Target]:
-    """
-    Find every target of the project or of one package.
-
-    Folders of packages that carry their own tag are left out of the repository's
-    targets, and are the only folders searched when that package is asked for.
-
-    :param config: The loaded configuration.
-    :param package: Name of a package from ``[packages]`` to limit the search to.
-    :return: The targets, discovered ones first, listed ones after.
-    :raises ConfigError: If the package is unknown or a listed target is invalid.
-    """
+def _search_scope(config: Config, package: str | None) -> tuple[Path, list[Path]]:
+    """Return the folder to search and the folders to leave out."""
     root = config.root.resolve()
-    if package is not None:
-        if package not in config.packages:
-            raise ConfigError(
-                f"unknown package {package!r}. Packages: "
-                f"{', '.join(config.packages) or 'none configured'}."
-            )
-        base = (root / config.packages[package].path).resolve()
-        excluded: list[Path] = []
-    else:
-        base = root
-        excluded = [
+    if package is None:
+        return root, [
             (root / item.path).resolve()
             for item in config.packages.values()
             if item.tag
         ]
+    if package not in config.packages:
+        raise ConfigError(
+            f"unknown package {package!r}. Packages: "
+            f"{', '.join(config.packages) or 'none configured'}."
+        )
+    return (root / config.packages[package].path).resolve(), []
 
-    def allowed(path: Path) -> bool:
-        resolved = path.resolve()
-        if any(resolved == folder or folder in resolved.parents for folder in excluded):
-            return False
-        return resolved == base or base in resolved.parents
 
+def _within(path: Path, base: Path, excluded: list[Path]) -> bool:
+    """Tell whether a path is inside the search folder and not left out."""
+    resolved = path.resolve()
+    if any(resolved == folder or folder in resolved.parents for folder in excluded):
+        return False
+    return resolved == base or base in resolved.parents
+
+
+def _named_target(path: Path, base: Path) -> Target | None:
+    """Build the target for a discovered file that already holds a version."""
+    root_only = path.name == "CITATION.cff" or "Dockerfile" in path.name
+    if root_only and path.parent.resolve() != base:
+        return None
+    target = _by_name(path)
+    if target is None:
+        return None
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    return target if target.current(text) is not None else None
+
+
+def _discovered(paths: list[Path], base: Path) -> list[Target]:
+    """Build the targets found by file name among candidate paths."""
     targets: list[Target] = []
     crate_names: set[str] = set()
     lock_dirs: list[Path] = []
-    for path in _candidates(config, base):
-        if not allowed(path):
-            continue
+    for path in paths:
         if path.name == "Cargo.toml":
             text = path.read_text(encoding="utf-8")
             name_span = toml_span(text, ["package", "name"])
@@ -451,17 +460,8 @@ def discover(config: Config, *, package: str | None = None) -> list[Target]:
                 targets.append(
                     Target(module, "python", "pep440", False, generated=True)
                 )
-        root_only = path.name == "CITATION.cff" or "Dockerfile" in path.name
-        if root_only and path.parent.resolve() != base:
-            continue
-        target = _by_name(path)
-        if target is None:
-            continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
-        if target.current(text) is not None:
+        target = _named_target(path, base)
+        if target is not None:
             targets.append(target)
     if crate_names and any(target.kind == "cargo" for target in targets):
         targets.extend(
@@ -474,16 +474,33 @@ def discover(config: Config, *, package: str | None = None) -> list[Target]:
             )
             for folder in lock_dirs
         )
-    seen = {target.path.resolve() for target in targets}
+    return targets
+
+
+def discover(config: Config, *, package: str | None = None) -> list[Target]:
+    """
+    Find every target of the project or of one package.
+
+    Folders of packages that carry their own tag are left out of the repository's
+    targets, and are the only folders searched when that package is asked for.
+
+    :param config: The loaded configuration.
+    :param package: Name of a package from ``[packages]`` to limit the search to.
+    :return: The targets, discovered ones first, listed ones after.
+    :raises ConfigError: If the package is unknown or a listed target is invalid.
+    """
+    base, excluded = _search_scope(config, package)
+    paths = [
+        path for path in _candidates(config, base) if _within(path, base, excluded)
+    ]
+    targets = _discovered(paths, base)
     for entry in config.targets:
         listed = _listed(config, entry)
-        if not allowed(listed.path):
+        if not _within(listed.path, base, excluded):
             continue
-        if listed.path.resolve() in seen:
-            targets = [
-                item for item in targets if item.path.resolve() != listed.path.resolve()
-            ]
-        seen.add(listed.path.resolve())
+        targets = [
+            item for item in targets if item.path.resolve() != listed.path.resolve()
+        ]
         targets.append(listed)
     return targets
 
@@ -623,6 +640,26 @@ def _relative(path: Path, root: Path) -> str:
         return path.as_posix()
 
 
+def _same_but_for_spans(target: Target, head: str, work: str) -> bool:
+    """Tell whether two versions of a file differ only inside located values."""
+    head_spans = sorted(target.locate(head), key=lambda item: item.start)
+    work_spans = sorted(target.locate(work), key=lambda item: item.start)
+    if len(head_spans) != len(work_spans) or not head_spans:
+        return False
+    rebuilt = head
+    for head_span, work_span in reversed(
+        list(zip(head_spans, work_spans, strict=True))
+    ):
+        rebuilt = (
+            rebuilt[: head_span.start]
+            + work[work_span.start : work_span.end]
+            + rebuilt[head_span.end :]
+        )
+    return rebuilt.replace("\r\n", "\n").rstrip("\n") == work.replace(
+        "\r\n", "\n"
+    ).rstrip("\n")
+
+
 def only_version_changed(config: Config, repo: git.Repo, path: str) -> bool:
     """
     Tell whether a dirty file differs from ``HEAD`` only by stamped values.
@@ -642,30 +679,12 @@ def only_version_changed(config: Config, repo: git.Repo, path: str) -> bool:
             targets += discover(config, package=name)
     except ConfigError:
         return False
-    for target in targets:
-        if target.path.resolve() != absolute:
-            continue
-        if target.generated:
-            return True
-        head = repo.show(path)
-        try:
-            work = absolute.read_text(encoding="utf-8")
-        except OSError:
-            return False
-        if head is None:
-            return False
-        head_spans = sorted(target.locate(head), key=lambda item: item.start)
-        work_spans = sorted(target.locate(work), key=lambda item: item.start)
-        if len(head_spans) != len(work_spans) or not head_spans:
-            return False
-        rebuilt = head
-        for head_span, work_span in reversed(list(zip(head_spans, work_spans, strict=False))):
-            rebuilt = (
-                rebuilt[: head_span.start]
-                + work[work_span.start : work_span.end]
-                + rebuilt[head_span.end :]
-            )
-        return rebuilt.replace("\r\n", "\n").rstrip("\n") == work.replace(
-            "\r\n", "\n"
-        ).rstrip("\n")
-    return False
+    target = next((item for item in targets if item.path.resolve() == absolute), None)
+    if target is None:
+        return False
+    if target.generated:
+        return True
+    head = repo.show(path)
+    if head is None or not absolute.is_file():
+        return False
+    return _same_but_for_spans(target, head, _read_exact(absolute))

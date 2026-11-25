@@ -145,8 +145,8 @@ MDFORMAT_TARGETS = ".devcontainer/ .github/ docs/*.md docs/community/ docs/examp
 YAML_TARGETS = ".devcontainer/ .github/ docs/ examples/ scripts/ src/ tests/ *.yml *.yaml"
 TOML_TARGETS = ".devcontainer/ .github/ docs/ examples/ scripts/ src/ tests/ *.toml"
 PYTHON_SRC = "gitversioned"
-PYTHON_UNIT_TESTS = "tests/python/unit"
-PYTHON_INT_TESTS = "tests/python/integration"
+PYTHON_UNIT_TESTS = "tests/unit"
+PYTHON_INT_TESTS = "tests/integration"
 PYTHON_COV_DIR = "coverage/python"
 E2E_TESTS = "tests/e2e"
 DOC_TESTS_PATH = ".tests/docs"
@@ -517,6 +517,13 @@ select = [
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
+"src/gitversioned/cli.py" = [
+  "ARG001",  # shared options are read by the command wrapper
+  "PLR0913", # commands take one argument per CLI option
+  "PLR0917", # commands take one argument per CLI option
+  "UP045",   # typer needs Optional for option annotations on Python 3.10
+  "FBT002",  # boolean CLI flags
+]
 "tests/**/*.py" = [
   "S101",    # asserts allowed in tests
   "ARG",     # Unused function args allowed in tests

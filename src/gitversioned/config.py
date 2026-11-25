@@ -35,6 +35,7 @@ import difflib
 import json
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -207,42 +208,62 @@ _HOME_ORDER = (
 )
 
 
+def _pyproject_table(path: Path, text: str) -> tuple[str, dict[str, Any]] | None:
+    """Read ``[tool.gitversioned]`` from a pyproject file."""
+    table = tomllib.loads(text).get("tool", {}).get("gitversioned")
+    return (f"{path} [tool.gitversioned]", table) if table is not None else None
+
+
+def _cargo_table(path: Path, text: str) -> tuple[str, dict[str, Any]] | None:
+    """Read the gitversioned metadata table from a Cargo manifest."""
+    data = tomllib.loads(text)
+    for section in ("workspace", "package"):
+        table = data.get(section, {}).get("metadata", {}).get("gitversioned")
+        if table is not None:
+            return f"{path} [{section}.metadata.gitversioned]", table
+    return None
+
+
+def _npm_table(path: Path, text: str) -> tuple[str, dict[str, Any]] | None:
+    """Read the ``gitversioned`` key from a package.json file."""
+    table = json.loads(text).get("gitversioned")
+    return (f'{path} "gitversioned"', table) if table is not None else None
+
+
+def _setup_cfg_table(path: Path, text: str) -> tuple[str, dict[str, Any]] | None:
+    """Read ``[tool:gitversioned]`` from a setup.cfg file."""
+    parser = configparser.ConfigParser()
+    parser.read_string(text)
+    if not parser.has_section("tool:gitversioned"):
+        return None
+    table = {key: _coerce(value) for key, value in parser["tool:gitversioned"].items()}
+    return f"{path} [tool:gitversioned]", table
+
+
+def _own_file_table(path: Path, text: str) -> tuple[str, dict[str, Any]] | None:
+    """Read a gitversioned.toml file, which is settings from top to bottom."""
+    return str(path), tomllib.loads(text)
+
+
+_HOME_READERS: dict[str, Callable[[Path, str], tuple[str, dict[str, Any]] | None]] = {
+    "gitversioned.toml": _own_file_table,
+    "pyproject.toml": _pyproject_table,
+    "Cargo.toml": _cargo_table,
+    "package.json": _npm_table,
+    "setup.cfg": _setup_cfg_table,
+}
+
+
 def _read_home(path: Path) -> tuple[str, dict[str, Any]] | None:
     """Return the label and settings table of a home file, if it holds one."""
-    name = path.name
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return None
     try:
-        if name == "gitversioned.toml":
-            return str(path), tomllib.loads(text)
-        if name == "pyproject.toml":
-            table = tomllib.loads(text).get("tool", {}).get("gitversioned")
-            return (f"{path} [tool.gitversioned]", table) if table is not None else None
-        if name == "Cargo.toml":
-            data = tomllib.loads(text)
-            for section in ("workspace", "package"):
-                table = data.get(section, {}).get("metadata", {}).get("gitversioned")
-                if table is not None:
-                    return f"{path} [{section}.metadata.gitversioned]", table
-            return None
-        if name == "package.json":
-            table = json.loads(text).get("gitversioned")
-            return (f'{path} "gitversioned"', table) if table is not None else None
-        if name == "setup.cfg":
-            parser = configparser.ConfigParser()
-            parser.read_string(text)
-            if not parser.has_section("tool:gitversioned"):
-                return None
-            table = {
-                key: _coerce(value)
-                for key, value in parser["tool:gitversioned"].items()
-            }
-            return f"{path} [tool:gitversioned]", table
+        return _HOME_READERS[path.name](path, text)
     except (tomllib.TOMLDecodeError, json.JSONDecodeError, configparser.Error) as error:
         raise ConfigError(f"cannot parse {path}: {error}") from error
-    return None
 
 
 def _coerce(value: str) -> Any:

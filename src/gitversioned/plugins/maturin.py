@@ -29,7 +29,7 @@ Example:
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Iterator
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +50,7 @@ __all__ = [
 
 
 @contextlib.contextmanager
-def stamped(root: Path | None = None) -> Iterator[str]:
+def stamped(root: Path | None = None) -> Generator[str]:
     """
     Stamp every target for the length of a build, then restore tracked files.
 

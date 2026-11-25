@@ -28,11 +28,12 @@ Example:
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import typer
 
@@ -57,15 +58,15 @@ from gitversioned.release import (
     tag_release,
     write_release,
 )
-from gitversioned.resolve import Resolved, resolve
+from gitversioned.resolve import BuildType, Resolved, resolve
 from gitversioned.scaffold import scaffold
-from gitversioned.targets import stamp
+from gitversioned.targets import Change, stamp
 
 __all__ = ["app", "main"]
 
 app = typer.Typer(
     name="gitversioned",
-    help="Versions from git tags, stamped into every manifest, with checks and releases.",
+    help="Versions from git tags, stamped into every manifest, checked and released.",
     add_completion=False,
     no_args_is_help=True,
     pretty_exceptions_enable=False,
@@ -97,6 +98,7 @@ _LEVELS = ("major", "minor", "patch")
 _PRE = ("rc", "beta", "alpha")
 _TYPES = ("dev", "nightly", "release")
 _STANDARDS = ("pep440", "semver")
+_MAX_LISTED = 5
 
 
 def _choice(value: str | None, allowed: tuple[str, ...], flag: str) -> str | None:
@@ -143,6 +145,12 @@ def _default_standard(config: Config) -> str:
     return "semver"
 
 
+def _branch_name(config: Config) -> str:
+    """Name the branch the release branch was rebuilt from."""
+    repo = git.Repo.open(config.root)
+    return (repo.branch() if repo is not None else None) or "HEAD"
+
+
 def _next(
     config: Config, resolved: Resolved, bump: str | None, pre: str | None
 ) -> Version:
@@ -156,7 +164,7 @@ def _next(
         fallback=Version.parse(config.fallback),
         explicit=explicit,
         bump=override if explicit is None else None,
-        pre=pre,  # type: ignore[arg-type]
+        pre=pre,
     )
 
 
@@ -166,15 +174,17 @@ def _explain(
     """Build the lines of an ``--explain`` report."""
     lines: list[str] = []
     if upcoming is not None:
-        lines.append(f"next      {upcoming.render(standard)}")  # type: ignore[arg-type]
+        lines.append(f"next      {upcoming.render(standard)}")
     else:
-        lines.append(f"version   {resolved.version.render(standard)}")  # type: ignore[arg-type]
+        shown = resolved.version.render(standard)
+        lines.append(f"version   {shown}")
         lines.append(f"type      {resolved.type}")
     if resolved.base is not None:
         where = f"tag {resolved.tag}" if resolved.tag else resolved.source
         sha = f", {resolved.short_sha}" if resolved.short_sha else ""
         lines.append(
-            f"current   {resolved.base.render(standard)}  ({where}{sha}, "  # type: ignore[arg-type]
+            f"current   {resolved.base.render(standard)}  "
+            f"({where}{sha}, "
             f"{resolved.distance} commits since)"
         )
     else:
@@ -188,8 +198,9 @@ def _explain(
         for level, commit in resolved.plan.reasons[:20]:
             lines.append(f"  {(level or 'none'):<7} {commit.subject}")
     if resolved.dirty:
-        shown = ", ".join(resolved.dirty[:5])
-        more = f" and {len(resolved.dirty) - 5} more" if len(resolved.dirty) > 5 else ""
+        shown = ", ".join(resolved.dirty[:_MAX_LISTED])
+        extra = len(resolved.dirty) - _MAX_LISTED
+        more = f" and {extra} more" if extra > 0 else ""
         lines.append(f"dirty     {shown}{more}")
     for note in resolved.notes:
         lines.append(f"note      {note}")
@@ -245,7 +256,7 @@ def version_command(
     verbose: VerboseOpt = 0,
     quiet: QuietOpt = False,
 ) -> None:
-    """Print the version of this checkout; --next for the upcoming release; --write to stamp files."""
+    """Print the version; --next for the upcoming release; --write to stamp files."""
     _choice(bump, _LEVELS, "--bump")
     _choice(pre, _PRE, "--pre")
     _choice(build_type, _TYPES, "--type")
@@ -259,7 +270,7 @@ def version_command(
     resolved = resolve(
         config,
         pin=version,
-        build_type=build_type,  # type: ignore[arg-type]
+        build_type=cast("BuildType | None", build_type),
         tag_template=template,
         path_scope=scope,
     )
@@ -267,64 +278,61 @@ def version_command(
     upcoming: Version | None = None
     if next_release:
         upcoming = _next(config, resolved, bump, pre)
-        resolved = Resolved(
-            version=upcoming,
-            type="release",
-            source=resolved.source,
-            tag=resolved.tag,
-            base=resolved.base,
-            distance=resolved.distance,
-            sha=resolved.sha,
-            date=resolved.date,
-            dirty=resolved.dirty,
-            known=resolved.known,
-            plan=resolved.plan,
-            notes=resolved.notes,
-            warnings=resolved.warnings,
-        )
+        resolved = dataclasses.replace(resolved, version=upcoming, type="release")
     changes = stamp(config, resolved, dry_run=dry_run, package=package) if write else []
-    shown = resolved.version
     if json_output:
-        _emit(
-            {
-                "version": shown.render(spelling),  # type: ignore[arg-type]
-                "pep440": shown.pep440(),
-                "semver": shown.semver(),
-                "type": resolved.type,
-                "source": resolved.source,
-                "tag": resolved.tag,
-                "distance": resolved.distance,
-                "sha": resolved.short_sha,
-                "dirty": bool(resolved.dirty),
-                "warnings": resolved.warnings,
-                "written": [
-                    {
-                        "path": change.path,
-                        "old": change.old,
-                        "new": change.new,
-                        "changed": bool(change.diff),
-                    }
-                    for change in changes
-                ],
-            }
-        )
+        _emit(_version_json(resolved, spelling, changes))
         return
     if explain:
         for line in _explain(config, resolved, upcoming, spelling):
             typer.echo(line)
     else:
-        typer.echo(shown.render(spelling))  # type: ignore[arg-type]
-    if write and dry_run:
+        typer.echo(resolved.version.render(spelling))
+    if write:
+        _print_changes(changes, dry_run)
+
+
+def _version_json(
+    resolved: Resolved, spelling: str, changes: list[Change]
+) -> dict[str, Any]:
+    """Build the JSON document for the version command."""
+    shown = resolved.version
+    return {
+        "version": shown.render(spelling),
+        "pep440": shown.pep440(),
+        "semver": shown.semver(),
+        "type": resolved.type,
+        "source": resolved.source,
+        "tag": resolved.tag,
+        "distance": resolved.distance,
+        "sha": resolved.short_sha,
+        "dirty": bool(resolved.dirty),
+        "warnings": resolved.warnings,
+        "written": [
+            {
+                "path": change.path,
+                "old": change.old,
+                "new": change.new,
+                "changed": bool(change.diff),
+            }
+            for change in changes
+        ],
+    }
+
+
+def _print_changes(changes: list[Change], dry_run: bool) -> None:
+    """Print what stamping did, or the diffs for a dry run."""
+    if dry_run:
         for change in changes:
             if change.diff:
                 typer.echo(change.diff, nl=False)
-    elif write:
-        width = max((len(change.path) for change in changes), default=0)
-        for change in changes:
-            state = change.new if change.diff else f"{change.new} (unchanged)"
-            typer.echo(f"  {change.path:<{width}}  {state}")
-        if not changes:
-            typer.echo("  no targets found", err=True)
+        return
+    width = max((len(change.path) for change in changes), default=0)
+    for change in changes:
+        state = change.new if change.diff else f"{change.new} (unchanged)"
+        typer.echo(f"  {change.path:<{width}}  {state}")
+    if not changes:
+        typer.echo("  no targets found", err=True)
 
 
 def _report(findings: list[Finding], as_json: bool, warn_only: bool) -> None:
@@ -480,7 +488,8 @@ def release_command(
             _emit({"stage": "tag", "tag": name, "sha": sha, "pushed": pushed})
         else:
             typer.echo(
-                f"tag       {name} at {sha[:7]}, {'pushed' if pushed else 'created locally'}"
+                f"tag       {name} at {sha[:7]}, "
+                f"{'pushed' if pushed else 'created locally'}"
             )
         return
     if pr:
@@ -489,7 +498,7 @@ def release_command(
             version=version,
             bump=bump,
             pre=pre,
-            package=package,  # type: ignore[arg-type]
+            package=package,
         )
         if json_output:
             _emit(
@@ -510,14 +519,21 @@ def release_command(
         else:
             typer.echo(f"release   {plan.version.pep440()}")
             typer.echo(
-                f"branch    {plan.branch}  (rebuilt from {git.Repo.open(config.root).branch() or 'HEAD'})"
-            )  # type: ignore[union-attr]
+                f"branch    {plan.branch}  (rebuilt from {_branch_name(config)})"
+            )
             typer.echo(f"commit    {plan.title}")
             typer.echo(
-                f"pr        #{request.number} {'opened' if opened else 'updated'}  {request.url}"
+                f"pr        #{request.number} "
+                f"{'opened' if opened else 'updated'}  {request.url}"
             )
         return
-    plan = plan_release(config, version=version, bump=bump, pre=pre, package=package)  # type: ignore[arg-type]
+    plan = plan_release(
+        config,
+        version=version,
+        bump=bump,
+        pre=pre,
+        package=package,
+    )
     changed = write_release(config, plan) if write else []
     if json_output:
         _emit(

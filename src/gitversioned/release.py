@@ -53,7 +53,7 @@ from gitversioned.errors import (
     ConfigError,
     EnvironmentProblemError,
 )
-from gitversioned.model import PreKind, Version
+from gitversioned.model import Version
 from gitversioned.resolve import (
     Resolved,
     match_tag,
@@ -156,12 +156,103 @@ def _require_repo(config: Config) -> git.Repo:
     return repo
 
 
-def plan_release(
+def _pull_requests(
+    config: Config, commits: list[git.Commit], use_github: bool
+) -> dict[int, github.PullRequest]:
+    """Read the pull requests behind squash commits, when GitHub is reachable."""
+    requests: dict[int, github.PullRequest] = {}
+    if not use_github or not github.available(config.root):
+        return requests
+    for commit in commits:
+        parsed = parse_subject(commit.subject)
+        number = parsed.pr if parsed else None
+        if number is None or number in requests:
+            continue
+        found = github.pull_request(config.root, number)
+        if found is not None:
+            requests[number] = found
+    return requests
+
+
+def _label_bump(
+    commits: list[git.Commit], requests: dict[int, github.PullRequest]
+) -> str | None:
+    """Return the highest bump level asked for by pull request labels."""
+    best: str | None = None
+    for commit in commits:
+        parsed = parse_subject(commit.subject)
+        request = requests.get(parsed.pr) if parsed and parsed.pr else None
+        for label in request.labels if request else ():
+            level = _BUMP_LABELS.get(label)
+            if level and (best is None or _RANK[level] > _RANK[best]):
+                best = level
+    return best
+
+
+def _overrides(
+    version: str | None,
+    bump: str | None,
+    labelled: str | None,
+) -> tuple[str | None, str | None, str]:
+    """
+    Settle which override applies.
+
+    :return: The explicit version or level, the bump level and where the choice
+        came from, in the order VERSION, ``--bump``, environment, label, commits.
+    """
+    if version is not None:
+        return version, bump, "VERSION"
+    if bump is not None:
+        return None, bump, "--bump"
+    from_env = env_bump()
+    if from_env:
+        return from_env, None, "GITVERSIONED__BUMP"
+    if labelled:
+        return None, labelled, "label"
+    return None, None, "commits"
+
+
+def _level_text(
+    resolved: Resolved, explicit: str | None, bump: str | None, source: str
+) -> str:
+    """Describe how the release level was chosen, for the plan report."""
+    level = bump or (explicit if explicit in _RANK else None)
+    if explicit and explicit not in _RANK:
+        text = f"set by {source}"
+    elif level:
+        text = f"{level}, from {source}"
+    elif resolved.base is None:
+        text = "first release"
+    elif resolved.base.pre is not None:
+        text = f"final of {resolved.base.pep440()}"
+    else:
+        text = f"{resolved.plan.level}, from commits"
+    if resolved.base is not None:
+        text += f", from {resolved.base.pep440()}"
+    return text
+
+
+def _release_files(config: Config, package: str | None) -> list[str]:
+    """List the files a release changes, relative to the project root."""
+    files: list[str] = []
+    changelog = _changelog_path(config, package)
+    if changelog:
+        files.append(changelog)
+    root = config.root.resolve()
+    files += [
+        item.path.resolve().relative_to(root).as_posix()
+        for item in discover(config, package=package)
+        if item.commit
+    ]
+    return files
+
+
+def plan_release(  # noqa: PLR0913
     config: Config,
     *,
     version: str | None = None,
     bump: str | None = None,
-    pre: PreKind | None = None,
+    pre: str | None = None,
     package: str | None = None,
     use_github: bool = True,
 ) -> ReleasePlan:
@@ -178,11 +269,12 @@ def plan_release(
     :return: The plan.
     :raises NothingToReleaseError: If nothing releasable happened since the last
         release and no override is given.
+    :raises CheckFailedError: If the chosen version is not newer than the last
+        release.
     """
     repo = _require_repo(config)
     template, scope = package_context(config, package)
     resolved = resolve(config, tag_template=template, path_scope=scope)
-    fallback = Version.parse(config.fallback)
 
     merged = repo.tags_merged()
     tags = release_tags(template, list(merged))
@@ -192,53 +284,23 @@ def plan_release(
     )
     scope_path = (config.root / scope) if scope else None
     excluded = [] if scope_path else own_tag_folders(config)
-    commits = repo.commits(
+    since_final = repo.commits(
         merged[last_final] if last_final else None, path=scope_path, exclude=excluded
     )
-
-    requests: dict[int, github.PullRequest] = {}
-    if use_github and github.available(config.root):
-        for commit in commits:
-            parsed = parse_subject(commit.subject)
-            number = parsed.pr if parsed else None
-            if number is not None and number not in requests:
-                found_request = github.pull_request(config.root, number)
-                if found_request is not None:
-                    requests[number] = found_request
-
-    level_source = "commits"
-    chosen = bump
-    explicit = version
-    if chosen is None and explicit is None:
-        override = env_bump()
-        if override:
-            explicit, level_source = override, "GITVERSIONED__BUMP"
-    elif chosen is not None:
-        level_source = "--bump"
-    if chosen is None and explicit is None:
-        since_tag = (
-            {commit.sha for commit in repo.commits(merged[resolved.tag])}
-            if resolved.tag
-            else None
-        )
-        labelled: str | None = None
-        for commit in commits:
-            if since_tag is not None and commit.sha not in since_tag:
-                continue
-            parsed = parse_subject(commit.subject)
-            request = requests.get(parsed.pr) if parsed and parsed.pr else None
-            for label in request.labels if request else ():
-                level = _BUMP_LABELS.get(label)
-                if level and (labelled is None or _RANK[level] > _RANK[labelled]):
-                    labelled = level
-        if labelled:
-            chosen, level_source = labelled, "label"
-
+    since_tag = repo.commits(
+        merged[resolved.tag] if resolved.tag else None,
+        path=scope_path,
+        exclude=excluded,
+    )
+    requests = _pull_requests(config, since_final, use_github)
+    explicit, chosen, source = _overrides(
+        version, bump, _label_bump(since_tag, requests)
+    )
     target = next_version(
         resolved.base,
         resolved.known,
         resolved.plan,
-        fallback=fallback,
+        fallback=Version.parse(config.fallback),
         explicit=explicit,
         bump=chosen,
         pre=pre,
@@ -248,46 +310,24 @@ def plan_release(
             f"{target.pep440()} is not newer than {resolved.tag} "
             f"({resolved.base.pep440()})."
         )
-    if explicit and explicit not in _RANK:
-        level_text = f"set by {'VERSION' if version else level_source}"
-    elif chosen or (explicit in _RANK if explicit else False):
-        level_text = f"{chosen or explicit}, from {level_source}"
-    elif resolved.base is None:
-        level_text = "first release"
-    elif resolved.base.pre is not None:
-        level_text = f"final of {resolved.base.pep440()}"
-    else:
-        level_text = f"{resolved.plan.level}, from commits"
-    if resolved.base is not None:
-        level_text += f", from {resolved.base.pep440()}"
-
-    entries = entries_from_commits(commits, requests)
+    entries = entries_from_commits(since_final, requests)
     day = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
-    section = render_section(target, entries, day=day, repo_url=github.repo_url(repo))
-
-    files: list[str] = []
-    changelog = _changelog_path(config, package)
-    if changelog:
-        files.append(changelog)
-    root = config.root.resolve()
-    for item in discover(config, package=package):
-        if item.commit:
-            files.append(item.path.resolve().relative_to(root).as_posix())
     name = tag_name(template, target)
     prefix = f"release({package})" if package else "release"
-    branch = f"{RELEASE_BRANCH}-{package}" if package else RELEASE_BRANCH
     return ReleasePlan(
         version=target,
         previous=resolved.base,
         tag=name,
-        level=level_text,
-        section=section,
-        files=files,
+        level=_level_text(resolved, explicit, chosen, source),
+        section=render_section(
+            target, entries, day=day, repo_url=github.repo_url(repo)
+        ),
+        files=_release_files(config, package),
         entries=entries,
         bump=resolved.plan,
         package=package,
         title=f"{prefix}: {name}",
-        branch=branch,
+        branch=f"{RELEASE_BRANCH}-{package}" if package else RELEASE_BRANCH,
     )
 
 
@@ -337,7 +377,7 @@ def open_release_pr(
     *,
     version: str | None = None,
     bump: str | None = None,
-    pre: PreKind | None = None,
+    pre: str | None = None,
     package: str | None = None,
 ) -> tuple[ReleasePlan, github.PullRequest, bool]:
     """

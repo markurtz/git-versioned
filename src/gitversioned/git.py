@@ -51,6 +51,8 @@ __all__ = [
 ARCHIVE_FILE = ".git_archival.txt"
 _FIELD_SEP = "\x1f"
 _RECORD_SEP = "\x1e"
+_STATUS_PREFIX = 3
+_DESCRIBE_RE = re.compile(r"^(?P<tag>.+)-(?P<distance>\d+)-g(?P<sha>[0-9a-f]+)$")
 
 
 def is_ci() -> bool:
@@ -72,8 +74,8 @@ def run(args: list[str], cwd: Path, *, check: bool = True) -> str | None:
     :raises subprocess.CalledProcessError: If the command fails and ``check`` is True.
     """
     try:
-        result = subprocess.run(
-            ["git", *args],
+        result = subprocess.run(  # noqa: S603
+            ["git", *args],  # noqa: S607
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -216,7 +218,7 @@ class Repo:
         :return: Every tag name in the repository.
         """
         out = self.git("tag", "--list", check=False)
-        return (out or "").splitlines()
+        return out.splitlines() if out else []
 
     def distance(self, since: str | None, ref: str = "HEAD") -> int:
         """
@@ -283,9 +285,9 @@ class Repo:
         while index < len(entries):
             entry = entries[index]
             index += 1
-            if len(entry) < 4:
+            if len(entry) <= _STATUS_PREFIX:
                 continue
-            paths.append(entry[3:])
+            paths.append(entry[_STATUS_PREFIX:])
             if entry[0] in "RC":
                 index += 1
         return paths
@@ -307,7 +309,7 @@ class Repo:
         out = self.git(
             "ls-files", "--cached", "--others", "--exclude-standard", check=False
         )
-        return (out or "").splitlines()
+        return out.splitlines() if out else []
 
     def relative(self, path: Path) -> str:
         """
@@ -346,20 +348,7 @@ def read_archive(root: Path) -> ArchiveInfo | None:
     if not values:
         return None
     sha = values.get("node") or values.get("commit-sha")
-    tags: list[str] = []
-    distance = 0
-    describe = values.get("describe-name", "")
-    match = re.match(r"^(?P<tag>.+)-(?P<distance>\d+)-g(?P<sha>[0-9a-f]+)$", describe)
-    if match:
-        tags.append(match["tag"])
-        distance = int(match["distance"])
-    elif describe:
-        tags.append(describe)
-    for ref in values.get("ref-names", "").split(","):
-        ref = ref.strip()
-        if ref.startswith("tag: "):
-            tags.insert(0, ref[5:].strip())
-            distance = 0
+    tags, distance = _archive_tags(values)
     date: datetime | None = None
     raw_date = values.get("node-date") or values.get("commit-date")
     if raw_date:
@@ -369,9 +358,28 @@ def read_archive(root: Path) -> ArchiveInfo | None:
             date = None
     if not sha and not tags:
         return None
-    return ArchiveInfo(
-        sha=sha, tags=tuple(dict.fromkeys(tags)), distance=distance, date=date
-    )
+    return ArchiveInfo(sha=sha, tags=tuple(tags), distance=distance, date=date)
+
+
+def _archive_tags(values: dict[str, str]) -> tuple[list[str], int]:
+    """Read the tag names and the distance from expanded archive fields."""
+    tags: list[str] = []
+    distance = 0
+    describe = values.get("describe-name", "")
+    match = _DESCRIBE_RE.match(describe)
+    if match:
+        tags.append(match["tag"])
+        distance = int(match["distance"])
+    elif describe:
+        tags.append(describe)
+    exact = [
+        name.strip()[len("tag: ") :].strip()
+        for name in values.get("ref-names", "").split(",")
+        if name.strip().startswith("tag: ")
+    ]
+    if exact:
+        distance = 0
+    return list(dict.fromkeys(exact + tags)), distance
 
 
 def read_sdist_version(root: Path) -> str | None:

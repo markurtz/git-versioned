@@ -41,7 +41,7 @@ from gitversioned import git
 from gitversioned.commits import BumpPlan, next_version, plan_bump
 from gitversioned.config import Config
 from gitversioned.errors import EnvironmentProblemError, NothingToReleaseError
-from gitversioned.model import Level, Version
+from gitversioned.model import Version
 
 __all__ = [
     "BuildType",
@@ -185,18 +185,13 @@ def _shape(
     rule = config.nightly if build_type == "nightly" else config.dev
     if not base_is_release or base.pre is not None:
         target = base.release
+    elif rule == "next":
+        try:
+            target = next_version(base, resolved.known, resolved.plan, fallback=base)
+        except NothingToReleaseError:
+            target = base.bump("patch")
     else:
-        level: Level = "patch"
-        if rule == "next":
-            try:
-                target = next_version(
-                    base, resolved.known, resolved.plan, fallback=base
-                )
-            except NothingToReleaseError:
-                target = base.bump("patch")
-        else:
-            level = rule  # type: ignore[assignment]
-            target = base.bump(level)
+        target = base.bump(rule)
     stamp = resolved.date if config.date == "commit" and resolved.date else None
     stamp = stamp or datetime.now(tz=timezone.utc)
     number = int(stamp.strftime("%Y%m%d"))
@@ -254,12 +249,34 @@ def resolve(
     if repo is None:
         return _resolve_without_git(config, template, build_type, fallback, warnings)
 
+    return _resolve_with_git(
+        config,
+        repo=repo,
+        template=template,
+        build_type=build_type,
+        path_scope=path_scope,
+        fallback=fallback,
+        warnings=warnings,
+    )
+
+
+def _resolve_with_git(  # noqa: PLR0913
+    config: Config,
+    *,
+    repo: git.Repo,
+    template: str,
+    build_type: BuildType | None,
+    path_scope: str | None,
+    fallback: Version,
+    warnings: list[str],
+) -> Resolved:
+    """Resolve from the release tags reachable from ``HEAD``."""
     merged = repo.tags_merged()
     tags = release_tags(template, list(merged))
     resolved = Resolved(
         version=fallback,
         type="dev",
-        source="tag",
+        source="tag" if tags else "fallback",
         sha=repo.head(),
         date=repo.head_date(),
         known=list(release_tags(template, repo.all_tags()).values()),
@@ -267,50 +284,44 @@ def resolve(
     )
     scope = (config.root / path_scope) if path_scope else None
     excluded = [] if scope else own_tag_folders(config)
+    since: str | None = None
     if tags:
         best = max(tags, key=lambda name: tags[name].sort_key())
         resolved.tag = best
         resolved.base = tags[best]
-        commits = repo.commits(merged[best], path=scope, exclude=excluded)
-        resolved.distance = len(commits)
-        resolved.plan = plan_bump(commits)
+        since = merged[best]
         resolved.notes.append(f"base {tags[best].pep440()} from tag {best}")
+    elif repo.is_shallow():
+        _problem(
+            "shallow clone with no release tags reachable, so the version cannot "
+            "be trusted. Fetch full history (fetch-depth: 0 on actions/checkout).",
+            warnings,
+        )
     else:
-        resolved.source = "fallback"
-        commits = repo.commits(None, path=scope, exclude=excluded)
-        resolved.distance = len(commits)
-        resolved.plan = plan_bump(commits)
-        if repo.is_shallow():
-            _problem(
-                "shallow clone with no release tags reachable, so the version "
-                "cannot be trusted. Fetch full history (fetch-depth: 0 on "
-                "actions/checkout).",
-                warnings,
-            )
-        else:
-            message = (
-                f"no release tags match {template!r}; using fallback "
-                f"{fallback.pep440()}."
-            )
-            logger.info(message)
-            resolved.notes.append(message)
+        message = (
+            f"no release tags match {template!r}; using fallback {fallback.pep440()}."
+        )
+        logger.info(message)
+        resolved.notes.append(message)
+    commits = repo.commits(since, path=scope, exclude=excluded)
+    resolved.distance = len(commits)
+    resolved.plan = plan_bump(commits)
 
     resolved.dirty = _counted_dirty(config, repo)
     at_tag = resolved.base is not None and resolved.distance == 0 and not resolved.dirty
-    kind = build_type or ("release" if at_tag else "dev")
+    kind: BuildType = build_type or ("release" if at_tag else "dev")
     resolved.type = kind
-    if kind == "release":
-        if at_tag and resolved.base is not None:
-            resolved.version = resolved.base
-        else:
-            try:
-                resolved.version = next_version(
-                    resolved.base, resolved.known, resolved.plan, fallback=fallback
-                )
-            except NothingToReleaseError:
-                resolved.version = (resolved.base or fallback).release
-    else:
+    if kind != "release":
         resolved.version = _shape(config, resolved, kind, base_is_release=bool(tags))
+    elif at_tag and resolved.base is not None:
+        resolved.version = resolved.base
+    else:
+        try:
+            resolved.version = next_version(
+                resolved.base, resolved.known, resolved.plan, fallback=fallback
+            )
+        except NothingToReleaseError:
+            resolved.version = (resolved.base or fallback).release
     return resolved
 
 

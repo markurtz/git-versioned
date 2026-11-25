@@ -86,7 +86,7 @@ class Version:
     major: int
     minor: int
     patch: int
-    pre: tuple[PreKind, int] | None = None
+    pre: tuple[str, int] | None = None
     dev: int | None = None
     local: str | None = None
     nightly: bool = False
@@ -120,7 +120,7 @@ class Version:
         match = _VERSION_RE.match(text.strip())
         if match is None:
             return None
-        pre: tuple[PreKind, int] | None = None
+        pre: tuple[str, int] | None = None
         if match["pre"]:
             pre = (_PRE_ALIASES[match["pre"].lower()], int(match["pre_num"] or 0))
         dev = None
@@ -150,7 +150,7 @@ class Version:
         """
         return self.pre is None and self.dev is None
 
-    def bump(self, level: Level) -> Version:
+    def bump(self, level: str) -> Version:
         """
         Return the next plain release at the given level.
 
@@ -166,7 +166,7 @@ class Version:
     def with_parts(
         self,
         *,
-        pre: tuple[PreKind, int] | None = None,
+        pre: tuple[str, int] | None = None,
         dev: int | None = None,
         local: str | None = None,
         nightly: bool = False,
@@ -212,7 +212,7 @@ class Version:
             text += "+" + re.sub(r"[^0-9A-Za-z.-]", ".", self.local)
         return text
 
-    def render(self, standard: Standard) -> str:
+    def render(self, standard: str) -> str:
         """
         Print the version in the given standard.
 

@@ -200,7 +200,7 @@ def render_section(
                 text += f" ({link})"
             lines.append(f"- {text}")
         lines.append("")
-    if len(lines) == 2:
+    if not entries:
         lines += ["No notable changes.", ""]
     return "\n".join(lines)
 

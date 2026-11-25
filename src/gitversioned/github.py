@@ -90,8 +90,12 @@ def gh(args: list[str], cwd: Path, *, check: bool = True) -> str | None:
                 "https://cli.github.com to use release --pr."
             )
         return None
-    result = subprocess.run(
-        ["gh", *args], cwd=cwd, capture_output=True, text=True, check=False
+    result = subprocess.run(  # noqa: S603
+        ["gh", *args],  # noqa: S607
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode != 0:
         if check:
