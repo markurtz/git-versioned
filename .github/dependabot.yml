@@ -22,6 +22,9 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "America/New_York"
+    # Wait a week before proposing a newly published version
+    cooldown:
+      default-days: 7
     # Group all action updates into a single PR to reduce noise
     groups:
       github-actions-updates:
@@ -46,6 +49,9 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "America/New_York"
+    # Wait a week before proposing a newly published version
+    cooldown:
+      default-days: 7
     groups:
       python-dependencies:
         patterns:
@@ -69,6 +75,9 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "America/New_York"
+    # Wait a week before proposing a newly published version
+    cooldown:
+      default-days: 7
     labels:
       - "dependencies"
       - "docker"
