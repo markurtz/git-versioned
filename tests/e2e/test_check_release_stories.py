@@ -141,7 +141,7 @@ class TestS7Check:
         repo.tag("v1.2.0")
         result = repo.run("check")
         assert result.code == 0
-        assert "full history, 1 release tags, latest v1.2.0" in result.out
+        assert "full history, 1 release tag, latest v1.2.0" in result.out
         assert "gitversioned init" in result.out
         data = repo.run("check", "--json").json
         assert data["ok"] is True
@@ -193,7 +193,7 @@ class TestS9S12PlanAndChangelog:
         assert result.code == 0
         changelog = repo.read("CHANGELOG.md")
         assert changelog.startswith("# Changelog\n")
-        assert "## 1.3.0 - " in changelog
+        assert "## [1.3.0] - " in changelog
         assert 'version = "1.3.0"' in repo.read("Cargo.toml")
         assert '"version": "1.3.0"' in repo.read("packages/web/package.json")
 
@@ -210,10 +210,10 @@ class TestS9S12PlanAndChangelog:
         repo.run("release", "--write")
         repo.run("release", "--write")
         changelog = repo.read("CHANGELOG.md")
-        assert changelog.count("## 1.3.0 - ") == 1
+        assert changelog.count("## [1.3.0] - ") == 1
         assert (
             changelog.index("Intro text.")
-            < changelog.index("## 1.3.0")
+            < changelog.index("## [1.3.0]")
             < changelog.index("## 1.2.0")
         )
         assert changelog.endswith("### Added\n\n- old\n")
@@ -223,7 +223,7 @@ class TestS9S12PlanAndChangelog:
         """The final release section covers and replaces its release candidates."""
         seed(repo)
         repo.run("release", "--write", "--pre", "rc")
-        assert "## 1.3.0-rc.1 - " in repo.read("CHANGELOG.md")
+        assert "## [1.3.0-rc.1] - " in repo.read("CHANGELOG.md")
         repo.git("add", "-A")
         repo.commit("release: v1.3.0-rc.1")
         repo.tag("v1.3.0-rc.1")
@@ -261,7 +261,7 @@ class TestS9S12PlanAndChangelog:
             "v1.3.0",
         )
         assert "CHANGELOG.md" in data["files"]
-        assert data["changelog"].startswith("## 1.3.0 - ")
+        assert data["changelog"].startswith("## [1.3.0] - ")
 
 
 class TestS8S10S11ReleasePrAndTag:
@@ -471,7 +471,11 @@ class TestS13Packages:
         assert repo.run("release", "--tag").code == 1
         assert repo.run("release", "--tag", "-p", "core").code == 0
         assert "core-v0.5.1" in repo.git("tag").split()
-        assert repo.run("check", "--tag", "core-v0.6.0", "-p", "core").code == 0
+        assert repo.run("check", "--tag", "core-v0.5.1", "-p", "core").code == 0
+        unwritten = repo.run("check", "--tag", "core-v0.6.0", "-p", "core")
+        assert "0.6.0, newer than core-v0.5.1" in unwritten.out
+        assert "packages/core/CHANGELOG.md has no [0.6.0] section" in unwritten.err
+        assert unwritten.code == 1
 
     @pytest.mark.sanity
     def test_unknown_package(self, repo: RepoBuilder) -> None:

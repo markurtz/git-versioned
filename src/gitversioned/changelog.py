@@ -43,6 +43,7 @@ from gitversioned.model import Version
 __all__ = [
     "KINDS",
     "Entry",
+    "carried_entries",
     "entries_from_commits",
     "insert_section",
     "read_section",
@@ -71,6 +72,11 @@ _HEADER = (
     "and the project follows [Semantic Versioning](https://semver.org/).\n\n"
 )
 _SECTION_RE = re.compile(r"(?m)^## \[?(?P<version>[^\]\s]+)\]?.*$")
+_UNRELEASED = "unreleased"
+_BULLET_RE = re.compile(
+    r"^\s*[-*]\s+(?:\*\*(?P<scope>[^*:]+)\*\*:\s+)?(?P<breaking>\*\*Breaking:\*\*\s+)?"
+    r"(?P<text>.+?)(?:\s+\((?:\[#(?P<link>\d+)\]\([^)]*\)|#(?P<pr>\d+))\))?\s*$"
+)
 _BLOCK_RE = re.compile(r"(?ims)^#{2,3}\s+changelog\s*$\n(?P<body>.*?)(?=^#{1,2}\s|\Z)")
 
 
@@ -172,7 +178,7 @@ def render_section(
     :param repo_url: Repository web address, used to link pull requests.
     :return: Markdown ending in a newline.
     """
-    lines = [f"## {version.semver()} - {day}", ""]
+    lines = [f"## [{version.semver()}] - {day}", ""]
     for kind in KINDS:
         chosen = [entry for entry in entries if entry.kind == kind]
         if not chosen:
@@ -215,6 +221,64 @@ def _sections(text: str) -> list[tuple[str, int, int]]:
     return sections
 
 
+def carried_entries(text: str, version: Version) -> list[Entry]:
+    """
+    Read the entries a new release section takes over from the changelog.
+
+    Keep a Changelog collects upcoming changes under ``## [Unreleased]``; a
+    release moves them into its own section. Sections of earlier pre-releases of
+    the same release are folded in too, since :func:`insert_section` replaces them.
+    Both nested layouts are read: ``### Added`` and ``### <scope>`` then
+    ``#### Added``.
+
+    :param text: Current changelog content.
+    :param version: Version being released.
+    :return: Entries in file order.
+    """
+    entries: list[Entry] = []
+    for name, start, end in _sections(text):
+        found = Version.try_parse(name)
+        carried = name.lower() == _UNRELEASED or (
+            found is not None
+            and found.pre is not None
+            and found.release == version.release
+            and found != version
+        )
+        if carried:
+            body = text[start:end].split("\n", 1)[1] if "\n" in text[start:end] else ""
+            entries.extend(_parse_entries(body))
+    return entries
+
+
+def _parse_entries(body: str) -> list[Entry]:
+    """Read the bullets of a rendered section back into entries."""
+    entries: list[Entry] = []
+    kind = "Changed"
+    heading_scope: str | None = None
+    for line in body.splitlines():
+        heading = re.match(r"^#{3,4}\s+(?P<name>[\w-]+)\s*$", line.strip())
+        if heading:
+            name = heading["name"]
+            if name.capitalize() in KINDS:
+                kind = name.capitalize()
+            else:
+                heading_scope = name
+            continue
+        bullet = _BULLET_RE.match(line)
+        if bullet:
+            number = bullet["link"] or bullet["pr"]
+            entries.append(
+                Entry(
+                    kind,
+                    bullet["scope"] or heading_scope,
+                    bullet["text"].strip(),
+                    int(number) if number else None,
+                    breaking=bool(bullet["breaking"]),
+                )
+            )
+    return entries
+
+
 def insert_section(text: str, version: Version, section: str) -> str:
     """
     Put a release section into a changelog, touching nothing else.
@@ -230,6 +294,9 @@ def insert_section(text: str, version: Version, section: str) -> str:
     if not text.strip():
         text = _HEADER
     for name, start, end in reversed(_sections(text)):
+        if name.lower() == _UNRELEASED:
+            heading = text[start:end].split("\n", 1)[0]
+            text = text[:start] + heading + "\n\n" + text[end:]
         found = Version.try_parse(name)
         if found is None:
             continue

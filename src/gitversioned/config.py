@@ -141,7 +141,8 @@ class Config(BaseModel):
     :param local: Add the commit hash to development builds.
     :param changelog: Changelog file, or ``False`` to turn it off.
     :param types: Allowed commit types.
-    :param scopes: Allowed scopes, or a TOML file whose table names are the scopes.
+    :param scopes: Allowed scopes; an entry ending in ``.toml`` names a file whose
+        table names are scopes.
     :param targets: Extra files to stamp.
     :param packages: Packages with their own folder and optional tag.
     :param root: Project root the paths are relative to.
@@ -177,25 +178,32 @@ class Config(BaseModel):
 
     def allowed_scopes(self) -> list[str]:
         """
-        Resolve the allowed scopes, reading the scopes file when one is named.
+        Resolve the allowed scopes, reading any scopes file that is named.
 
-        Package names are always allowed once any scope is restricted.
+        A scope ending in ``.toml`` is a file whose table names are scopes, so a
+        list can mix a file with extra names. Package names are always allowed
+        once any scope is restricted.
 
         :return: Scope names; an empty list allows any scope.
-        :raises ConfigError: If the scopes file is missing or not valid TOML.
+        :raises ConfigError: If a scopes file is missing or not valid TOML.
         """
-        if isinstance(self.scopes, list):
-            scopes = list(self.scopes)
-        else:
-            path = self.root / self.scopes
-            try:
-                data = tomllib.loads(path.read_text(encoding="utf-8"))
-            except (OSError, tomllib.TOMLDecodeError) as error:
-                raise ConfigError(f"cannot read scopes file {path}: {error}") from error
-            scopes = [key for key, value in data.items() if isinstance(value, dict)]
+        entries = [self.scopes] if isinstance(self.scopes, str) else self.scopes
+        scopes: list[str] = []
+        for entry in entries:
+            names = self._scopes_file(entry) if entry.endswith(".toml") else [entry]
+            scopes += [name for name in names if name not in scopes]
         if scopes:
             scopes += [name for name in self.packages if name not in scopes]
         return scopes
+
+    def _scopes_file(self, name: str) -> list[str]:
+        """Read the table names of one scopes file."""
+        path = self.root / name
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError) as error:
+            raise ConfigError(f"cannot read scopes file {path}: {error}") from error
+        return [key for key, value in data.items() if isinstance(value, dict)]
 
     @classmethod
     def key_names(cls) -> list[str]:
@@ -332,8 +340,33 @@ def _inside(path: Path, parent: Path) -> bool:
     return True
 
 
+_RETIRED: dict[str, str] = {
+    "output": "version.py has one fixed home; list other files in [[targets]].",
+    "output_strategies": "version.py has one fixed shape; use [[targets]] `pattern`.",
+    "overrides": "most files are discovered; list the rest in [[targets]].",
+    "version_type": "pass --type on the command line.",
+    "version_standard": "pass --standard; each file gets its own spelling.",
+    "regex_tag": 'set `tag`, such as tag = "v{version}".',
+    "auto_increment": "set `dev` and `nightly`.",
+    "source_type": "sources are read in a fixed order: pin, tags, archive, sdist.",
+    "dirty_ignore": "stamped files and build folders never count as dirty.",
+    "logging": "use -v, -vv or -q.",
+}
+_RETIRED_PREFIXES: dict[str, str] = {
+    "regex_": 'set `tag`, such as tag = "v{version}".',
+    "format_": "the shapes are fixed; choose the base with `dev` and `nightly`.",
+    "version_source_": "sources are read in a fixed order: pin, tags, archive, sdist.",
+}
+
+
 def _suggest(name: str, valid: list[str]) -> str:
-    """Return a hint naming the nearest valid key."""
+    """Return a hint naming the nearest valid key, or the 0.3 key's replacement."""
+    retired = _RETIRED.get(name) or next(
+        (hint for prefix, hint in _RETIRED_PREFIXES.items() if name.startswith(prefix)),
+        None,
+    )
+    if retired:
+        return f" `{name}` was removed in 0.4: {retired}"
     close = difflib.get_close_matches(name, valid, n=1)
     return f" Did you mean `{close[0]}`?" if close else ""
 
@@ -373,7 +406,7 @@ def load_config(
         if not name.startswith(ENV_PREFIX):
             continue
         key = name[len(ENV_PREFIX) :].lower()
-        if key == "bump":
+        if key in ("bump", "type"):
             continue
         if key not in valid:
             # The environment is shared with other tools and older gitversioned
@@ -397,4 +430,5 @@ def load_config(
     config.root = root
     config.home = label
     config.keys_set = tuple(keys_set)
+    logger.info(f"settings from {label}: {', '.join(keys_set) or 'all defaults'}")
     return config

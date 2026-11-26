@@ -33,6 +33,12 @@ The first source that answers wins:
 1. **Package metadata.** `PKG-INFO` in an unpacked sdist.
 1. **The fallback.** `0.1.0` unless configured, with a warning.
 
+A tag that looks like a version but does not match the tag template, such as
+`1.2.0` when the template is `v{version}`, is ignored with a warning that names
+it. The date in a development or nightly version is the commit's date, so a
+rebuild gives the same version; `date = "build"` uses the build time, which
+honours `SOURCE_DATE_EPOCH` for reproducible builds.
+
 There are no version files to keep in sync and no version committed between
 releases. A tag is the only thing that makes a release.
 
@@ -55,7 +61,8 @@ last release.
 | `fix`, `perf`, `refactor`, `docs`, `build`, `revert`, `deprecate` | patch |
 | `chore`, `ci`, `test`, `release`, merge commits                   | none  |
 
-Below 1.0.0 every level shifts down one: a breaking change is a minor bump and
+Below 1.0.0 every level shifts down one, and the plan says so (`minor, a patch
+below 1.0.0`): a breaking change is a minor bump and
 a feature is a patch bump. An explicit `--bump` is taken as written.
 
 ## Stamping
@@ -82,9 +89,12 @@ release; tagging the merge is what makes the version.
 
 ## The changelog
 
-Sections follow Keep a Changelog (Added, Changed, Deprecated, Removed, Fixed,
-Security) with entries grouped by scope. `chore`, `ci`, `test` and `release`
-commits are left out unless they are breaking. When `gh` is available, the pull
+Each release gets a `## [1.5.0] - 2026-11-25` section with Keep a Changelog
+kinds (Added, Changed, Deprecated, Removed, Fixed, Security), and the scope in
+bold before each entry. `chore`, `ci`, `test` and `release` commits are left
+out unless they are breaking. Lines written by hand under `## [Unreleased]`
+join the new section and `[Unreleased]` is left empty, so a project can keep
+notes there between releases. When `gh` is available, the pull
 request title replaces a squash commit's subject, and a `## Changelog` block in
-a pull request body replaces the generated entry. A final release replaces the
-sections of its release candidates.
+a pull request body replaces the generated entry. A final release takes over
+the entries of its release candidates and replaces their sections.

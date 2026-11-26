@@ -37,7 +37,7 @@ nearest valid key.
 | `local`     | `true`                 | Add `+<hash>` to development builds.                                             |
 | `changelog` | `"CHANGELOG.md"`       | The changelog file, or `false` to turn it off.                                   |
 | `types`     | The twelve types below | The commit types `check` accepts.                                                |
-| `scopes`    | `[]` (any scope)       | The allowed scopes, or the path of a TOML file whose table names are the scopes. |
+| `scopes`    | `[]` (any scope)       | The allowed scopes. An entry ending in `.toml` is a file whose table names are scopes, so `[".config/blocks.toml", "deps"]` mixes both. |
 
 The default types are `feat`, `fix`, `perf`, `refactor`, `docs`, `test`,
 `build`, `ci`, `chore`, `revert`, `deprecate` and `release`.
@@ -106,12 +106,19 @@ Discovery finds these files on its own, among the files git tracks:
 | `package.json`         | `version`                                                                                                   | SemVer   |
 | `tauri.conf.json`      | `version`                                                                                                   | SemVer   |
 | `Chart.yaml`           | `version` and `appVersion`                                                                                  | SemVer   |
-| `CITATION.cff` (root)  | `version`, and `date-released` on a release                                                                 | SemVer   |
-| `Dockerfile` (root)    | The `org.opencontainers.image.version` label, unless it is a `$VARIABLE`                                    | SemVer   |
+| `CITATION.cff` (root)  | `version`, and `date-released` on a release; both are added when missing                                    | SemVer   |
+| `Dockerfile`, `Containerfile` | The `org.opencontainers.image.version` label, unless it is a `$VARIABLE`                             | SemVer   |
+
+In a repository with several `package.json` files, a dependency of one package
+on another is stamped too, keeping its operator (`^`, `~`, `=`); `workspace:`
+and `catalog:` references are left alone. A private `package.json` with no
+`version`, such as a workspace root, is not a target.
 
 Files under `node_modules`, `target`, `dist`, `build`, `site`, `examples`,
 `tests`, `test`, `testdata`, `fixtures`, `vendor` and `third_party` are left
-alone. Edits are scoped text edits: only the version value changes, so
+alone, and so are manifests that say they are never released: a
+`pyproject.toml` with the `Private :: Do Not Upload` classifier and a
+cargo-fuzz harness (`cargo-fuzz = true`). Edits are scoped text edits: only the version value changes, so
 comments, key order, quoting and line endings survive.
 
 List any other file with `[[targets]]`:
@@ -173,7 +180,12 @@ GITVERSIONED__LOCAL=false gitversioned version    # no +hash, e.g. for TestPyPI
 GITVERSIONED__TAG='release-{version}' gitversioned version
 GITVERSIONED__SCOPES='["core","cli"]' gitversioned check "feat(core): x"
 GITVERSIONED__BUMP=minor gitversioned release     # a level or an exact version
+GITVERSIONED__TYPE=nightly python -m build        # release, dev or nightly
 ```
+
+`GITVERSIONED__BUMP` and `GITVERSIONED__TYPE` are not settings: they stand in
+for `--bump` and `--type`. `GITVERSIONED__TYPE` is the only way to pick the
+build type inside a build backend, since the build plugins take no flags.
 
 `gitversioned version --explain` lists how many keys were set and where the
 settings were read from.

@@ -21,9 +21,12 @@ Each integration resolves the version once and writes the generated
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from gitversioned.config import Config, load_config
+from gitversioned.logging import configure_build_logging
+from gitversioned.model import Version
 from gitversioned.release import package_context
 from gitversioned.resolve import Resolved, resolve
 from gitversioned.targets import Change, python_module, render_version_module
@@ -60,6 +63,7 @@ def resolve_for_build(
     :param write: Write the generated ``version.py`` when the project has one.
     :return: The resolved version and the files written, relative to ``root``.
     """
+    configure_build_logging()
     build_root = Path(root).resolve()
     config = load_config(build_root)
     package = build_package(config, build_root)
@@ -70,6 +74,10 @@ def resolve_for_build(
     if module is not None:
         text = render_version_module(resolved)
         old = module.read_text(encoding="utf-8") if module.is_file() else ""
+        # An unpacked sdist ships the module written from git, with the tag and
+        # commit that PKG-INFO lacks: keep it while it names the same version.
+        if resolved.source == "sdist" and _module_version(old) == resolved.version:
+            text = old
         if old != text:
             module.parent.mkdir(parents=True, exist_ok=True)
             with module.open("w", encoding="utf-8", newline="") as handle:
@@ -85,3 +93,9 @@ def resolve_for_build(
             )
         )
     return resolved, changes
+
+
+def _module_version(text: str) -> Version | None:
+    """Read ``__version__`` back out of a generated module."""
+    found = re.search(r'^__version__ = version = "(?P<version>[^"]+)"$', text, re.M)
+    return Version.try_parse(found["version"]) if found else None

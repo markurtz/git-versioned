@@ -47,7 +47,7 @@ from gitversioned.checks import (
     check_title,
     worst_exit_code,
 )
-from gitversioned.commits import env_bump, next_version
+from gitversioned.commits import env_bump, level_text, next_version
 from gitversioned.config import Config, load_config
 from gitversioned.errors import (
     ConfigError,
@@ -58,6 +58,7 @@ from gitversioned.errors import (
 from gitversioned.logging import configure_logging
 from gitversioned.model import Version
 from gitversioned.release import (
+    changelog_path,
     open_release_pr,
     package_context,
     plan_release,
@@ -179,6 +180,8 @@ def _default_standard(config: Config) -> str:
     pyproject = config.root / "pyproject.toml"
     if pyproject.is_file() and "[project]" in pyproject.read_text(encoding="utf-8"):
         return "pep440"
+    if (config.root / "setup.py").is_file() or (config.root / "setup.cfg").is_file():
+        return "pep440"
     return "semver"
 
 
@@ -222,18 +225,21 @@ def _explain(
         lines.append(
             f"current   {resolved.base.render(standard)}  "
             f"({where}{sha}, "
-            f"{resolved.distance} commits since)"
+            f"{_count(resolved.distance, 'commit')} since)"
         )
     elif resolved.source in ("pin", "sdist"):
         lines.append(f"current   none (version given by the {resolved.source})")
     else:
         lines.append(f"current   none ({resolved.source}; fallback {config.fallback})")
     if resolved.plan.reasons:
-        counts: dict[str, int] = {}
-        for level, _commit in resolved.plan.reasons:
-            counts[level or "none"] = counts.get(level or "none", 0) + 1
-        summary = ", ".join(f"{count} {name}" for name, count in counts.items())
-        lines.append(f"why       {resolved.plan.level or 'no release'}: {summary}")
+        counted = _count(len(resolved.plan.reasons), "commit")
+        since = f" since {resolved.tag}" if resolved.tag else ""
+        if resolved.plan.level:
+            level = level_text(resolved.plan.level, resolved.base)
+            summary = f"{level}, the highest level of {counted}{since}"
+        else:
+            summary = f"no release: none of {counted}{since} needs one"
+        lines.append(f"why       {summary}")
         for level, commit in resolved.plan.reasons[:20]:
             lines.append(f"  {(level or 'none'):<7} {commit.subject}")
     if resolved.dirty:
@@ -245,7 +251,8 @@ def _explain(
         lines.append(f"note      {note}")
     total = len(Config.key_names())
     used = len(config.keys_set)
-    lines.append(f"config    {config.home}  ({used} keys set, {total - used} defaults)")
+    counts = f"{_count(used, 'key')} set, {_count(total - used, 'default')}"
+    lines.append(f"config    {config.home}  ({counts})")
     return lines
 
 
@@ -349,6 +356,7 @@ def _version_json(
         "pep440": shown.pep440(),
         "semver": shown.semver(),
         "type": resolved.type,
+        "prerelease": not shown.is_final,
         "source": resolved.source,
         "tag": resolved.tag,
         "distance": resolved.distance,
@@ -385,6 +393,13 @@ def _print_changes(changes: list[Change], dry_run: bool) -> None:
 def _report(findings: list[Finding], as_json: bool, warn_only: bool) -> None:
     """Print findings and exit with the right code."""
     code = worst_exit_code(findings)
+    # Problems go to stderr; --warn reports them without failing, labelled so.
+    to_err = [item.status == "fail" for item in findings]
+    if warn_only:
+        findings = [
+            dataclasses.replace(item, status="warn") if item.status == "fail" else item
+            for item in findings
+        ]
     if as_json:
         _emit(
             {
@@ -405,10 +420,9 @@ def _report(findings: list[Finding], as_json: bool, warn_only: bool) -> None:
             typer.echo("ok")
         else:
             width = max(len(item.area) for item in findings)
-            for item in findings:
+            for item, err in zip(findings, to_err, strict=True):
                 typer.echo(
-                    f"{item.status:<5} {item.area:<{width}}  {item.message}",
-                    err=item.status == "fail",
+                    f"{item.status:<5} {item.area:<{width}}  {item.message}", err=err
                 )
     if code and not warn_only:
         raise typer.Exit(code)
@@ -474,7 +488,9 @@ def check_command(
         findings = check_commits(config, commits)
     elif tag is not None:
         template, _scope = package_context(config, package)
-        findings = check_tag(config, tag, template=template)
+        findings = check_tag(
+            config, tag, template=template, changelog=changelog_path(config, package)
+        )
     else:
         findings = check_repo(config)
     _report(findings, json_output, warn)
@@ -645,3 +661,8 @@ def init_command(
 def main() -> None:
     """Run the command line."""
     app()
+
+
+def _count(number: int, noun: str) -> str:
+    """Spell a count with its noun, such as ``1 commit`` or ``3 commits``."""
+    return f"{number} {noun}{'' if number == 1 else 's'}"

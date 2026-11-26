@@ -163,7 +163,8 @@ ok    commits  2 commits
 ```
 
 `--file` reads the first line of a file, which is what a `commit-msg` hook
-passes. `--warn` reports problems and still exits 0.
+passes. `--warn` reports problems as `warn` and still exits 0, which suits a
+hook that should only advise.
 
 ### A tag name
 
@@ -172,8 +173,11 @@ $ gitversioned check --tag v1.5.0
 ok    tag  1.5.0, newer than v1.4.0
 ```
 
-Use this in a workflow that runs when a tag is pushed, to reject tags that do
-not match the template or that are not newer than the last release.
+The tag must match the template and be newer than the last release. If it
+exists already, it must point at `HEAD`. When the project has a changelog, it
+must have the version's `## [1.5.0]` section. Use this in a workflow that runs
+when a tag is pushed, or before tagging by hand; `release --tag` runs the same
+checks.
 
 ______________________________________________________________________
 
@@ -193,7 +197,7 @@ release   1.5.0  (minor, from commits, from 1.4.0)
 tag       v1.5.0
 files     CHANGELOG.md, CITATION.cff, Dockerfile, charts/demo/Chart.yaml, crates/cli/Cargo.toml, crates/core/Cargo.toml, Cargo.lock, docs/install.md
 
-## 1.5.0 - 2026-11-25
+## [1.5.0] - 2026-11-25
 
 ### Added
 
@@ -234,6 +238,8 @@ Run on the `branch` setting's branch (`main` by default) right after the release
 pull request merges. It reads the
 tag from the release commit's subject, checks it is newer than the last
 release, creates it and pushes it. Pass a `VERSION` to tag `HEAD` by hand.
+Either way it runs the checks of `check --tag` first, so a version without its
+changelog section is never tagged.
 
 ### Choosing the version
 
@@ -242,7 +248,8 @@ The first of these that is set decides:
 1. The `VERSION` argument.
 1. `--bump major|minor|patch`.
 1. `GITVERSIONED__BUMP` in the environment (a level or a version).
-1. A `release:major|minor|patch` label on a merged pull request.
+1. A `release:major|minor|patch` label on a pull request merged since the last
+   final release.
 1. The commits since the last release.
 
 ______________________________________________________________________

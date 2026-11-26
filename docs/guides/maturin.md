@@ -28,7 +28,14 @@ name = "my-extension"
 version = "0.0.0"        # a placeholder; never edited by hand
 ```
 
-Everything under `[tool.maturin]` is passed through untouched.
+Everything under `[tool.maturin]` is passed through untouched. To ship the
+generated `version.py` in a mixed Rust and Python project, list it, because
+Maturin leaves out files that git ignores:
+
+```toml
+[tool.maturin]
+include = [{ path = "python/my_extension/version.py", format = ["sdist", "wheel"] }]
+```
 
 ## Build
 

@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from gitversioned import git, github
+from gitversioned.changelog import read_section
 from gitversioned.commits import parse_subject
 from gitversioned.config import Config
 from gitversioned.errors import ConfigError
@@ -145,19 +146,33 @@ def check_commits(config: Config, revision_range: str) -> list[Finding]:
             continue
         found = check_title(config, commit.subject, area=commit.sha[:7])
         problems += [item for item in found if item.status == "fail"]
-    return problems or [Finding("ok", "commits", f"{len(commits)} commits")]
+    return problems or [
+        Finding(
+            "ok", "commits", f"{len(commits)} commit{'' if len(commits) == 1 else 's'}"
+        )
+    ]
 
 
 def check_tag(
-    config: Config, name: str, *, template: str | None = None
+    config: Config,
+    name: str,
+    *,
+    template: str | None = None,
+    changelog: str | None = None,
 ) -> list[Finding]:
     """
-    Validate a tag name and that it is newer than the last release.
+    Validate a tag before or right after it is created.
+
+    The name must follow the tag template and be newer than every other release
+    tag. An existing tag passes only when it points at ``HEAD``, which is how a
+    release workflow verifies the tag that started it. When the changelog file
+    exists it must hold the release's section.
 
     :param config: The loaded configuration.
     :param name: Tag name to validate.
     :param template: Tag template to use instead of the configured one.
-    :return: A single finding.
+    :param changelog: Changelog path relative to the root, or ``None`` for none.
+    :return: The tag finding, then the changelog finding when there is one.
     """
     pattern = template or config.tag
     version = match_tag(pattern, name)
@@ -173,22 +188,42 @@ def check_tag(
         ]
     repo = git.Repo.open(config.root)
     existing: dict[str, Version] = {}
+    at_head = ""
     if repo is not None:
-        existing = release_tags(
-            pattern, [tag for tag in repo.all_tags() if tag != name]
-        )
+        tags = repo.all_tags()
+        existing = release_tags(pattern, [tag for tag in tags if tag != name])
+        if name in tags:
+            tagged = repo.git("rev-parse", f"{name}^{{commit}}", check=False)
+            if tagged != repo.head():
+                short = (tagged or "")[:7]
+                return [
+                    Finding(
+                        "fail", "tag", f"{name} already exists at {short}, not at HEAD."
+                    )
+                ]
+            at_head = " at HEAD"
+    shown = version.pep440()
     if existing:
         latest = max(existing, key=lambda tag: existing[tag].sort_key())
         if version.sort_key() <= existing[latest].sort_key():
-            return [
+            return [Finding("fail", "tag", f"{shown} is not newer than {latest}.")]
+        findings = [Finding("ok", "tag", f"{shown}{at_head}, newer than {latest}")]
+    else:
+        findings = [Finding("ok", "tag", f"{shown}{at_head}, first release")]
+    if changelog is not None and (config.root / changelog).is_file():
+        if read_section(config.root / changelog, version) is None:
+            findings.append(
                 Finding(
                     "fail",
-                    "tag",
-                    f"{version.pep440()} is not newer than {latest}.",
+                    "changelog",
+                    f"{changelog} has no [{version.semver()}] section. Run "
+                    f"`gitversioned release {version.semver()} --write` and "
+                    "commit it first.",
                 )
-            ]
-        return [Finding("ok", "tag", f"{version.pep440()}, newer than {latest}")]
-    return [Finding("ok", "tag", f"{version.pep440()}, first release")]
+            )
+        else:
+            findings.append(Finding("ok", "changelog", f"{changelog} has the section"))
+    return findings
 
 
 def _check_git(config: Config, repo: git.Repo | None) -> Finding:
@@ -231,8 +266,11 @@ def _check_git(config: Config, repo: git.Repo | None) -> Finding:
             "short. Set fetch-depth: 0 on actions/checkout.",
         )
     if latest:
+        plural = "" if len(tags) == 1 else "s"
         return Finding(
-            "ok", "git", f"full history, {len(tags)} release tags, latest {latest}"
+            "ok",
+            "git",
+            f"full history, {len(tags)} release tag{plural}, latest {latest}",
         )
     return Finding(
         "warn",

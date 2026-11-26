@@ -55,6 +55,8 @@ jobs:
 ```
 
 Exit code 1 means there is nothing to release yet, which is not a failure here.
+Add `if: ${{ !startsWith(github.event.head_commit.message, 'release') }}` to the
+job so the push of a merged release is left to the tagging workflow.
 Pull requests opened with the default `GITHUB_TOKEN` do not start other
 workflows; use a GitHub App token or a personal access token if your checks must
 run on the release pull request.
@@ -87,13 +89,47 @@ is not newer than the last release, and pushes it.
 ## Development and nightly builds
 
 ```yaml
-- run: |
-    pipx run gitversioned version --write --type nightly
-    echo "VERSION=$(pipx run gitversioned version --type nightly)" >> "$GITHUB_ENV"
+- run: echo "VERSION=$(pipx run gitversioned version --type nightly)" >> "$GITHUB_ENV"
+- run: pipx run build
+  env:
+    GITVERSIONED__TYPE: nightly
 ```
 
 `--type dev` is the default away from a tag. `--type nightly` has no commit hash
-and can be uploaded to a package index.
+and can be uploaded to a package index. The build plugins take no flags, so the
+build reads the type from `GITVERSIONED__TYPE`. For a backend without a plugin,
+such as uv_build or Cargo, write it into the files first with
+`gitversioned version --write --type nightly`.
+
+## Release without a pull request
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: false
+        default: ""
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          pipx run gitversioned release $VERSION --write
+          git add -A
+          git commit -qm "release: v$(pipx run gitversioned release $VERSION --json | jq -r .version)"
+          git push -q
+          pipx run gitversioned release --tag
+        env:
+          VERSION: ${{ inputs.version }}
+```
+
+An empty input releases the version the commits call for.
 
 ## Reject bad tags
 
@@ -110,3 +146,9 @@ jobs:
           fetch-depth: 0
       - run: pipx run gitversioned check --tag "$GITHUB_REF_NAME"
 ```
+
+## Run them
+
+The [github-actions example](https://github.com/markurtz/git-versioned/tree/main/examples/github-actions)
+holds all six workflows and runs every gitversioned step in them on each test
+run.

@@ -34,19 +34,26 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 
 from loguru import logger
 
 from gitversioned import git, github
 from gitversioned.changelog import (
     Entry,
+    carried_entries,
     entries_from_commits,
     insert_section,
     read_section,
     render_section,
 )
-from gitversioned.commits import BumpPlan, env_bump, next_version, parse_subject
+from gitversioned.checks import check_tag
+from gitversioned.commits import (
+    BumpPlan,
+    env_bump,
+    level_text,
+    next_version,
+    parse_subject,
+)
 from gitversioned.config import Config
 from gitversioned.errors import (
     CheckFailedError,
@@ -69,6 +76,7 @@ __all__ = [
     "RELEASE_BRANCH",
     "RELEASE_LABEL",
     "ReleasePlan",
+    "changelog_path",
     "open_release_pr",
     "package_context",
     "plan_release",
@@ -140,8 +148,14 @@ def package_context(config: Config, package: str | None) -> tuple[str, str | Non
     return item.tag, item.path
 
 
-def _changelog_path(config: Config, package: str | None) -> str | None:
-    """Return the changelog path, relative to the project root."""
+def changelog_path(config: Config, package: str | None) -> str | None:
+    """
+    Name the changelog a release of the repository or a package edits.
+
+    :param config: The loaded configuration.
+    :param package: Package with its own tag, or ``None`` for the repository.
+    :return: The path relative to the project root, or ``None`` when it is off.
+    """
     if config.changelog is False:
         return None
     if package is not None and config.packages[package].tag:
@@ -241,7 +255,9 @@ def _level_text(
     elif resolved.base.pre is not None:
         text = f"final of {resolved.base.pep440()}"
     else:
-        text = f"{resolved.plan.level}, from commits"
+        text = (
+            f"{level_text(resolved.plan.level or 'patch', resolved.base)}, from commits"
+        )
     if resolved.base is not None:
         text += f", from {resolved.base.pep440()}"
     return text
@@ -250,7 +266,7 @@ def _level_text(
 def _release_files(config: Config, package: str | None) -> list[str]:
     """List the files a release changes, relative to the project root."""
     files: list[str] = []
-    changelog = _changelog_path(config, package)
+    changelog = changelog_path(config, package)
     if changelog:
         files.append(changelog)
     root = config.root.resolve()
@@ -303,14 +319,11 @@ def plan_release(  # noqa: PLR0913
     since_final = repo.commits(
         merged[last_final] if last_final else None, path=scope_path, exclude=excluded
     )
-    since_tag = repo.commits(
-        merged[resolved.tag] if resolved.tag else None,
-        path=scope_path,
-        exclude=excluded,
-    )
     requests = _pull_requests(config, since_final, use_github)
+    # Labels on every pull request since the last final release count, so a
+    # final release after a candidate still sees them.
     explicit, chosen, source = _overrides(
-        version, bump, _label_bump(since_tag, requests)
+        version, bump, _label_bump(since_final, requests)
     )
     target = next_version(
         resolved.base,
@@ -326,8 +339,11 @@ def plan_release(  # noqa: PLR0913
             f"{target.pep440()} is not newer than {resolved.tag} "
             f"({resolved.base.pep440()})."
         )
-    entries = entries_from_commits(since_final, requests)
-    day = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+    entries = _merge_entries(
+        carried_entries(_changelog_text(config, package), target),
+        entries_from_commits(since_final, requests),
+    )
+    day = git.build_time().strftime("%Y-%m-%d")
     name = tag_name(template, target)
     prefix = f"release({package})" if package else "release"
     return ReleasePlan(
@@ -347,6 +363,21 @@ def plan_release(  # noqa: PLR0913
     )
 
 
+def _changelog_text(config: Config, package: str | None) -> str:
+    """Read the changelog a release would edit, or an empty string."""
+    changelog = changelog_path(config, package)
+    path = config.root / changelog if changelog else None
+    return path.read_text(encoding="utf-8") if path and path.is_file() else ""
+
+
+def _merge_entries(carried: list[Entry], derived: list[Entry]) -> list[Entry]:
+    """Put carried entries first and drop derived ones already carried."""
+    seen = {(entry.kind, entry.scope, entry.text) for entry in carried}
+    return carried + [
+        entry for entry in derived if (entry.kind, entry.scope, entry.text) not in seen
+    ]
+
+
 def write_release(config: Config, plan: ReleasePlan) -> list[str]:
     """
     Apply a plan to the working tree: changelog and committed targets.
@@ -356,7 +387,7 @@ def write_release(config: Config, plan: ReleasePlan) -> list[str]:
     :return: Paths that changed, relative to the project root.
     """
     changed: list[str] = []
-    changelog = _changelog_path(config, plan.package)
+    changelog = changelog_path(config, plan.package)
     if changelog:
         path = config.root / changelog
         old = path.read_text(encoding="utf-8") if path.is_file() else ""
@@ -540,14 +571,14 @@ def tag_release(
         )
     if name in repo.all_tags():
         raise CheckFailedError(f"tag {name} already exists.")
-    existing = release_tags(template, repo.all_tags())
-    if existing:
-        latest = max(existing, key=lambda tag: existing[tag].sort_key())
-        if target.sort_key() <= existing[latest].sort_key():
-            raise CheckFailedError(f"{target.pep440()} is not newer than {latest}.")
+    # The same checks as `check --tag`: newer than every release, and the
+    # changelog holds the section the tag releases.
+    changelog = changelog_path(config, package)
+    for finding in check_tag(config, name, template=template, changelog=changelog):
+        if finding.status == "fail":
+            raise CheckFailedError(finding.message)
     sha = repo.head() or ""
     if config.annotated:
-        changelog = _changelog_path(config, package)
         message = (
             read_section(config.root / changelog, target) if changelog else None
         ) or name

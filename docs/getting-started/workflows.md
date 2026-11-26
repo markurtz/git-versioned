@@ -48,12 +48,13 @@ the label to release `1.5.0`, whose changelog section replaces the candidates'.
 ## Nightly builds
 
 ```bash
-gitversioned version --write --type nightly
-python -m build
+GITVERSIONED__TYPE=nightly python -m build       # Python: the build hook
+gitversioned version --write --type nightly      # Cargo, npm and other manifests
 ```
 
 A nightly is the next release with the date, such as `1.5.0.dev20261125`, and
-has no commit hash, so package indexes accept it.
+has no commit hash, so package indexes accept it. The build plugins take no
+flags, so a Python build reads the type from `GITVERSIONED__TYPE`.
 
 ## One package of a monorepo
 

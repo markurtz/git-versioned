@@ -44,6 +44,7 @@ __all__ = [
     "ParsedCommit",
     "env_bump",
     "level_of",
+    "level_text",
     "next_version",
     "parse_subject",
     "plan_bump",
@@ -164,6 +165,19 @@ def plan_bump(commits: list[Commit]) -> BumpPlan:
     return BumpPlan(level=best, reasons=tuple(reasons))
 
 
+def level_text(level: str, current: Version | None) -> str:
+    """
+    Name a commit-derived level, noting the shift below 1.0.
+
+    :param level: Level the commits ask for.
+    :param current: Version the release starts from, if any.
+    :return: ``minor``, or ``minor, a patch below 1.0.0`` when it shifts.
+    """
+    if current is None or _shift(level, current) == level:
+        return level
+    return f"{level}, a {_shift(level, current)} below 1.0.0"
+
+
 def _shift(level: str, current: Version) -> str:
     """Shift a commit-derived level down by one for a version below 1.0."""
     if current.major > 0:
@@ -221,10 +235,23 @@ def next_version(
             target = fallback.release
         elif current.pre is not None and level_name is None:
             target = current.release
+        elif level_name is not None and current.pre is not None:
+            # A level after a pre-release counts from the last final release,
+            # and never lands below the release the candidate is for.
+            floor = current.release.sort_key()
+            finals = [
+                item for item in known if item.is_final and item.sort_key() < floor
+            ]
+            last = max(finals, key=Version.sort_key) if finals else None
+            bumped = last.bump(level_name) if last else current.release
+            target = bumped if bumped.sort_key() > floor else current.release
         elif level_name is not None:
             target = current.release.bump(level_name)
         elif plan.level is None:
-            raise NothingToReleaseError("Nothing to release: no releasable commits.")
+            raise NothingToReleaseError(
+                f"Nothing to release since {current.semver()}: no commit since "
+                "is a feat, a fix or another releasable type."
+            )
         else:
             target = current.bump(_shift(plan.level, current))
     if pre is None:

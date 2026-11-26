@@ -22,6 +22,7 @@ root so a project in a subfolder sees the same paths git does.
 Example:
 ::
     from pathlib import Path
+
     from gitversioned import git
 
     repo = git.Repo.open(Path.cwd())
@@ -38,10 +39,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from loguru import logger
+
 __all__ = [
     "ArchiveInfo",
     "Commit",
     "Repo",
+    "build_time",
     "is_ci",
     "read_archive",
     "read_sdist_version",
@@ -62,6 +66,21 @@ def is_ci() -> bool:
     return os.environ.get("CI", "").strip().lower() not in ("", "0", "false", "no")
 
 
+def build_time() -> datetime:
+    """
+    The time of this build, for build dates and release dates.
+
+    ``SOURCE_DATE_EPOCH`` (https://reproducible-builds.org/specs/source-date-epoch/)
+    fixes it, so a rebuild of the same source gives the same version and changelog.
+
+    :return: The current time in UTC, or the time ``SOURCE_DATE_EPOCH`` names.
+    """
+    epoch = os.environ.get("SOURCE_DATE_EPOCH", "").strip()
+    if epoch.isdigit():
+        return datetime.fromtimestamp(int(epoch), tz=timezone.utc)
+    return datetime.now(tz=timezone.utc)
+
+
 def run(args: list[str], cwd: Path, *, check: bool = True) -> str | None:
     """
     Run a git command and return its output.
@@ -73,6 +92,7 @@ def run(args: list[str], cwd: Path, *, check: bool = True) -> str | None:
         when ``check`` is False.
     :raises subprocess.CalledProcessError: If the command fails and ``check`` is True.
     """
+    logger.debug(f"git {' '.join(args)}")
     try:
         result = subprocess.run(  # noqa: S603
             ["git", *args],  # noqa: S607

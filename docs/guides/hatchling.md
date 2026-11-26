@@ -68,7 +68,7 @@ Package indexes reject versions with a local part (`+abc1234`). Build a nightly,
 which has none, or turn the hash off:
 
 ```bash
-gitversioned version --type nightly --write && python -m build
+GITVERSIONED__TYPE=nightly python -m build
 GITVERSIONED__LOCAL=false python -m build
 ```
 

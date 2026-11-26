@@ -176,7 +176,7 @@ $ gitversioned release
 release   1.5.0  (minor, from commits, from 1.4.0)
 tag       v1.5.0
 
-## 1.5.0 - 2026-11-25
+## [1.5.0] - 2026-11-25
 
 ### Added
 
@@ -252,7 +252,8 @@ the **[Configuration Guide](https://github.com/markurtz/git-versioned/blob/main/
   the logic; `plugins/` holds the Hatchling, setuptools and Maturin backends.
 - `tests/`: `unit/`, `integration/` and `e2e/`, with one end-to-end class per
   user story.
-- `examples/`: runnable projects for each backend and a polyglot repository.
+- `examples/`: 22 runnable projects, from a zero-config Hatchling package to
+  GitHub Actions workflows and template renders; each README is its test.
 - `docs/`: the documentation site.
 - `.github/workflows/`: the CI/CD pipelines.
 

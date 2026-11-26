@@ -22,6 +22,7 @@ each caller degrades or fails with a clear message when ``gh`` is not usable.
 Example:
 ::
     from pathlib import Path
+
     from gitversioned import github
 
     if github.available(Path.cwd()):
@@ -37,6 +38,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 from gitversioned import git
 from gitversioned.errors import EnvironmentProblemError
@@ -90,6 +93,7 @@ def gh(args: list[str], cwd: Path, *, check: bool = True) -> str | None:
                 "https://cli.github.com to use release --pr."
             )
         return None
+    logger.debug(f"gh {' '.join(args[:3])}")
     result = subprocess.run(  # noqa: S603
         ["gh", *args],  # noqa: S607
         cwd=cwd,
