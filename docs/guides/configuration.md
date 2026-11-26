@@ -164,7 +164,8 @@ added to the allowed scopes.
 ## Environment overrides
 
 Any setting can be overridden with `GITVERSIONED__<KEY>`. Lists and booleans
-are written as JSON.
+are written as JSON. An unknown `GITVERSIONED__` variable is ignored with a
+warning, since the environment is shared with other tools and older releases.
 
 ```bash
 GITVERSIONED__VERSION=1.2.3 python -m build       # pin the version for one build

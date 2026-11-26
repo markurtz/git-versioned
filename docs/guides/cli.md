@@ -218,7 +218,10 @@ Rebuilds the branch `release/next` from the current commit with one commit
 titled `release: v1.5.0`, pushes it, and opens a pull request labelled
 `release`, or updates the one already open. The pull request body is the
 changelog section. Run it on every push to the release branch and the pull
-request always shows what the next release will be. It needs the GitHub CLI
+request always shows what the next release will be. It refuses to run on any
+other branch, and exits with code 1 when `HEAD` is a merged release commit that
+is not tagged yet, so it never reopens a release that is waiting for
+`release --tag`. It needs the GitHub CLI
 `gh`, signed in (`GH_TOKEN` in CI).
 
 Add the label `release:rc` to the pull request to make it a release candidate.
@@ -227,7 +230,8 @@ to override the level its title would give.
 
 ### `--tag`: tag the merged release
 
-Run on the release branch after the release pull request merges. It reads the
+Run on the `branch` setting's branch (`main` by default) right after the release
+pull request merges. It reads the
 tag from the release commit's subject, checks it is newer than the last
 release, creates it and pushes it. Pass a `VERSION` to tag `HEAD` by hand.
 

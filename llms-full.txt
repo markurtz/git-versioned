@@ -145,7 +145,6 @@ dependency-groups = ["dev"]
 COVERAGE_CORE = "pytrace"
 PYTHONPATH = "."
 PYTHON_TARGETS = "docs examples scripts src tests"
-GITVERSIONED__LOGGING__LEVEL = "ERROR"
 OCI_IMAGE = "gitversioned:latest"
 MDFORMAT_TARGETS = ".devcontainer/ .github/ docs/*.md docs/community/ docs/examples/ docs/getting-started/ docs/guides/ examples/ scripts/ src/ tests/ *.md"
 YAML_TARGETS = ".devcontainer/ .github/ docs/ examples/ scripts/ src/ tests/ *.yml *.yaml"
@@ -961,7 +960,7 @@ from gitversioned.config import Config
 from gitversioned.errors import ConfigError
 from gitversioned.model import Version
 from gitversioned.resolve import match_tag, release_tags
-from gitversioned.targets import discover
+from gitversioned.targets import all_targets
 
 __all__ = [
     "Finding",
@@ -1168,9 +1167,7 @@ def _check_git(config: Config, repo: git.Repo | None) -> Finding:
 def _check_targets(config: Config) -> list[Finding]:
     """Report the files that will be stamped and the allowed scopes."""
     try:
-        targets = discover(config)
-        for name in config.packages:
-            targets += discover(config, package=name)
+        targets = all_targets(config)
         scopes = config.allowed_scopes()
     except ConfigError as error:
         return [Finding("fail", "targets", str(error), exit_code=2)]
@@ -1255,6 +1252,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import json
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, cast
@@ -1272,7 +1270,12 @@ from gitversioned.checks import (
 )
 from gitversioned.commits import env_bump, next_version
 from gitversioned.config import Config, load_config
-from gitversioned.errors import ConfigError, GitVersionedError
+from gitversioned.errors import (
+    ConfigError,
+    EnvironmentProblemError,
+    GitVersionedError,
+    NothingToReleaseError,
+)
 from gitversioned.logging import configure_logging
 from gitversioned.model import Version
 from gitversioned.release import (
@@ -1323,6 +1326,7 @@ _PRE = ("rc", "beta", "alpha")
 _TYPES = ("dev", "nightly", "release")
 _STANDARDS = ("pep440", "semver")
 _MAX_LISTED = 5
+_GENERATED_SUBJECTS = ("Merge ", 'Revert "', "fixup! ", "squash! ", "amend! ")
 
 
 def _print_version(value: bool) -> None:
@@ -1379,6 +1383,14 @@ def _command(function: Callable[..., None]) -> Callable[..., None]:
             function(*args, **kwargs)
         except GitVersionedError as error:
             _fail(error, bool(kwargs.get("json_output")))
+        except subprocess.CalledProcessError as error:
+            command = " ".join(str(part) for part in error.cmd[:3])
+            detail = (error.stderr or error.stdout or "").strip().splitlines()
+            reason = detail[-1] if detail else f"exit {error.returncode}"
+            _fail(
+                EnvironmentProblemError(f"{command} failed: {reason}"),
+                bool(kwargs.get("json_output")),
+            )
 
     return wrapper
 
@@ -1433,6 +1445,8 @@ def _explain(
             f"({where}{sha}, "
             f"{resolved.distance} commits since)"
         )
+    elif resolved.source in ("pin", "sdist"):
+        lines.append(f"current   none (version given by the {resolved.source})")
     else:
         lines.append(f"current   none ({resolved.source}; fallback {config.fallback})")
     if resolved.plan.reasons:
@@ -1527,7 +1541,15 @@ def version_command(
         resolved = dataclasses.replace(resolved, version=upcoming, type="release")
     changes = stamp(config, resolved, dry_run=dry_run, package=package) if write else []
     if json_output:
-        _emit(_version_json(resolved, spelling, changes))
+        document = _version_json(resolved, spelling, changes)
+        if upcoming is None:
+            try:
+                document["next"] = _next(config, resolved, None, None).render(spelling)
+            except NothingToReleaseError:
+                document["next"] = None
+        else:
+            document["next"] = upcoming.render(spelling)
+        _emit(document)
         return
     if explain:
         for line in _explain(config, resolved, upcoming, spelling):
@@ -1664,6 +1686,9 @@ def check_command(
         title = next(
             (line for line in lines if line.strip() and not line.startswith("#")), ""
         )
+        if title.startswith(_GENERATED_SUBJECTS):
+            _report([Finding("ok", "title", f"skipped: {title}")], json_output, warn)
+            return
     if title is not None:
         findings = check_title(config, title)
     elif commits is not None:
@@ -1829,7 +1854,9 @@ def init_command(
         )
         return
     for action, path, detail in actions:
-        typer.echo(f"{action:<5}  {path:<22}{('  ' + detail) if detail else ''}")
+        typer.echo(
+            f"{action:<5}  {path:<22}{('  ' + detail) if detail else ''}".rstrip()
+        )
     if not config.keys_set:
         typer.echo(
             "No gitversioned settings needed: defaults and discovery cover this repo."
@@ -2102,6 +2129,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from gitversioned import git
@@ -2353,9 +2381,11 @@ def find_homes(root: Path) -> list[tuple[str, dict[str, Any]]]:
     """
     homes: list[tuple[str, dict[str, Any]]] = []
     for relative in _HOME_ORDER:
-        found = _read_home(root / relative)
+        path = root / relative
+        found = _read_home(path)
         if found is not None:
-            homes.append(found)
+            label, table = found
+            homes.append((label.replace(str(path), relative, 1), table))
     return homes
 
 
@@ -2363,8 +2393,9 @@ def find_root(start: Path) -> Path:
     """
     Find the project root for a starting folder.
 
-    The root is the nearest parent holding a config home, searching no higher
-    than the repository root; failing that the repository root, then the start.
+    The root is the nearest parent holding a config home or an unpacked source
+    distribution (``PKG-INFO``), searching no higher than the repository root;
+    failing that the repository root, then the start.
 
     :param start: Folder the command was started in.
     :return: The project root.
@@ -2374,7 +2405,7 @@ def find_root(start: Path) -> Path:
     top = repo.top if repo is not None else None
     current = start
     while True:
-        if find_homes(current):
+        if find_homes(current) or (current / "PKG-INFO").is_file():
             return current
         if current in (top, current.parent):
             break
@@ -2435,9 +2466,14 @@ def load_config(
         if key == "bump":
             continue
         if key not in valid:
-            raise ConfigError(
-                f"unknown environment override {name}.{_suggest(key, valid)}"
+            # The environment is shared with other tools and older gitversioned
+            # releases, so a stale variable warns instead of stopping a build.
+            logger.warning(
+                "ignoring unknown environment override {}.{}",
+                name,
+                _suggest(key, valid),
             )
+            continue
         data[key] = _coerce(value) if key not in ("version", "fallback") else value
         keys_set.append(f"{key} (env)")
     try:
@@ -3046,6 +3082,16 @@ class Repo:
         )
         return out.splitlines() if out else []
 
+    def tracks(self, folder: Path) -> bool:
+        """
+        Tell whether git tracks anything in a folder.
+
+        :param folder: Folder inside the work tree.
+        :return: True when at least one tracked file lies in the folder.
+        """
+        out = self.git("ls-files", "--", self.relative(folder) or ".", check=False)
+        return bool(out)
+
     def relative(self, path: Path) -> str:
         """
         Express a path relative to the repository root with forward slashes.
@@ -3329,7 +3375,8 @@ def create_pull_request(
     :param label: Label to add; created when missing.
     :return: The opened pull request.
     """
-    gh(["label", "create", label, "--force"], cwd, check=False)
+    # Without --force an existing label (and its colour) is left as it is.
+    gh(["label", "create", label], cwd, check=False)
     url = gh(
         [
             "pr",
@@ -3381,8 +3428,12 @@ Example:
 from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from loguru import Message
 
 __all__ = ["configure_logging"]
 
@@ -3399,11 +3450,18 @@ def configure_logging(verbosity: int = 0) -> None:
     level = _LEVELS[max(-1, min(2, verbosity))]
     logger.remove()
     logger.add(
-        sys.stderr,
+        # Look up the stream on every message, so a replaced stderr (a test
+        # runner, a build frontend) never receives writes after it is closed.
+        _to_stderr,
         level=level,
         format="<level>{level: <7}</level> {message}",
-        colorize=None,
+        colorize=False,
     )
+
+
+def _to_stderr(message: Message) -> None:
+    """Write one formatted log message to the current standard error."""
+    sys.stderr.write(message)
 ```
 
 ## File: src/gitversioned/model.py
@@ -3691,6 +3749,7 @@ from gitversioned.errors import (
     CheckFailedError,
     ConfigError,
     EnvironmentProblemError,
+    NothingToReleaseError,
 )
 from gitversioned.model import Version
 from gitversioned.resolve import (
@@ -3785,6 +3844,20 @@ def _changelog_path(config: Config, package: str | None) -> str | None:
     if package is not None and config.packages[package].tag:
         return f"{config.packages[package].path.rstrip('/')}/CHANGELOG.md"
     return str(config.changelog)
+
+
+def _require_own_tag(config: Config, package: str | None) -> None:
+    """Refuse to release a package that follows the repository version."""
+    if package is None:
+        return
+    package_context(config, package)
+    if config.packages[package].tag is None:
+        raise ConfigError(
+            f"package {package!r} has no `tag` of its own, so it is released with "
+            "the repository. Run the release without -p, or give the package a "
+            "`tag` such as "
+            f'"{package}-v{{version}}".'
+        )
 
 
 def _require_repo(config: Config) -> git.Repo:
@@ -3912,6 +3985,7 @@ def plan_release(  # noqa: PLR0913
         release.
     """
     repo = _require_repo(config)
+    _require_own_tag(config, package)
     template, scope = package_context(config, package)
     resolved = resolve(config, tag_template=template, path_scope=scope)
 
@@ -4031,7 +4105,10 @@ def open_release_pr(
     :param pre: Make the release a pre-release of this kind.
     :param package: Package to release instead of the repository.
     :return: The plan, the pull request and whether it was newly opened.
-    :raises CheckFailedError: If the working tree has uncommitted changes.
+    :raises CheckFailedError: If the working tree has uncommitted changes or
+        the command runs on a branch other than the release branch.
+    :raises NothingToReleaseError: If ``HEAD`` is a merged release commit whose
+        tag does not exist yet, so the release is still waiting for its tag.
     """
     repo = _require_repo(config)
     if not github.available(config.root):
@@ -4042,13 +4119,26 @@ def open_release_pr(
         raise CheckFailedError(
             "the working tree has uncommitted changes; commit or stash them first."
         )
+    current = repo.branch()
+    if current is not None and current != config.branch:
+        raise CheckFailedError(
+            f"release --pr runs on {config.branch!r}, not {current!r}: the release "
+            "would carry this branch's unmerged commits."
+        )
+    _require_own_tag(config, package)
+    pending = _released_tag(repo, package)
+    if pending is not None and pending not in repo.all_tags():
+        raise NothingToReleaseError(
+            f"HEAD is the merged release commit for {pending}, which is not tagged "
+            "yet. Run release --tag first."
+        )
     branch = f"{RELEASE_BRANCH}-{package}" if package else RELEASE_BRANCH
     existing = github.find_open_pull_request(config.root, branch)
     if pre is None and existing is not None and RC_LABEL in existing.labels:
         pre = "rc"
     plan = plan_release(config, version=version, bump=bump, pre=pre, package=package)
 
-    start = repo.branch() or repo.head() or "HEAD"
+    start = current or repo.head() or "HEAD"
     repo.git("checkout", "-q", "-B", plan.branch)
     try:
         changed = write_release(config, plan)
@@ -4061,6 +4151,10 @@ def open_release_pr(
             repo.git("add", "--", *paths)
         repo.git(*_identity(repo), "commit", "-q", "--allow-empty", "-m", plan.title)
         repo.git("push", "-q", "--force", "origin", plan.branch)
+    except BaseException:
+        # Leave no release edits behind on the branch the command started from.
+        repo.git("reset", "-q", "--hard", check=False)
+        raise
     finally:
         repo.git("checkout", "-q", start, check=False)
 
@@ -4124,6 +4218,7 @@ def tag_release(
         than the last release.
     """
     repo = _require_repo(config)
+    _require_own_tag(config, package)
     template, _scope = package_context(config, package)
     if version is not None:
         name = tag_name(template, Version.parse(version))
@@ -4198,7 +4293,11 @@ from loguru import logger
 from gitversioned import git
 from gitversioned.commits import BumpPlan, next_version, plan_bump
 from gitversioned.config import Config
-from gitversioned.errors import EnvironmentProblemError, NothingToReleaseError
+from gitversioned.errors import (
+    ConfigError,
+    EnvironmentProblemError,
+    NothingToReleaseError,
+)
 from gitversioned.model import Version
 
 __all__ = [
@@ -4359,8 +4458,10 @@ def _shape(
     """Turn the base into a development or nightly version."""
     base = resolved.base or Version.parse(config.fallback)
     rule = config.nightly if build_type == "nightly" else config.dev
-    if not base_is_release or base.pre is not None:
+    if not base_is_release:
         target = base.release
+    elif base.pre is not None:
+        target = _next_pre(base, resolved.known)
     elif rule == "next":
         try:
             target = next_version(base, resolved.known, resolved.plan, fallback=base)
@@ -4372,7 +4473,7 @@ def _shape(
     stamp = stamp or datetime.now(tz=timezone.utc)
     number = int(stamp.strftime("%Y%m%d"))
     if build_type == "nightly":
-        return target.with_parts(dev=number, nightly=True)
+        return target.with_parts(pre=target.pre, dev=number, nightly=True)
     local: str | None = None
     if config.local:
         parts = [
@@ -4381,7 +4482,29 @@ def _shape(
             if part
         ]
         local = ".".join(parts) or None
-    return target.with_parts(dev=number, local=local)
+    return target.with_parts(pre=target.pre, dev=number, local=local)
+
+
+def _next_pre(base: Version, known: list[Version]) -> Version:
+    """
+    Return the pre-release after a pre-release base, for builds past its tag.
+
+    A build after ``v1.3.0-rc.1`` must sort above it, so it is based on ``rc2``
+    (or the next free number when later candidates are already tagged).
+
+    :param base: The pre-release the build follows.
+    :param known: Every tagged version.
+    :return: The next pre-release of the same kind.
+    """
+    kind, number = base.pre or ("rc", 0)
+    taken = [
+        version.pre[1]
+        for version in known
+        if version.pre is not None
+        and version.pre[0] == kind
+        and version.release == base.release
+    ]
+    return base.release.with_parts(pre=(kind, max([number, *taken]) + 1))
 
 
 def resolve(
@@ -4421,6 +4544,14 @@ def resolve(
     fallback = Version.parse(config.fallback)
     repo = git.Repo.open(config.root)
     if repo is not None and repo.head() is None:
+        repo = None
+    if (
+        repo is not None
+        and (config.root / "PKG-INFO").is_file()
+        and not repo.tracks(config.root)
+    ):
+        # An unpacked source distribution inside some other repository: the
+        # surrounding history says nothing about this package.
         repo = None
     if repo is None:
         return _resolve_without_git(config, template, build_type, fallback, warnings)
@@ -4506,9 +4637,17 @@ def _counted_dirty(config: Config, repo: git.Repo) -> list[str]:
     dirty = repo.dirty_paths()
     if not dirty:
         return []
-    from gitversioned.targets import only_version_changed  # noqa: PLC0415
+    from gitversioned.targets import all_targets, only_version_changed  # noqa: PLC0415
 
-    return [path for path in dirty if not only_version_changed(config, repo, path)]
+    try:
+        known = all_targets(config)
+    except ConfigError:
+        known = []
+    return [
+        path
+        for path in dirty
+        if not only_version_changed(config, repo, path, known=known)
+    ]
 
 
 def _resolve_without_git(
@@ -4600,6 +4739,9 @@ Example:
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from gitversioned import git
 from gitversioned.config import Config
 
@@ -4614,7 +4756,7 @@ ARCHIVE_TEMPLATE = (
 _ATTRIBUTE_LINE = f"{git.ARCHIVE_FILE}  export-subst\n"
 
 
-def _append(path, text: str) -> None:  # noqa: ANN001
+def _append(path: Path, text: str) -> None:
     """Append text to a file, adding a newline first when the file lacks one."""
     old = path.read_text(encoding="utf-8") if path.is_file() else ""
     joiner = "" if not old or old.endswith("\n") else "\n"
@@ -4628,7 +4770,7 @@ def scaffold(config: Config) -> list[tuple[str, str, str]]:
 
     :param config: The loaded configuration.
     :return: One ``(action, path, detail)`` row per step, where the action is
-        ``wrote``, ``edit`` or ``ok``.
+        ``wrote``, ``edit``, ``ok`` or ``todo`` for a change left to the user.
     """
     actions: list[tuple[str, str, str]] = []
     root = config.root
@@ -4661,7 +4803,23 @@ def scaffold(config: Config) -> list[tuple[str, str, str]]:
                     '+ [tool.hatch.version] source = "gitversioned"',
                 )
             )
+        if not _requires_gitversioned(text):
+            actions.append(
+                (
+                    "todo",
+                    "pyproject.toml",
+                    'add "gitversioned>=0.4" to [build-system] requires',
+                )
+            )
     return actions
+
+
+def _requires_gitversioned(text: str) -> bool:
+    """Tell whether a pyproject lists gitversioned as a build requirement."""
+    match = re.search(
+        r"(?ms)^\[build-system\].*?^requires\s*=\s*\[(?P<items>[^\]]*)\]", text
+    )
+    return bool(match and re.search(r"[\"']gitversioned\b", match["items"]))
 ```
 
 ## File: src/gitversioned/targets.py
@@ -4687,6 +4845,7 @@ Example:
 
 from __future__ import annotations
 
+import dataclasses
 import difflib
 import re
 import sys
@@ -4711,8 +4870,10 @@ __all__ = [
     "Change",
     "Span",
     "Target",
+    "all_targets",
     "discover",
     "only_version_changed",
+    "python_module",
     "render_version_module",
     "stamp",
 ]
@@ -4994,7 +5155,7 @@ def _by_name(path: Path) -> Target | None:
     return Target(path, kind, standard, True, locate)
 
 
-def _python_module(pyproject: Path) -> Path | None:
+def python_module(pyproject: Path) -> Path | None:
     """Return where the generated ``version.py`` goes for a dynamic project."""
     try:
         data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -5100,6 +5261,10 @@ def _named_target(path: Path, base: Path) -> Target | None:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return None
+    if target.kind == "cargo":
+        # A crate that inherits the workspace version still pins its path
+        # dependencies, and those requirements must follow the release.
+        return target if target.locate(text) else None
     return target if target.current(text) is not None else None
 
 
@@ -5117,7 +5282,7 @@ def _discovered(paths: list[Path], base: Path) -> list[Target]:
             if (path.parent / "Cargo.lock").is_file():
                 lock_dirs.append(path.parent)
         if path.name == "pyproject.toml":
-            module = _python_module(path)
+            module = python_module(path)
             if module is not None:
                 targets.append(
                     Target(module, "python", "pep440", False, generated=True)
@@ -5216,7 +5381,9 @@ def render_version_module(resolved: Resolved) -> str:
 def _values(target: Target, resolved: Resolved) -> dict[str, str]:
     """Build the replacement values for a target."""
     rendered = resolved.version.render(target.standard)
-    values = {"version": rendered, "req": rendered}
+    # Requirements never carry build metadata: Cargo ignores it with a warning.
+    requirement = dataclasses.replace(resolved.version, local=None)
+    values = {"version": rendered, "req": requirement.render(target.standard)}
     if resolved.type == "release":
         day = datetime.now(tz=timezone.utc)
         values["date"] = day.strftime("%Y-%m-%d")
@@ -5322,7 +5489,26 @@ def _same_but_for_spans(target: Target, head: str, work: str) -> bool:
     ).rstrip("\n")
 
 
-def only_version_changed(config: Config, repo: git.Repo, path: str) -> bool:
+def all_targets(config: Config) -> list[Target]:
+    """
+    Find the targets of the repository and of every package.
+
+    :param config: The loaded configuration.
+    :return: The targets, repository first, then each package in order.
+    :raises ConfigError: If a listed target is invalid.
+    """
+    targets = discover(config)
+    for name in config.packages:
+        targets += discover(config, package=name)
+    return targets
+
+
+def only_version_changed(
+    config: Config,
+    repo: git.Repo,
+    path: str,
+    known: list[Target] | None = None,
+) -> bool:
     """
     Tell whether a dirty file differs from ``HEAD`` only by stamped values.
 
@@ -5332,13 +5518,12 @@ def only_version_changed(config: Config, repo: git.Repo, path: str) -> bool:
     :param config: The loaded configuration.
     :param repo: The repository.
     :param path: Dirty path relative to the repository root.
+    :param known: Targets already discovered, to avoid searching again per path.
     :return: True when the change is only gitversioned's own stamping.
     """
     absolute = (repo.top / path).resolve()
     try:
-        targets = discover(config)
-        for name in config.packages:
-            targets += discover(config, package=name)
+        targets = all_targets(config) if known is None else known
     except ConfigError:
         return False
     target = next((item for item in targets if item.path.resolve() == absolute), None)
@@ -5366,11 +5551,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gitversioned.config import load_config
+from gitversioned.config import Config, load_config
+from gitversioned.release import package_context
 from gitversioned.resolve import Resolved, resolve
-from gitversioned.targets import Change, stamp
+from gitversioned.targets import Change, python_module, render_version_module
 
-__all__ = ["resolve_for_build"]
+__all__ = ["build_package", "resolve_for_build"]
+
+
+def build_package(config: Config, build_root: Path) -> str | None:
+    """
+    Name the ``[packages]`` entry a build folder belongs to, if any.
+
+    :param config: The loaded configuration.
+    :param build_root: Folder being built.
+    :return: The package name, or ``None`` for the repository itself.
+    """
+    for name, item in config.packages.items():
+        folder = (config.root / item.path).resolve()
+        if build_root == folder or folder in build_root.parents:
+            return name
+    return None
 
 
 def resolve_for_build(
@@ -5379,19 +5580,38 @@ def resolve_for_build(
     """
     Resolve the version for a build and write the generated module.
 
+    The build folder may sit below the project root, as an extra package under
+    ``packages/<name>/`` does: the version then follows that package's tags when
+    it has its own, and only the build folder's own ``version.py`` is written.
+
     :param root: Project folder being built.
     :param write: Write the generated ``version.py`` when the project has one.
-    :return: The resolved version and the files written.
+    :return: The resolved version and the files written, relative to ``root``.
     """
-    config = load_config(Path(root))
-    resolved = resolve(config)
+    build_root = Path(root).resolve()
+    config = load_config(build_root)
+    package = build_package(config, build_root)
+    template, scope = package_context(config, package)
+    resolved = resolve(config, tag_template=template, path_scope=scope)
     changes: list[Change] = []
-    if write:
-        changes = [
-            change
-            for change in stamp(config, resolved, generated_only=True)
-            if change.written or not change.diff
-        ]
+    module = python_module(build_root / "pyproject.toml") if write else None
+    if module is not None:
+        text = render_version_module(resolved)
+        old = module.read_text(encoding="utf-8") if module.is_file() else ""
+        if old != text:
+            module.parent.mkdir(parents=True, exist_ok=True)
+            with module.open("w", encoding="utf-8", newline="") as handle:
+                handle.write(text)
+        changes.append(
+            Change(
+                path=module.relative_to(build_root).as_posix(),
+                old=None,
+                new=resolved.version.pep440(),
+                diff="" if old == text else "changed",
+                commit=False,
+                written=old != text,
+            )
+        )
     return resolved, changes
 ```
 
@@ -5506,6 +5726,8 @@ from pathlib import Path
 from typing import Any
 
 from gitversioned.config import load_config
+from gitversioned.plugins import build_package
+from gitversioned.release import package_context
 from gitversioned.resolve import resolve
 from gitversioned.targets import discover, stamp
 
@@ -5529,13 +5751,19 @@ def stamped(root: Path | None = None) -> Generator[str]:
     :param root: Project folder; defaults to the current one.
     :return: The resolved version in PEP 440 form.
     """
-    config = load_config(root or Path.cwd())
-    resolved = resolve(config)
+    build_root = (root or Path.cwd()).resolve()
+    config = load_config(build_root)
+    package = build_package(config, build_root)
+    template, scope = package_context(config, package)
+    resolved = resolve(config, tag_template=template, path_scope=scope)
+    own_tag = package is not None and config.packages[package].tag is not None
+    scoped = package if own_tag else None
     saved: dict[Path, str] = {}
-    for target in discover(config):
+    for target in discover(config, package=scoped):
         if not target.generated and target.path.is_file():
-            saved[target.path] = target.path.read_text(encoding="utf-8")
-    stamp(config, resolved)
+            with target.path.open(encoding="utf-8", newline="") as handle:
+                saved[target.path] = handle.read()
+    stamp(config, resolved, package=scoped)
     try:
         yield resolved.version.pep440()
     finally:
@@ -6660,7 +6888,10 @@ Rebuilds the branch `release/next` from the current commit with one commit
 titled `release: v1.5.0`, pushes it, and opens a pull request labelled
 `release`, or updates the one already open. The pull request body is the
 changelog section. Run it on every push to the release branch and the pull
-request always shows what the next release will be. It needs the GitHub CLI
+request always shows what the next release will be. It refuses to run on any
+other branch, and exits with code 1 when `HEAD` is a merged release commit that
+is not tagged yet, so it never reopens a release that is waiting for
+`release --tag`. It needs the GitHub CLI
 `gh`, signed in (`GH_TOKEN` in CI).
 
 Add the label `release:rc` to the pull request to make it a release candidate.
@@ -6669,7 +6900,8 @@ to override the level its title would give.
 
 ### `--tag`: tag the merged release
 
-Run on the release branch after the release pull request merges. It reads the
+Run on the `branch` setting's branch (`main` by default) right after the release
+pull request merges. It reads the
 tag from the release commit's subject, checks it is newer than the last
 release, creates it and pushes it. Pass a `VERSION` to tag `HEAD` by hand.
 
@@ -6988,7 +7220,8 @@ added to the allowed scopes.
 ## Environment overrides
 
 Any setting can be overridden with `GITVERSIONED__<KEY>`. Lists and booleans
-are written as JSON.
+are written as JSON. An unknown `GITVERSIONED__` variable is ignored with a
+warning, since the environment is shared with other tools and older releases.
 
 ```bash
 GITVERSIONED__VERSION=1.2.3 python -m build       # pin the version for one build

@@ -41,10 +41,21 @@ are licensed under the Apache License, Version 2.0.
 
 ## Overview
 
-<p align="center">
-  <img alt="User Flow Diagram" src="assets/branding/user-flow-light.svg#only-light" width="800">
-  <img alt="User Flow Diagram" src="assets/branding/user-flow-dark.svg#only-dark" width="800">
-</p>
+Every step of a version's life is one command, and the same engine runs inside
+the build backends.
+
+| When                                     | Command                                         |
+| ---------------------------------------- | ----------------------------------------------- |
+| Every Python build                       | none: the Hatchling, setuptools or Maturin hook |
+| Print the version in a script            | `gitversioned version`                          |
+| Stamp every manifest before a build      | `gitversioned version --write`                  |
+| Nightly build                            | `gitversioned version --type nightly --write`   |
+| What the next release would be, and why  | `gitversioned version --next --explain`         |
+| Is this repository set up correctly      | `gitversioned check`                            |
+| Pull request title check                 | `gitversioned check "$PR_TITLE"`                |
+| Preview a release                        | `gitversioned release`                          |
+| Open or refresh the release pull request | `gitversioned release --pr`                     |
+| Tag the merged release                   | `gitversioned release --tag`                    |
 
 ## What's Included
 
@@ -120,76 +131,69 @@ Our security policy, responsible disclosure process, and supported versions.
 
 ## Quick Install
 
-GitVersioned supports multiple integration paths. Select your preferred method to get started:
+Pick the build backend, or use the command line on its own.
 
-=== "Hatchling"
+### Hatchling
 
-````
 ```toml
 [build-system]
-requires = ["hatchling", "gitversioned"]
+requires = ["hatchling", "gitversioned>=0.4"]
 build-backend = "hatchling.build"
+
+[project]
+name = "my-project"
+dynamic = ["version"]
 
 [tool.hatch.version]
 source = "gitversioned"
+
+[tool.hatch.build.hooks.gitversioned]
 ```
-````
 
-=== "Setuptools"
+### Setuptools
 
-````
 ```toml
 [build-system]
-requires = ["setuptools>=64.0", "gitversioned"]
+requires = ["setuptools>=64", "gitversioned>=0.4"]
 build-backend = "setuptools.build_meta"
 
 [project]
+name = "my-project"
 dynamic = ["version"]
 ```
-````
 
-=== "Maturin"
+### Maturin
 
-````
 ```toml
 [build-system]
-requires = ["maturin>=1.0,<2.0", "gitversioned"]
-build-backend = "gitversioned.plugins.maturin_plugin"
+requires = ["maturin>=1.0,<2.0", "gitversioned>=0.4"]
+build-backend = "gitversioned.plugins.maturin"
 
 [project]
+name = "my-project"
 dynamic = ["version"]
 ```
-````
 
-=== "CLI & API"
+### Command line
 
-````
 ```bash
-pip install gitversioned
-# Preview version string
-gitversioned calculate
-# Write version and all overrides in-place
-gitversioned write
+uvx gitversioned version            # print the version of this checkout
+uvx gitversioned version --write    # stamp Cargo.toml, package.json, Chart.yaml, ...
+uvx gitversioned check              # is this repository set up correctly?
 ```
-````
 
-=== "Multi-File Overrides"
+### Extra files
 
-````
 ```toml
-# pyproject.toml
-[tool.gitversioned]
-output = "src/package/version.py"
+# .config/gitversioned.toml: only for files discovery cannot find
+[[targets]]
+path = "deploy/values.yaml"
+key = "image.tag"
 
-[tool.gitversioned.overrides.cargo]
-output = "Cargo.toml"
-output_strategies = { type = "regex", pattern = 'version = "(?P<version>.*?)"' }
-
-[tool.gitversioned.overrides.docker]
-output = "Dockerfile"
-output_strategies = { type = "regex", pattern = 'ARG VERSION="(?P<version>.*?)"' }
+[[targets]]
+path = "docs/install.md"
+pattern = 'my-tool@(?P<version>[0-9][^\s`]*)'
 ```
-````
 
 For advanced options, archive support, and step-by-step onboarding, see the [Installation Guide](getting-started/installation.md) and the [Quick Start Guide](getting-started/quickstart.md).
 
