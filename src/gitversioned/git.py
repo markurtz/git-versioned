@@ -311,6 +311,16 @@ class Repo:
         )
         return out.splitlines() if out else []
 
+    def tracks(self, folder: Path) -> bool:
+        """
+        Tell whether git tracks anything in a folder.
+
+        :param folder: Folder inside the work tree.
+        :return: True when at least one tracked file lies in the folder.
+        """
+        out = self.git("ls-files", "--", self.relative(folder) or ".", check=False)
+        return bool(out)
+
     def relative(self, path: Path) -> str:
         """
         Express a path relative to the repository root with forward slashes.

@@ -28,6 +28,9 @@ Example:
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from gitversioned import git
 from gitversioned.config import Config
 
@@ -42,7 +45,7 @@ ARCHIVE_TEMPLATE = (
 _ATTRIBUTE_LINE = f"{git.ARCHIVE_FILE}  export-subst\n"
 
 
-def _append(path, text: str) -> None:  # noqa: ANN001
+def _append(path: Path, text: str) -> None:
     """Append text to a file, adding a newline first when the file lacks one."""
     old = path.read_text(encoding="utf-8") if path.is_file() else ""
     joiner = "" if not old or old.endswith("\n") else "\n"
@@ -56,7 +59,7 @@ def scaffold(config: Config) -> list[tuple[str, str, str]]:
 
     :param config: The loaded configuration.
     :return: One ``(action, path, detail)`` row per step, where the action is
-        ``wrote``, ``edit`` or ``ok``.
+        ``wrote``, ``edit``, ``ok`` or ``todo`` for a change left to the user.
     """
     actions: list[tuple[str, str, str]] = []
     root = config.root
@@ -89,4 +92,20 @@ def scaffold(config: Config) -> list[tuple[str, str, str]]:
                     '+ [tool.hatch.version] source = "gitversioned"',
                 )
             )
+        if not _requires_gitversioned(text):
+            actions.append(
+                (
+                    "todo",
+                    "pyproject.toml",
+                    'add "gitversioned>=0.4" to [build-system] requires',
+                )
+            )
     return actions
+
+
+def _requires_gitversioned(text: str) -> bool:
+    """Tell whether a pyproject lists gitversioned as a build requirement."""
+    match = re.search(
+        r"(?ms)^\[build-system\].*?^requires\s*=\s*\[(?P<items>[^\]]*)\]", text
+    )
+    return bool(match and re.search(r"[\"']gitversioned\b", match["items"]))

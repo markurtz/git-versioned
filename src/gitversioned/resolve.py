@@ -40,7 +40,11 @@ from loguru import logger
 from gitversioned import git
 from gitversioned.commits import BumpPlan, next_version, plan_bump
 from gitversioned.config import Config
-from gitversioned.errors import EnvironmentProblemError, NothingToReleaseError
+from gitversioned.errors import (
+    ConfigError,
+    EnvironmentProblemError,
+    NothingToReleaseError,
+)
 from gitversioned.model import Version
 
 __all__ = [
@@ -201,8 +205,10 @@ def _shape(
     """Turn the base into a development or nightly version."""
     base = resolved.base or Version.parse(config.fallback)
     rule = config.nightly if build_type == "nightly" else config.dev
-    if not base_is_release or base.pre is not None:
+    if not base_is_release:
         target = base.release
+    elif base.pre is not None:
+        target = _next_pre(base, resolved.known)
     elif rule == "next":
         try:
             target = next_version(base, resolved.known, resolved.plan, fallback=base)
@@ -214,7 +220,7 @@ def _shape(
     stamp = stamp or datetime.now(tz=timezone.utc)
     number = int(stamp.strftime("%Y%m%d"))
     if build_type == "nightly":
-        return target.with_parts(dev=number, nightly=True)
+        return target.with_parts(pre=target.pre, dev=number, nightly=True)
     local: str | None = None
     if config.local:
         parts = [
@@ -223,7 +229,29 @@ def _shape(
             if part
         ]
         local = ".".join(parts) or None
-    return target.with_parts(dev=number, local=local)
+    return target.with_parts(pre=target.pre, dev=number, local=local)
+
+
+def _next_pre(base: Version, known: list[Version]) -> Version:
+    """
+    Return the pre-release after a pre-release base, for builds past its tag.
+
+    A build after ``v1.3.0-rc.1`` must sort above it, so it is based on ``rc2``
+    (or the next free number when later candidates are already tagged).
+
+    :param base: The pre-release the build follows.
+    :param known: Every tagged version.
+    :return: The next pre-release of the same kind.
+    """
+    kind, number = base.pre or ("rc", 0)
+    taken = [
+        version.pre[1]
+        for version in known
+        if version.pre is not None
+        and version.pre[0] == kind
+        and version.release == base.release
+    ]
+    return base.release.with_parts(pre=(kind, max([number, *taken]) + 1))
 
 
 def resolve(
@@ -263,6 +291,14 @@ def resolve(
     fallback = Version.parse(config.fallback)
     repo = git.Repo.open(config.root)
     if repo is not None and repo.head() is None:
+        repo = None
+    if (
+        repo is not None
+        and (config.root / "PKG-INFO").is_file()
+        and not repo.tracks(config.root)
+    ):
+        # An unpacked source distribution inside some other repository: the
+        # surrounding history says nothing about this package.
         repo = None
     if repo is None:
         return _resolve_without_git(config, template, build_type, fallback, warnings)
@@ -348,9 +384,17 @@ def _counted_dirty(config: Config, repo: git.Repo) -> list[str]:
     dirty = repo.dirty_paths()
     if not dirty:
         return []
-    from gitversioned.targets import only_version_changed  # noqa: PLC0415
+    from gitversioned.targets import all_targets, only_version_changed  # noqa: PLC0415
 
-    return [path for path in dirty if not only_version_changed(config, repo, path)]
+    try:
+        known = all_targets(config)
+    except ConfigError:
+        known = []
+    return [
+        path
+        for path in dirty
+        if not only_version_changed(config, repo, path, known=known)
+    ]
 
 
 def _resolve_without_git(

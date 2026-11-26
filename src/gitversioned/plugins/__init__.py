@@ -23,11 +23,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gitversioned.config import load_config
+from gitversioned.config import Config, load_config
+from gitversioned.release import package_context
 from gitversioned.resolve import Resolved, resolve
-from gitversioned.targets import Change, stamp
+from gitversioned.targets import Change, python_module, render_version_module
 
-__all__ = ["resolve_for_build"]
+__all__ = ["build_package", "resolve_for_build"]
+
+
+def build_package(config: Config, build_root: Path) -> str | None:
+    """
+    Name the ``[packages]`` entry a build folder belongs to, if any.
+
+    :param config: The loaded configuration.
+    :param build_root: Folder being built.
+    :return: The package name, or ``None`` for the repository itself.
+    """
+    for name, item in config.packages.items():
+        folder = (config.root / item.path).resolve()
+        if build_root == folder or folder in build_root.parents:
+            return name
+    return None
 
 
 def resolve_for_build(
@@ -36,17 +52,36 @@ def resolve_for_build(
     """
     Resolve the version for a build and write the generated module.
 
+    The build folder may sit below the project root, as an extra package under
+    ``packages/<name>/`` does: the version then follows that package's tags when
+    it has its own, and only the build folder's own ``version.py`` is written.
+
     :param root: Project folder being built.
     :param write: Write the generated ``version.py`` when the project has one.
-    :return: The resolved version and the files written.
+    :return: The resolved version and the files written, relative to ``root``.
     """
-    config = load_config(Path(root))
-    resolved = resolve(config)
+    build_root = Path(root).resolve()
+    config = load_config(build_root)
+    package = build_package(config, build_root)
+    template, scope = package_context(config, package)
+    resolved = resolve(config, tag_template=template, path_scope=scope)
     changes: list[Change] = []
-    if write:
-        changes = [
-            change
-            for change in stamp(config, resolved, generated_only=True)
-            if change.written or not change.diff
-        ]
+    module = python_module(build_root / "pyproject.toml") if write else None
+    if module is not None:
+        text = render_version_module(resolved)
+        old = module.read_text(encoding="utf-8") if module.is_file() else ""
+        if old != text:
+            module.parent.mkdir(parents=True, exist_ok=True)
+            with module.open("w", encoding="utf-8", newline="") as handle:
+                handle.write(text)
+        changes.append(
+            Change(
+                path=module.relative_to(build_root).as_posix(),
+                old=None,
+                new=resolved.version.pep440(),
+                diff="" if old == text else "changed",
+                commit=False,
+                written=old != text,
+            )
+        )
     return resolved, changes

@@ -139,9 +139,9 @@ class TestEnvironment:
 
     @pytest.mark.sanity
     def test_unknown_override(self, tmp_path: Path) -> None:
-        """An unknown override is an error."""
-        with pytest.raises(ConfigError, match="GITVERSIONED__BRNCH"):
-            load_config(tmp_path, env={"GITVERSIONED__BRNCH": "x"})
+        """An unknown override is ignored, so a stale variable cannot stop a build."""
+        config = load_config(tmp_path, env={"GITVERSIONED__BRNCH": "x"})
+        assert config.branch == "main"
 
 
 class TestRootDiscovery:

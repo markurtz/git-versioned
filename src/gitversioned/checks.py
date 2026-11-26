@@ -38,7 +38,7 @@ from gitversioned.config import Config
 from gitversioned.errors import ConfigError
 from gitversioned.model import Version
 from gitversioned.resolve import match_tag, release_tags
-from gitversioned.targets import discover
+from gitversioned.targets import all_targets
 
 __all__ = [
     "Finding",
@@ -245,9 +245,7 @@ def _check_git(config: Config, repo: git.Repo | None) -> Finding:
 def _check_targets(config: Config) -> list[Finding]:
     """Report the files that will be stamped and the allowed scopes."""
     try:
-        targets = discover(config)
-        for name in config.packages:
-            targets += discover(config, package=name)
+        targets = all_targets(config)
         scopes = config.allowed_scopes()
     except ConfigError as error:
         return [Finding("fail", "targets", str(error), exit_code=2)]

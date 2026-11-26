@@ -32,6 +32,7 @@ Example:
 
 from __future__ import annotations
 
+import dataclasses
 import difflib
 import re
 import sys
@@ -56,8 +57,10 @@ __all__ = [
     "Change",
     "Span",
     "Target",
+    "all_targets",
     "discover",
     "only_version_changed",
+    "python_module",
     "render_version_module",
     "stamp",
 ]
@@ -339,7 +342,7 @@ def _by_name(path: Path) -> Target | None:
     return Target(path, kind, standard, True, locate)
 
 
-def _python_module(pyproject: Path) -> Path | None:
+def python_module(pyproject: Path) -> Path | None:
     """Return where the generated ``version.py`` goes for a dynamic project."""
     try:
         data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -445,6 +448,10 @@ def _named_target(path: Path, base: Path) -> Target | None:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return None
+    if target.kind == "cargo":
+        # A crate that inherits the workspace version still pins its path
+        # dependencies, and those requirements must follow the release.
+        return target if target.locate(text) else None
     return target if target.current(text) is not None else None
 
 
@@ -462,7 +469,7 @@ def _discovered(paths: list[Path], base: Path) -> list[Target]:
             if (path.parent / "Cargo.lock").is_file():
                 lock_dirs.append(path.parent)
         if path.name == "pyproject.toml":
-            module = _python_module(path)
+            module = python_module(path)
             if module is not None:
                 targets.append(
                     Target(module, "python", "pep440", False, generated=True)
@@ -561,7 +568,9 @@ def render_version_module(resolved: Resolved) -> str:
 def _values(target: Target, resolved: Resolved) -> dict[str, str]:
     """Build the replacement values for a target."""
     rendered = resolved.version.render(target.standard)
-    values = {"version": rendered, "req": rendered}
+    # Requirements never carry build metadata: Cargo ignores it with a warning.
+    requirement = dataclasses.replace(resolved.version, local=None)
+    values = {"version": rendered, "req": requirement.render(target.standard)}
     if resolved.type == "release":
         day = datetime.now(tz=timezone.utc)
         values["date"] = day.strftime("%Y-%m-%d")
@@ -667,7 +676,26 @@ def _same_but_for_spans(target: Target, head: str, work: str) -> bool:
     ).rstrip("\n")
 
 
-def only_version_changed(config: Config, repo: git.Repo, path: str) -> bool:
+def all_targets(config: Config) -> list[Target]:
+    """
+    Find the targets of the repository and of every package.
+
+    :param config: The loaded configuration.
+    :return: The targets, repository first, then each package in order.
+    :raises ConfigError: If a listed target is invalid.
+    """
+    targets = discover(config)
+    for name in config.packages:
+        targets += discover(config, package=name)
+    return targets
+
+
+def only_version_changed(
+    config: Config,
+    repo: git.Repo,
+    path: str,
+    known: list[Target] | None = None,
+) -> bool:
     """
     Tell whether a dirty file differs from ``HEAD`` only by stamped values.
 
@@ -677,13 +705,12 @@ def only_version_changed(config: Config, repo: git.Repo, path: str) -> bool:
     :param config: The loaded configuration.
     :param repo: The repository.
     :param path: Dirty path relative to the repository root.
+    :param known: Targets already discovered, to avoid searching again per path.
     :return: True when the change is only gitversioned's own stamping.
     """
     absolute = (repo.top / path).resolve()
     try:
-        targets = discover(config)
-        for name in config.packages:
-            targets += discover(config, package=name)
+        targets = all_targets(config) if known is None else known
     except ConfigError:
         return False
     target = next((item for item in targets if item.path.resolve() == absolute), None)

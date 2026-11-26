@@ -1,8 +1,4 @@
-commit_sha: $Format:%H$
-short_sha: $Format:%h$
-timestamp: $Format:%aI$
-author_name: $Format:%an$
-author_email: $Format:%ae$
-ref_names: $Format:%D$
-commit_message:
-$Format:%B$
+node: $Format:%H$
+node-date: $Format:%cI$
+describe-name: $Format:%(describe:tags=true,match=*[0-9]*)$
+ref-names: $Format:%D$

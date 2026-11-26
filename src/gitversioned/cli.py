@@ -31,6 +31,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import json
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, cast
@@ -48,7 +49,12 @@ from gitversioned.checks import (
 )
 from gitversioned.commits import env_bump, next_version
 from gitversioned.config import Config, load_config
-from gitversioned.errors import ConfigError, GitVersionedError
+from gitversioned.errors import (
+    ConfigError,
+    EnvironmentProblemError,
+    GitVersionedError,
+    NothingToReleaseError,
+)
 from gitversioned.logging import configure_logging
 from gitversioned.model import Version
 from gitversioned.release import (
@@ -99,6 +105,7 @@ _PRE = ("rc", "beta", "alpha")
 _TYPES = ("dev", "nightly", "release")
 _STANDARDS = ("pep440", "semver")
 _MAX_LISTED = 5
+_GENERATED_SUBJECTS = ("Merge ", 'Revert "', "fixup! ", "squash! ", "amend! ")
 
 
 def _print_version(value: bool) -> None:
@@ -155,6 +162,14 @@ def _command(function: Callable[..., None]) -> Callable[..., None]:
             function(*args, **kwargs)
         except GitVersionedError as error:
             _fail(error, bool(kwargs.get("json_output")))
+        except subprocess.CalledProcessError as error:
+            command = " ".join(str(part) for part in error.cmd[:3])
+            detail = (error.stderr or error.stdout or "").strip().splitlines()
+            reason = detail[-1] if detail else f"exit {error.returncode}"
+            _fail(
+                EnvironmentProblemError(f"{command} failed: {reason}"),
+                bool(kwargs.get("json_output")),
+            )
 
     return wrapper
 
@@ -209,6 +224,8 @@ def _explain(
             f"({where}{sha}, "
             f"{resolved.distance} commits since)"
         )
+    elif resolved.source in ("pin", "sdist"):
+        lines.append(f"current   none (version given by the {resolved.source})")
     else:
         lines.append(f"current   none ({resolved.source}; fallback {config.fallback})")
     if resolved.plan.reasons:
@@ -303,7 +320,15 @@ def version_command(
         resolved = dataclasses.replace(resolved, version=upcoming, type="release")
     changes = stamp(config, resolved, dry_run=dry_run, package=package) if write else []
     if json_output:
-        _emit(_version_json(resolved, spelling, changes))
+        document = _version_json(resolved, spelling, changes)
+        if upcoming is None:
+            try:
+                document["next"] = _next(config, resolved, None, None).render(spelling)
+            except NothingToReleaseError:
+                document["next"] = None
+        else:
+            document["next"] = upcoming.render(spelling)
+        _emit(document)
         return
     if explain:
         for line in _explain(config, resolved, upcoming, spelling):
@@ -440,6 +465,9 @@ def check_command(
         title = next(
             (line for line in lines if line.strip() and not line.startswith("#")), ""
         )
+        if title.startswith(_GENERATED_SUBJECTS):
+            _report([Finding("ok", "title", f"skipped: {title}")], json_output, warn)
+            return
     if title is not None:
         findings = check_title(config, title)
     elif commits is not None:
@@ -605,7 +633,9 @@ def init_command(
         )
         return
     for action, path, detail in actions:
-        typer.echo(f"{action:<5}  {path:<22}{('  ' + detail) if detail else ''}")
+        typer.echo(
+            f"{action:<5}  {path:<22}{('  ' + detail) if detail else ''}".rstrip()
+        )
     if not config.keys_set:
         typer.echo(
             "No gitversioned settings needed: defaults and discovery cover this repo."

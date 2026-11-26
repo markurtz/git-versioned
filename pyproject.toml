@@ -150,7 +150,6 @@ dependency-groups = ["dev"]
 COVERAGE_CORE = "pytrace"
 PYTHONPATH = "."
 PYTHON_TARGETS = "docs examples scripts src tests"
-GITVERSIONED__LOGGING__LEVEL = "ERROR"
 OCI_IMAGE = "gitversioned:latest"
 MDFORMAT_TARGETS = ".devcontainer/ .github/ docs/*.md docs/community/ docs/examples/ docs/getting-started/ docs/guides/ examples/ scripts/ src/ tests/ *.md"
 YAML_TARGETS = ".devcontainer/ .github/ docs/ examples/ scripts/ src/ tests/ *.yml *.yaml"

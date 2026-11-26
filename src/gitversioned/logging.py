@@ -25,8 +25,12 @@ Example:
 from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from loguru import Message
 
 __all__ = ["configure_logging"]
 
@@ -43,8 +47,15 @@ def configure_logging(verbosity: int = 0) -> None:
     level = _LEVELS[max(-1, min(2, verbosity))]
     logger.remove()
     logger.add(
-        sys.stderr,
+        # Look up the stream on every message, so a replaced stderr (a test
+        # runner, a build frontend) never receives writes after it is closed.
+        _to_stderr,
         level=level,
         format="<level>{level: <7}</level> {message}",
-        colorize=None,
+        colorize=False,
     )
+
+
+def _to_stderr(message: Message) -> None:
+    """Write one formatted log message to the current standard error."""
+    sys.stderr.write(message)

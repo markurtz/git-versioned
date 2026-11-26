@@ -203,7 +203,8 @@ def create_pull_request(
     :param label: Label to add; created when missing.
     :return: The opened pull request.
     """
-    gh(["label", "create", label, "--force"], cwd, check=False)
+    # Without --force an existing label (and its colour) is left as it is.
+    gh(["label", "create", label], cwd, check=False)
     url = gh(
         [
             "pr",

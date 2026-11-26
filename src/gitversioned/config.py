@@ -39,6 +39,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from gitversioned import git
@@ -290,9 +291,11 @@ def find_homes(root: Path) -> list[tuple[str, dict[str, Any]]]:
     """
     homes: list[tuple[str, dict[str, Any]]] = []
     for relative in _HOME_ORDER:
-        found = _read_home(root / relative)
+        path = root / relative
+        found = _read_home(path)
         if found is not None:
-            homes.append(found)
+            label, table = found
+            homes.append((label.replace(str(path), relative, 1), table))
     return homes
 
 
@@ -300,8 +303,9 @@ def find_root(start: Path) -> Path:
     """
     Find the project root for a starting folder.
 
-    The root is the nearest parent holding a config home, searching no higher
-    than the repository root; failing that the repository root, then the start.
+    The root is the nearest parent holding a config home or an unpacked source
+    distribution (``PKG-INFO``), searching no higher than the repository root;
+    failing that the repository root, then the start.
 
     :param start: Folder the command was started in.
     :return: The project root.
@@ -311,7 +315,7 @@ def find_root(start: Path) -> Path:
     top = repo.top if repo is not None else None
     current = start
     while True:
-        if find_homes(current):
+        if find_homes(current) or (current / "PKG-INFO").is_file():
             return current
         if current in (top, current.parent):
             break
@@ -372,9 +376,14 @@ def load_config(
         if key == "bump":
             continue
         if key not in valid:
-            raise ConfigError(
-                f"unknown environment override {name}.{_suggest(key, valid)}"
+            # The environment is shared with other tools and older gitversioned
+            # releases, so a stale variable warns instead of stopping a build.
+            logger.warning(
+                "ignoring unknown environment override {}.{}",
+                name,
+                _suggest(key, valid),
             )
+            continue
         data[key] = _coerce(value) if key not in ("version", "fallback") else value
         keys_set.append(f"{key} (env)")
     try:

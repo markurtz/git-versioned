@@ -153,10 +153,10 @@ class TestS1BuildVersion:
 
     @pytest.mark.regression
     def test_dev_after_rc_stays_on_release(self, repo: RepoBuilder) -> None:
-        """Commits after an rc are dev builds of the release the rc belongs to."""
+        """Commits after an rc build toward the next rc of the same release."""
         repo.tag("v1.2.0-rc.1")
         repo.commit("fix: more")
-        assert repo.run("version").first.startswith("1.2.0.dev")
+        assert repo.run("version").first.startswith("1.2.0rc2.dev")
 
     @pytest.mark.sanity
     def test_highest_tag_on_commit_wins(self, repo: RepoBuilder) -> None:

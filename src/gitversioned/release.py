@@ -52,6 +52,7 @@ from gitversioned.errors import (
     CheckFailedError,
     ConfigError,
     EnvironmentProblemError,
+    NothingToReleaseError,
 )
 from gitversioned.model import Version
 from gitversioned.resolve import (
@@ -146,6 +147,20 @@ def _changelog_path(config: Config, package: str | None) -> str | None:
     if package is not None and config.packages[package].tag:
         return f"{config.packages[package].path.rstrip('/')}/CHANGELOG.md"
     return str(config.changelog)
+
+
+def _require_own_tag(config: Config, package: str | None) -> None:
+    """Refuse to release a package that follows the repository version."""
+    if package is None:
+        return
+    package_context(config, package)
+    if config.packages[package].tag is None:
+        raise ConfigError(
+            f"package {package!r} has no `tag` of its own, so it is released with "
+            "the repository. Run the release without -p, or give the package a "
+            "`tag` such as "
+            f'"{package}-v{{version}}".'
+        )
 
 
 def _require_repo(config: Config) -> git.Repo:
@@ -273,6 +288,7 @@ def plan_release(  # noqa: PLR0913
         release.
     """
     repo = _require_repo(config)
+    _require_own_tag(config, package)
     template, scope = package_context(config, package)
     resolved = resolve(config, tag_template=template, path_scope=scope)
 
@@ -392,7 +408,10 @@ def open_release_pr(
     :param pre: Make the release a pre-release of this kind.
     :param package: Package to release instead of the repository.
     :return: The plan, the pull request and whether it was newly opened.
-    :raises CheckFailedError: If the working tree has uncommitted changes.
+    :raises CheckFailedError: If the working tree has uncommitted changes or
+        the command runs on a branch other than the release branch.
+    :raises NothingToReleaseError: If ``HEAD`` is a merged release commit whose
+        tag does not exist yet, so the release is still waiting for its tag.
     """
     repo = _require_repo(config)
     if not github.available(config.root):
@@ -403,13 +422,26 @@ def open_release_pr(
         raise CheckFailedError(
             "the working tree has uncommitted changes; commit or stash them first."
         )
+    current = repo.branch()
+    if current is not None and current != config.branch:
+        raise CheckFailedError(
+            f"release --pr runs on {config.branch!r}, not {current!r}: the release "
+            "would carry this branch's unmerged commits."
+        )
+    _require_own_tag(config, package)
+    pending = _released_tag(repo, package)
+    if pending is not None and pending not in repo.all_tags():
+        raise NothingToReleaseError(
+            f"HEAD is the merged release commit for {pending}, which is not tagged "
+            "yet. Run release --tag first."
+        )
     branch = f"{RELEASE_BRANCH}-{package}" if package else RELEASE_BRANCH
     existing = github.find_open_pull_request(config.root, branch)
     if pre is None and existing is not None and RC_LABEL in existing.labels:
         pre = "rc"
     plan = plan_release(config, version=version, bump=bump, pre=pre, package=package)
 
-    start = repo.branch() or repo.head() or "HEAD"
+    start = current or repo.head() or "HEAD"
     repo.git("checkout", "-q", "-B", plan.branch)
     try:
         changed = write_release(config, plan)
@@ -422,6 +454,10 @@ def open_release_pr(
             repo.git("add", "--", *paths)
         repo.git(*_identity(repo), "commit", "-q", "--allow-empty", "-m", plan.title)
         repo.git("push", "-q", "--force", "origin", plan.branch)
+    except BaseException:
+        # Leave no release edits behind on the branch the command started from.
+        repo.git("reset", "-q", "--hard", check=False)
+        raise
     finally:
         repo.git("checkout", "-q", start, check=False)
 
@@ -485,6 +521,7 @@ def tag_release(
         than the last release.
     """
     repo = _require_repo(config)
+    _require_own_tag(config, package)
     template, _scope = package_context(config, package)
     if version is not None:
         name = tag_name(template, Version.parse(version))

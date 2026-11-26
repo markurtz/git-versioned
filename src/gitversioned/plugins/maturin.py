@@ -34,6 +34,8 @@ from pathlib import Path
 from typing import Any
 
 from gitversioned.config import load_config
+from gitversioned.plugins import build_package
+from gitversioned.release import package_context
 from gitversioned.resolve import resolve
 from gitversioned.targets import discover, stamp
 
@@ -57,13 +59,19 @@ def stamped(root: Path | None = None) -> Generator[str]:
     :param root: Project folder; defaults to the current one.
     :return: The resolved version in PEP 440 form.
     """
-    config = load_config(root or Path.cwd())
-    resolved = resolve(config)
+    build_root = (root or Path.cwd()).resolve()
+    config = load_config(build_root)
+    package = build_package(config, build_root)
+    template, scope = package_context(config, package)
+    resolved = resolve(config, tag_template=template, path_scope=scope)
+    own_tag = package is not None and config.packages[package].tag is not None
+    scoped = package if own_tag else None
     saved: dict[Path, str] = {}
-    for target in discover(config):
+    for target in discover(config, package=scoped):
         if not target.generated and target.path.is_file():
-            saved[target.path] = target.path.read_text(encoding="utf-8")
-    stamp(config, resolved)
+            with target.path.open(encoding="utf-8", newline="") as handle:
+                saved[target.path] = handle.read()
+    stamp(config, resolved, package=scoped)
     try:
         yield resolved.version.pep440()
     finally:
