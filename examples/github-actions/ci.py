@@ -21,7 +21,10 @@ appends to ``$GITHUB_ENV`` is printed. ``${{ <expression> }}`` takes the value
 given with ``--event``, or an empty string. A job's
 ``if: startsWith(<expression>, '<text>')`` is evaluated, with an optional
 leading ``!``. ``uses`` steps are listed and skipped, since this
-folder is already the checkout. ``pipx run`` runs the tool already installed.
+folder is already the checkout, except the gitversioned action itself: with
+``GITVERSIONED_ACTION_PATH`` naming a checkout of it, its step runs with the
+step's ``with`` inputs and the outputs it writes are printed. ``pipx run`` and
+``uvx`` run the tool already installed.
 
 Only the shapes used in this folder's workflows are understood; it is a test
 harness, not a workflow engine.
@@ -95,10 +98,10 @@ def _step_line(step: dict, indent: int, content: str) -> str:
         if value == "|":
             step[key] = ""
             return key
-        if key != "env":
+        if key not in ("env", "with"):
             step[key] = value
-    elif indent == STEP_VALUE and step.get("_last") == "env":
-        step["env"][key] = value
+    elif indent == STEP_VALUE and step.get("_last") in ("env", "with"):
+        step.setdefault(step["_last"], {})[key] = value
     return ""
 
 
@@ -119,6 +122,31 @@ def should_run(condition: str, event: dict[str, str]) -> bool:
     return result != bool(found["neg"])
 
 
+def run_action(step: dict, event: dict[str, str], env: dict[str, str]) -> int:
+    """Run the gitversioned action's step with the step's inputs."""
+    folder = Path(tempfile.mkdtemp())
+    shim = folder / "uvx"
+    shim.write_text('#!/usr/bin/env bash\nshift 3\nexec "$@"\n', encoding="utf-8")
+    shim.chmod(0o755)
+    output = folder / "github-output"
+    inputs = {key: expand(value, event) for key, value in step.get("with", {}).items()}
+    run_env = {
+        **env,
+        "PATH": f"{folder}{os.pathsep}{env['PATH']}",
+        "GITHUB_OUTPUT": str(output),
+        "INPUT_COMMAND": inputs.get("command", "version"),
+        "INPUT_TITLE": inputs.get("title", ""),
+        "INPUT_VERSION": inputs.get("version", ""),
+    }
+    script = Path(env["GITVERSIONED_ACTION_PATH"]) / "action" / "run.sh"
+    code = subprocess.run(["bash", str(script)], env=run_env, check=False).returncode  # noqa: S603, S607
+    if output.is_file():
+        for line in output.read_text(encoding="utf-8").splitlines():
+            if line.startswith("version="):
+                print(f"  output {line}")
+    return code
+
+
 def main() -> int:
     """Run the workflow and return the exit code of the first failing step."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
@@ -134,13 +162,24 @@ def main() -> int:
             continue
         print(f"job {name}")
         for step in job["steps"]:
-            if "uses" in step:
-                print(f"  uses {step['uses']}: skipped")
+            env = {**os.environ, "CI": "true", "GITHUB_ACTIONS": "true"}
+            env["GITHUB_ENV"] = str(github_env)
+            uses = step.get("uses", "")
+            if uses.startswith("markurtz/git-versioned@") and env.get(
+                "GITVERSIONED_ACTION_PATH"
+            ):
+                print(f"  uses {uses}")
+                sys.stdout.flush()
+                code = run_action(step, event, env)
+                if code:
+                    print(f"  failed with exit code {code}")
+                    return code
+                continue
+            if uses:
+                print(f"  uses {uses}: skipped")
                 continue
             print(f"  step {step.get('name', 'run')}")
             sys.stdout.flush()
-            env = {**os.environ, "CI": "true", "GITHUB_ACTIONS": "true"}
-            env["GITHUB_ENV"] = str(github_env)
             env.update(
                 {key: expand(value, event) for key, value in step["env"].items()}
             )

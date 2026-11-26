@@ -6,7 +6,7 @@ print in SemVer.
 
 | Level        | Shows                                                                 | Needs |
 | ------------ | --------------------------------------------------------------------- | ----- |
-| Intermediate | `version --next`, `--explain`, `--bump`, `--pre`, `GITVERSIONED__BUMP` | git   |
+| Intermediate | `version --next`, `--explain`, `--bump`, `--pre`, `GITVERSIONED__BUMP`, `levels`, `zero_shift` | git   |
 
 ## Run
 
@@ -35,7 +35,7 @@ why       minor, the highest level of 3 commits since v1.2.0
   minor   feat(cli): add --explain (#41)
   patch   fix(core): handle empty input (#40)
 note      base 1.2.0 from tag v1.2.0
-config    defaults  (0 keys set, 14 defaults)
+config    defaults  (0 keys set, 28 defaults)
 ```
 
 A breaking change in the footer counts the same as `!`:
@@ -107,11 +107,42 @@ $ cd ../early && gitversioned version --next --bump major
 1.0.0
 ```
 
+### Your own bump rules
+
+`levels` gives a commit type its own level, and `none` makes it release
+nothing; a breaking change is always major. `zero_shift = false` turns the
+shift below 1.0 off, so a feature is a minor release from the first tag.
+
+```console
+$ git init -q ../rules && cd ../rules && git commit -q --allow-empty -m "feat: start" && git tag v0.3.0
+$ cd ../rules && git commit -q --allow-empty -m "feat: add a thing" && git commit -q --allow-empty -m "perf: cache the parse"
+$ cd ../rules && gitversioned version --next
+0.3.1
+$ cd ../rules && GITVERSIONED__ZERO_SHIFT=false gitversioned version --next
+0.4.0
+$ cd ../rules && GITVERSIONED__LEVELS='{"perf": "major"}' gitversioned version --next --explain | head -5
+next      0.4.0
+current   0.3.0  (tag v0.3.0, 6b8b8d2, 2 commits since)
+why       major, a minor below 1.0.0, the highest level of 2 commits since v0.3.0
+  major   perf: cache the parse
+  minor   feat: add a thing
+$ cd ../rules && GITVERSIONED__LEVELS='{"perf": "none", "feat": "none"}' gitversioned version --next
+fail  Nothing to release since 0.3.0: no commit since is a feat, a fix or another releasable type.
+[exit 1]
+$ cd ../rules && GITVERSIONED__LEVELS='{"perf": "huge"}' gitversioned version --next
+fail  invalid config in defaults: levels.perf: Input should be 'major', 'minor', 'patch' or 'none'
+[exit 2]
+```
+
+The same settings go in `gitversioned.toml` as a `[levels]` table and
+`zero_shift = false`.
+
 ## How it works
 
-- The rules are fixed: there is no bump setting. The
+- The default rules are the
   [concepts guide](https://markurtz.github.io/git-versioned/guides/concepts/)
-  lists every type and its level.
+  table; `levels` and `zero_shift` change them, and change files can set a
+  `bump` of their own (see [change-files](../change-files/README.md)).
 - Overrides win in this order: a `VERSION` argument or `--bump`, then
   `GITVERSIONED__BUMP`, then the `release:major`, `release:minor` and
   `release:patch` labels on pull requests (see

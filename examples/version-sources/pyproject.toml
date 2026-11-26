@@ -1,0 +1,7 @@
+[project]
+name = "demo"
+dynamic = ["version"]
+
+[build-system]
+requires = ["hatchling", "gitversioned"]
+build-backend = "hatchling.build"

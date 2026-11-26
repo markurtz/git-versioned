@@ -26,7 +26,10 @@ command runs there with ``bash`` in order, so later commands see earlier ones.
 Git identities and dates are fixed, and ``SOURCE_DATE_EPOCH`` pins the build
 date, so hashes and versions are the same on every run. A fake ``gh`` on
 ``PATH`` records pull requests in a JSON file, and ``origin`` can be a bare
-repository next to the example.
+repository next to the example. An example with ``forge = ["gitlab", "gitea"]``
+in the manifest gets stand-in APIs on localhost, with each token, address and
+project in the environment and each state in ``$FAKE_GITLAB_STATE`` or
+``$FAKE_GITEA_STATE``.
 
 Run ``pytest examples --update-examples`` to rewrite the expected output of
 every command whose output changed; lines that still match are kept, so
@@ -54,6 +57,7 @@ else:  # pragma: no cover
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests import fake_gh  # noqa: E402
+from tests.fake_forge import TOKEN, FakeForge  # noqa: E402
 
 __all__ = [
     "EXAMPLES",
@@ -172,6 +176,7 @@ def _environment(work: Path, tools: Path) -> dict[str, str]:
             "GIT_CONFIG_NOSYSTEM": "1",
             "SOURCE_DATE_EPOCH": str(EPOCH),
             "FAKE_GH_STATE": str(work.parent / "gh-state.json"),
+            "GITVERSIONED_ACTION_PATH": str(EXAMPLES.parent),
             "NO_COLOR": "1",
             "TERM": "dumb",
             "COLUMNS": "100",
@@ -199,6 +204,29 @@ def _prepare(source: Path, root: Path, entry: dict) -> tuple[Path, dict[str, str
     if not entry.get("gh", False):
         env["FAKE_GH_SIGNED_OUT"] = "1"
     return work, env
+
+
+def _start_forges(
+    kinds: str | list[str] | None, root: Path, env: dict[str, str]
+) -> list[FakeForge]:
+    """Start the stand-in GitLab and Gitea APIs an example asks for."""
+    started: list[FakeForge] = []
+    for kind in [kinds] if isinstance(kinds, str) else kinds or []:
+        state = root / f"{kind}-state.json"
+        forge = FakeForge(kind, state=state).start()
+        prefix = kind.upper()
+        env.update(
+            {
+                f"{prefix}_API_URL": forge.url,
+                f"{prefix}_TOKEN": TOKEN,
+                f"FAKE_{prefix}_STATE": str(state),
+            }
+        )
+        env["CI_PROJECT_PATH" if kind == "gitlab" else "GITHUB_REPOSITORY"] = (
+            "acme/demo"
+        )
+        started.append(forge)
+    return started
 
 
 def _run(
@@ -269,6 +297,22 @@ class TranscriptItem(pytest.Item):
         assert commands, f"{readme} has no console transcript"
         root = Path(self.config._tmp_path_factory.mktemp(self.path.parent.name))  # noqa: SLF001
         work, env = _prepare(readme.parent, root, self.entry)
+        forges = _start_forges(self.entry.get("forge"), root, env)
+        try:
+            self._run_all(readme, text, commands, work, env)
+        finally:
+            for forge in forges:
+                forge.stop()
+
+    def _run_all(  # noqa: PLR0913
+        self,
+        readme: Path,
+        text: str,
+        commands: list[Command],
+        work: Path,
+        env: dict[str, str],
+    ) -> None:
+        """Run the commands, then rewrite the README when updating."""
         update = self.config.getoption("--update-examples")
         timeout = int(self.entry.get("timeout", 120))
         replacements: list[tuple[Command, list[str], int]] = []

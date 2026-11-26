@@ -31,6 +31,9 @@ other release tools offer. The source list is
 | V17 | Custom tag patterns and per-package tag prefixes in a monorepo (regex_tag) | [monorepo-packages](https://github.com/markurtz/git-versioned/tree/main/examples/monorepo-packages), [configuration](https://github.com/markurtz/git-versioned/tree/main/examples/configuration) |
 | V18 | Install from an sdist without git (version from PKG-INFO) | [hatchling](https://github.com/markurtz/git-versioned/tree/main/examples/hatchling) |
 | V19 | Logging control | [configuration](https://github.com/markurtz/git-versioned/tree/main/examples/configuration) |
+| V20 | Version from a branch name, a commit message, a file or a function | [version-sources](https://github.com/markurtz/git-versioned/tree/main/examples/version-sources) |
+| V21 | User templates for version strings and version.py (ExStr, output_strategies) | [version-sources](https://github.com/markurtz/git-versioned/tree/main/examples/version-sources) |
+| V22 | Post releases (1.2.3.post1) and the post version type | [version-sources](https://github.com/markurtz/git-versioned/tree/main/examples/version-sources) |
 
 ## Added by the 0.4 rewrite
 
@@ -89,6 +92,7 @@ other release tools offer. The source list is
 | T15 | Keep a Changelog file with an [Unreleased] section that a release takes over | [template-python](https://github.com/markurtz/git-versioned/tree/main/examples/template-python), [release-local](https://github.com/markurtz/git-versioned/tree/main/examples/release-local) |
 | T16 | examples/ and tests/ manifests are never stamped | [template-polyglot](https://github.com/markurtz/git-versioned/tree/main/examples/template-polyglot) |
 | T17 | Pre-release detection for the npm next dist-tag and GHCR tags | [docker](https://github.com/markurtz/git-versioned/tree/main/examples/docker), [github-actions](https://github.com/markurtz/git-versioned/tree/main/examples/github-actions) |
+| T18 | Changelog grouped by scope first, with a Migrations list | [changelog-style](https://github.com/markurtz/git-versioned/tree/main/examples/changelog-style) |
 
 ## Offered by other release tools
 
@@ -120,6 +124,16 @@ other release tools offer. The source list is
 | C24 | changesets snapshot releases, semantic-release channels: throwaway builds | [version-shapes](https://github.com/markurtz/git-versioned/tree/main/examples/version-shapes), [github-actions](https://github.com/markurtz/git-versioned/tree/main/examples/github-actions) |
 | C25 | versionx and bumpy: plan, then apply, with JSON from every command | [release-local](https://github.com/markurtz/git-versioned/tree/main/examples/release-local), [version-shapes](https://github.com/markurtz/git-versioned/tree/main/examples/version-shapes) |
 | C26 | multicz, versionx: one tool for Python, Rust and npm manifests | [polyglot](https://github.com/markurtz/git-versioned/tree/main/examples/polyglot), [template-polyglot](https://github.com/markurtz/git-versioned/tree/main/examples/template-polyglot) |
+| C27 | Publishing to PyPI, crates.io and npm | [publish](https://github.com/markurtz/git-versioned/tree/main/examples/publish) |
+| C28 | GitHub Releases with notes | [forges](https://github.com/markurtz/git-versioned/tree/main/examples/forges) |
+| C29 | changesets intent files | [change-files](https://github.com/markurtz/git-versioned/tree/main/examples/change-files) |
+| C30 | GitLab, Gitea and other forges for the release PR | [forges](https://github.com/markurtz/git-versioned/tree/main/examples/forges) |
+| C31 | Hosted bot or GitHub App (release-please, Renovate-style) | [github-actions](https://github.com/markurtz/git-versioned/tree/main/examples/github-actions) |
+| C32 | cargo-semver-checks in release-plz: bump level from API changes | [semver-checks](https://github.com/markurtz/git-versioned/tree/main/examples/semver-checks) |
+| C33 | semantic-release maintenance branches: releases from 1.x while main is on 2.x | [maintenance-branches](https://github.com/markurtz/git-versioned/tree/main/examples/maintenance-branches) |
+| C34 | commitizen cz commit: an interactive commit prompt | [change-files](https://github.com/markurtz/git-versioned/tree/main/examples/change-files) |
+| C35 | Custom commit type to bump mapping (commitizen bump_map, semantic-release releaseRules) | [next-version](https://github.com/markurtz/git-versioned/tree/main/examples/next-version) |
+| C36 | Custom changelog templates and hidden types (git-cliff, conventional-changelog presets) | [changelog-style](https://github.com/markurtz/git-versioned/tree/main/examples/changelog-style) |
 
 ## Out of Scope
 
@@ -127,17 +141,3 @@ These are left out on purpose, each for the reason given.
 
 | ID | Use case | Why |
 | -- | -------- | --- |
-| V20 | Version from a branch name, a commit message, a file or a function | PRD Q24: tags are the only version source, plus the pin, the archive file and sdist metadata. A VERSION file is served by `version = ...` or GITVERSIONED__VERSION. |
-| V21 | User templates for version strings and version.py (ExStr, output_strategies) | PRD Q26: no config value is a template, so nothing in config runs code. version.py has one built-in shape. |
-| V22 | Post releases (1.2.3.post1) and the post version type | SemVer has no post releases and the PRD fixes the version shapes. A post tag is reported as a lookalike tag instead of being used silently (see version-shapes). |
-| T18 | Changelog grouped by scope first, with a Migrations list | The changelog layout is fixed as kinds then scope (PRD Q11). The template's CHANGELOG.md note describes scope first and should be updated to match. |
-| C27 | Publishing to PyPI, crates.io and npm | PRD not-goal: gitversioned stops at the tag. The template's release.yml publishes with trusted publishing. |
-| C28 | GitHub Releases with notes | PRD not-goal: the release workflow creates the GitHub release. Its notes are the changelog section, which `release --json` and CHANGELOG.md carry. |
-| C29 | changesets intent files | PRD not-goal: git history and PR text are the only inputs. The ## Changelog block in a PR body covers hand-written entries. |
-| C30 | GitLab, Gitea and other forges for the release PR | PRD not-goal: release --pr uses gh. version, check, release --write and release --tag work on any git remote. |
-| C31 | Hosted bot or GitHub App (release-please, Renovate-style) | PRD not-goal: a plain CLI run from the repository's own workflow with its own token. |
-| C32 | cargo-semver-checks in release-plz: bump level from API changes | PRD Q25: the bump level comes from commits, flags and labels only. A diff hook waits for a repository that needs it. |
-| C33 | semantic-release maintenance branches: releases from 1.x while main is on 2.x | Open question: release --tag requires a version newer than every tag, which blocks backports, and release --pr only runs on `branch`. Versions resolve correctly on a maintenance branch. |
-| C34 | commitizen cz commit: an interactive commit prompt | Not in the PRD; editors and agents write the subject, and check validates it. |
-| C35 | Custom commit type to bump mapping (commitizen bump_map, semantic-release releaseRules) | PRD Q25 and the fixed rules: breaking is major, feat minor, the rest patch, chore/ci/test none. `types` only limits which types check accepts. |
-| C36 | Custom changelog templates and hidden types (git-cliff, conventional-changelog presets) | PRD Q27 fixed the layout; only the path is configurable. |

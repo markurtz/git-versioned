@@ -21,7 +21,7 @@ hashes and dates.
 ```console
 $ git init -q && git add -A && git commit -qm "feat: first version" && git tag v1.0.0
 $ gitversioned version --explain | tail -1
-config    defaults  (0 keys set, 14 defaults)
+config    defaults  (0 keys set, 28 defaults)
 ```
 
 ### One home
@@ -33,13 +33,13 @@ in `Cargo.toml`, `"gitversioned"` in `package.json`, then
 
 ```console
 $ printf 'annotated = true\n' > gitversioned.toml && gitversioned version --explain | tail -1
-config    gitversioned.toml  (1 key set, 13 defaults)
+config    gitversioned.toml  (1 key set, 27 defaults)
 $ printf '{"name": "demo", "version": "0.0.0", "gitversioned": {"branch": "trunk"}}\n' > package.json
 $ gitversioned version
 fail  settings found in two homes: gitversioned.toml and package.json "gitversioned". Keep them in one file.
 [exit 2]
 $ rm gitversioned.toml && gitversioned version --explain | tail -1
-config    package.json "gitversioned"  (1 key set, 13 defaults)
+config    package.json "gitversioned"  (1 key set, 27 defaults)
 $ rm package.json
 ```
 
@@ -50,10 +50,10 @@ longer exists. Bad configuration exits with code 2:
 
 ```console
 $ printf 'tga = "v{version}"\n' > gitversioned.toml && gitversioned version
-fail  unknown key `tga` in gitversioned.toml. Did you mean `tag`? Valid keys: version, fallback, tag, annotated, branch, dev, nightly, date, local, changelog, types, scopes, targets, packages.
+fail  unknown key `tga` in gitversioned.toml. Did you mean `tag`? Valid keys: version, fallback, tag, annotated, branch, dev, nightly, date, local, changelog, types, scopes, targets, packages, formats, module_template, levels, zero_shift, changelog_layout, changelog_sections, changelog_template, changes, forge, forge_release, branches, exclude, semver_checks, publish.
 [exit 2]
 $ printf 'version_type = "dev"\n' > gitversioned.toml && gitversioned version
-fail  unknown key `version_type` in gitversioned.toml. `version_type` was removed in 0.4: pass --type on the command line. Valid keys: version, fallback, tag, annotated, branch, dev, nightly, date, local, changelog, types, scopes, targets, packages.
+fail  unknown key `version_type` in gitversioned.toml. `version_type` was removed in 0.4: pass --type, or set GITVERSIONED__TYPE. Valid keys: version, fallback, tag, annotated, branch, dev, nightly, date, local, changelog, types, scopes, targets, packages, formats, module_template, levels, zero_shift, changelog_layout, changelog_sections, changelog_template, changes, forge, forge_release, branches, exclude, semver_checks, publish.
 [exit 2]
 $ printf 'dev = "huge"\n' > gitversioned.toml && gitversioned version
 fail  invalid config in gitversioned.toml: dev: Input should be 'patch', 'minor', 'major' or 'next'
@@ -90,7 +90,7 @@ version   9.9.9
 type      release
 current   none (version given by the pin)
 note      pinned to 9.9.9
-config    defaults  (1 key set, 13 defaults)
+config    defaults  (1 key set, 27 defaults)
 ```
 
 A misspelled variable is not silently ignored:

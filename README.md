@@ -63,13 +63,14 @@ ______________________________________________________________________
 
 GitVersioned gives a repository one version, taken from its git tags, and keeps
 every manifest in step with it. It covers the whole path from a commit to a
-published release with three commands.
+published release with three commands, plus `new` for hand-written changelog
+entries.
 
 | Command                | Job                                                                     |
 | ---------------------- | ----------------------------------------------------------------------- |
 | `gitversioned version` | Print the version, print the next one, or stamp it into every manifest. |
 | `gitversioned check`   | Validate the setup, a pull request title, a commit range or a tag.      |
-| `gitversioned release` | Plan a release, open the release pull request, tag the merge.           |
+| `gitversioned release` | Plan a release, open the release pull request, tag and publish it.      |
 
 ### Why GitVersioned?
 
@@ -82,8 +83,11 @@ published release with three commands.
 - **Reviewed releases.** The next version and the changelog come from
   Conventional Commits and arrive as a pull request you can read, edit and
   merge. Tagging the merge is the release.
-- **Small surface.** Three commands, twelve settings, and no configuration at
-  all for the common case.
+- **Small surface.** Three commands and no configuration at all for the common
+  case. Settings for the rest (bump rules, changelog layout and templates,
+  change files, maintenance branches, publishing) stay off until set.
+- **Any forge.** GitHub through `gh`, GitLab and Gitea through their APIs, and
+  a GitHub Action at the repository root.
 - **Safe in CI.** A shallow clone or missing history warns on a laptop and
   fails in CI, so a wrong version is never published.
 - **Edits that leave files alone.** Only the version value changes: comments,
@@ -94,7 +98,7 @@ published release with three commands.
 
 | Tool               | Version from tags | Python builds                          | Rust and npm manifests | Commit checks | Release PR and changelog | Monorepo packages |
 | :----------------- | :---------------- | :------------------------------------- | :--------------------- | :------------ | :----------------------- | :---------------- |
-| **`GitVersioned`** | Yes               | Hatchling, setuptools, Maturin         | Yes, with `Cargo.lock` | Yes           | Yes, via `gh`            | Yes               |
+| **`GitVersioned`** | Yes               | Hatchling, setuptools, Maturin         | Yes, with `Cargo.lock` | Yes           | Yes: GitHub, GitLab, Gitea | Yes               |
 | `setuptools-scm`   | Yes               | setuptools (Hatchling via `hatch-vcs`) | No                     | No            | No                       | Limited           |
 | `release-please`   | No, committed     | No                                     | Yes                    | No            | Yes                      | Yes               |
 | `release-plz`      | No, committed     | No                                     | Rust only              | No            | Yes                      | Cargo workspaces  |

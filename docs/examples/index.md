@@ -37,6 +37,10 @@ shows it.
 | [An npm workspace](https://github.com/markurtz/git-versioned/tree/main/examples/npm-workspace) | npm packages with internal dependencies, a private workspace root and a pnpm catalog entry, stamped and packed. | git, Python, `npm` |
 | [Container images](https://github.com/markurtz/git-versioned/tree/main/examples/docker) | OCI labels stamped in a Dockerfile, the version passed as a build argument, and image tags that registries accept. | git, Python |
 | [The Python API](https://github.com/markurtz/git-versioned/tree/main/examples/python-api) | Resolve, stamp and plan a release from a Python script. | git, Python |
+| [Version sources, templates and post releases](https://github.com/markurtz/git-versioned/tree/main/examples/version-sources) | The version from a branch, a commit, a file or a function; dev and nightly templates; a custom version module; post releases. | git, Python |
+| [Change files and the commit prompt](https://github.com/markurtz/git-versioned/tree/main/examples/change-files) | Hand-written changelog entries in `.changes/`, released and deleted with the release; `new --commit` commits with a checked title. | git, Python |
+| [Changelog layouts, headings and templates](https://github.com/markurtz/git-versioned/tree/main/examples/changelog-style) | Kinds-first or scope-first sections, renamed and hidden types, Migrations from `BREAKING CHANGE:` footers and a section template. | git, Python |
+| [Publishing to PyPI, crates.io and npm](https://github.com/markurtz/git-versioned/tree/main/examples/publish) | `release --publish` builds the tagged release and uploads it to each registry; `--dry-run` runs each tool's dry run. | git, Python, `uv`, `cargo`, `npm` |
 
 ### Advanced
 
@@ -48,6 +52,9 @@ shows it.
 | [GitHub Actions workflows](https://github.com/markurtz/git-versioned/tree/main/examples/github-actions) | Six workflows: pull request titles, the release pull request, tagging the merge, a manual release, nightly builds and hand-pushed tags, each run here. | git, Python, `gh` (a stand-in in the tests) |
 | [A template python-size repository](https://github.com/markurtz/git-versioned/tree/main/examples/template-python) | The layout markurtz/template renders for a Python package: no settings, the build hook, Keep a Changelog and the manual release path. | git, Python |
 | [A template polyglot repository](https://github.com/markurtz/git-versioned/tree/main/examples/template-polyglot) | The manifests markurtz/template renders for every block, stamped by `version --write` in place of `release:stamp`. | git, Python |
+| [GitHub releases, GitLab and Gitea](https://github.com/markurtz/git-versioned/tree/main/examples/forges) | The release pull request and forge release on GitHub, GitLab and Gitea, with `forge_release` and `forge`. | git, Python, `gh` (a stand-in in the tests) |
+| [Maintenance branches and backports](https://github.com/markurtz/git-versioned/tree/main/examples/maintenance-branches) | Backport releases from `1.x` while `main` is on 2.x, with `branches` and the line rules. | git, Python, `gh` (a stand-in in the tests) |
+| [API checks for Rust releases](https://github.com/markurtz/git-versioned/tree/main/examples/semver-checks) | `semver_checks = true` raises a release to major when cargo-semver-checks finds a breaking API change. | git, Python, `cargo`, `cargo-semver-checks` |
 
 ## Try one
 

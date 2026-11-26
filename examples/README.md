@@ -6,7 +6,7 @@ Every folder here is a small project that uses gitversioned, and its
 `README.md` is its test: the console transcripts in it are run, in order, in
 a fresh copy of the folder, and must print exactly what they show.
 
-22 examples cover 93 of the 107 use cases in
+29 examples cover 107 of the 107 use cases in
 [`use-cases.toml`](use-cases.toml); the rest are out of scope, each with its
 reason. The [use case page](https://markurtz.github.io/git-versioned/examples/use-cases/)
 lists them all.
@@ -38,6 +38,10 @@ lists them all.
 | [An npm workspace](npm-workspace/README.md) | npm packages with internal dependencies, a private workspace root and a pnpm catalog entry, stamped and packed. | git, Python, `npm` |
 | [Container images](docker/README.md) | OCI labels stamped in a Dockerfile, the version passed as a build argument, and image tags that registries accept. | git, Python |
 | [The Python API](python-api/README.md) | Resolve, stamp and plan a release from a Python script. | git, Python |
+| [Version sources, templates and post releases](version-sources/README.md) | The version from a branch, a commit, a file or a function; dev and nightly templates; a custom version module; post releases. | git, Python |
+| [Change files and the commit prompt](change-files/README.md) | Hand-written changelog entries in `.changes/`, released and deleted with the release; `new --commit` commits with a checked title. | git, Python |
+| [Changelog layouts, headings and templates](changelog-style/README.md) | Kinds-first or scope-first sections, renamed and hidden types, Migrations from `BREAKING CHANGE:` footers and a section template. | git, Python |
+| [Publishing to PyPI, crates.io and npm](publish/README.md) | `release --publish` builds the tagged release and uploads it to each registry; `--dry-run` runs each tool's dry run. | git, Python, `uv`, `cargo`, `npm` |
 
 ### Advanced
 
@@ -49,6 +53,9 @@ lists them all.
 | [GitHub Actions workflows](github-actions/README.md) | Six workflows: pull request titles, the release pull request, tagging the merge, a manual release, nightly builds and hand-pushed tags, each run here. | git, Python, `gh` (a stand-in in the tests) |
 | [A template python-size repository](template-python/README.md) | The layout markurtz/template renders for a Python package: no settings, the build hook, Keep a Changelog and the manual release path. | git, Python |
 | [A template polyglot repository](template-polyglot/README.md) | The manifests markurtz/template renders for every block, stamped by `version --write` in place of `release:stamp`. | git, Python |
+| [GitHub releases, GitLab and Gitea](forges/README.md) | The release pull request and forge release on GitHub, GitLab and Gitea, with `forge_release` and `forge`. | git, Python, `gh` (a stand-in in the tests) |
+| [Maintenance branches and backports](maintenance-branches/README.md) | Backport releases from `1.x` while `main` is on 2.x, with `branches` and the line rules. | git, Python, `gh` (a stand-in in the tests) |
+| [API checks for Rust releases](semver-checks/README.md) | `semver_checks = true` raises a release to major when cargo-semver-checks finds a breaking API change. | git, Python, `cargo`, `cargo-semver-checks` |
 
 ## Run the tests
 

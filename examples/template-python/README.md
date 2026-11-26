@@ -24,7 +24,7 @@ ok    config        defaults
 ok    git           full history, 1 release tag, latest v0.1.0
 ok    targets       src/text_stats/version.py
 warn  archive file  .git_archival.txt is not set up, so source tarballs lose the version. Run `gitversioned init`.
-warn  github        gh is missing or not signed in: release --pr and pull request titles in the changelog are unavailable.
+warn  github        gh is missing or not signed in: release --pr, GitHub releases and pull request titles in the changelog are unavailable.
 ```
 
 Pull requests merge with Conventional Commit titles. A build of `main` is a

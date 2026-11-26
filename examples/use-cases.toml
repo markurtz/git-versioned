@@ -142,22 +142,22 @@ note = "`-v`, `-vv` and `-q` replace the logging settings."
 id = "V20"
 source = "v03"
 title = "Version from a branch name, a commit message, a file or a function"
-status = "out-of-scope"
-reason = "PRD Q24: tags are the only version source, plus the pin, the archive file and sdist metadata. A VERSION file is served by `version = ...` or GITVERSIONED__VERSION."
+examples = ["version-sources"]
+note = "`version` names the source: branch, commit, `file:PATH` or `python:MODULE:FUNCTION`."
 
 [[use-case]]
 id = "V21"
 source = "v03"
 title = "User templates for version strings and version.py (ExStr, output_strategies)"
-status = "out-of-scope"
-reason = "PRD Q26: no config value is a template, so nothing in config runs code. version.py has one built-in shape."
+examples = ["version-sources"]
+note = "`formats` for dev and nightly strings; `module_template` for version.py. Templates are string substitutions, never code."
 
 [[use-case]]
 id = "V22"
 source = "v03"
 title = "Post releases (1.2.3.post1) and the post version type"
-status = "out-of-scope"
-reason = "SemVer has no post releases and the PRD fixes the version shapes. A post tag is reported as a lookalike tag instead of being used silently (see version-shapes)."
+examples = ["version-sources"]
+note = "`release --post`; spelled 1.2.3.post1 in PEP 440 and 1.2.3+post.1 in SemVer."
 
 # ==============================================================================
 # 0.4 PRD v3: stories
@@ -463,8 +463,8 @@ examples = ["docker", "github-actions"]
 id = "T18"
 source = "template"
 title = "Changelog grouped by scope first, with a Migrations list"
-status = "out-of-scope"
-reason = "The changelog layout is fixed as kinds then scope (PRD Q11). The template's CHANGELOG.md note describes scope first and should be updated to match."
+examples = ["changelog-style"]
+note = "`changelog_layout = \"scope\"`; Migrations come from BREAKING CHANGE footers."
 
 # ==============================================================================
 # Competitors
@@ -633,68 +633,64 @@ examples = ["polyglot", "template-polyglot"]
 id = "C27"
 source = "competitor"
 title = "Publishing to PyPI, crates.io and npm"
-status = "out-of-scope"
-reason = "PRD not-goal: gitversioned stops at the tag. The template's release.yml publishes with trusted publishing."
+examples = ["publish"]
 
 [[use-case]]
 id = "C28"
 source = "competitor"
 title = "GitHub Releases with notes"
-status = "out-of-scope"
-reason = "PRD not-goal: the release workflow creates the GitHub release. Its notes are the changelog section, which `release --json` and CHANGELOG.md carry."
+examples = ["forges"]
+note = "Opt-in with `forge_release = true`, since many workflows already create the release."
 
 [[use-case]]
 id = "C29"
 source = "competitor"
 title = "changesets intent files"
-status = "out-of-scope"
-reason = "PRD not-goal: git history and PR text are the only inputs. The ## Changelog block in a PR body covers hand-written entries."
+examples = ["change-files"]
 
 [[use-case]]
 id = "C30"
 source = "competitor"
 title = "GitLab, Gitea and other forges for the release PR"
-status = "out-of-scope"
-reason = "PRD not-goal: release --pr uses gh. version, check, release --write and release --tag work on any git remote."
+examples = ["forges"]
+note = "GitLab and Gitea (and Forgejo) through their REST APIs with a token."
 
 [[use-case]]
 id = "C31"
 source = "competitor"
 title = "Hosted bot or GitHub App (release-please, Renovate-style)"
-status = "out-of-scope"
-reason = "PRD not-goal: a plain CLI run from the repository's own workflow with its own token."
+examples = ["github-actions"]
+note = "A composite action at the repository root, run from the repository's own workflow with its own token; no hosted bot."
 
 [[use-case]]
 id = "C32"
 source = "competitor"
 title = "cargo-semver-checks in release-plz: bump level from API changes"
-status = "out-of-scope"
-reason = "PRD Q25: the bump level comes from commits, flags and labels only. A diff hook waits for a repository that needs it."
+examples = ["semver-checks"]
+note = "Verified here against a stand-in cargo-semver-checks in the story tests; the example needs the real tool."
 
 [[use-case]]
 id = "C33"
 source = "competitor"
 title = "semantic-release maintenance branches: releases from 1.x while main is on 2.x"
-status = "out-of-scope"
-reason = "Open question: release --tag requires a version newer than every tag, which blocks backports, and release --pr only runs on `branch`. Versions resolve correctly on a maintenance branch."
+examples = ["maintenance-branches"]
 
 [[use-case]]
 id = "C34"
 source = "competitor"
 title = "commitizen cz commit: an interactive commit prompt"
-status = "out-of-scope"
-reason = "Not in the PRD; editors and agents write the subject, and check validates it."
+examples = ["change-files"]
+note = "`new --commit` and the prompts of `new`."
 
 [[use-case]]
 id = "C35"
 source = "competitor"
 title = "Custom commit type to bump mapping (commitizen bump_map, semantic-release releaseRules)"
-status = "out-of-scope"
-reason = "PRD Q25 and the fixed rules: breaking is major, feat minor, the rest patch, chore/ci/test none. `types` only limits which types check accepts."
+examples = ["next-version"]
+note = "`levels` per type and `zero_shift`."
 
 [[use-case]]
 id = "C36"
 source = "competitor"
 title = "Custom changelog templates and hidden types (git-cliff, conventional-changelog presets)"
-status = "out-of-scope"
-reason = "PRD Q27 fixed the layout; only the path is configurable."
+examples = ["changelog-style"]

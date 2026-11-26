@@ -34,7 +34,7 @@ $ gitversioned check "feat(web): add a page"
 fail  title  unknown scope 'web'. Scopes: core, docs.
 [exit 1]
 $ gitversioned version --explain | tail -1
-config    pyproject.toml [tool.gitversioned]  (1 key set, 13 defaults)
+config    pyproject.toml [tool.gitversioned]  (1 key set, 27 defaults)
 ```
 
 A commit after the tag builds a development version:

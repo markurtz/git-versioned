@@ -158,3 +158,52 @@ summary = "The manifests markurtz/template renders for every block, stamped by `
 level = "advanced"
 marker = "sanity"
 timeout = 600
+
+[example.version-sources]
+title = "Version sources, templates and post releases"
+summary = "The version from a branch, a commit, a file or a function; dev and nightly templates; a custom version module; post releases."
+level = "intermediate"
+marker = "sanity"
+
+[example.change-files]
+title = "Change files and the commit prompt"
+summary = "Hand-written changelog entries in `.changes/`, released and deleted with the release; `new --commit` commits with a checked title."
+level = "intermediate"
+marker = "sanity"
+
+[example.changelog-style]
+title = "Changelog layouts, headings and templates"
+summary = "Kinds-first or scope-first sections, renamed and hidden types, Migrations from `BREAKING CHANGE:` footers and a section template."
+level = "intermediate"
+marker = "sanity"
+
+[example.forges]
+title = "GitHub releases, GitLab and Gitea"
+summary = "The release pull request and forge release on GitHub, GitLab and Gitea, with `forge_release` and `forge`."
+level = "advanced"
+marker = "sanity"
+gh = true
+forge = ["gitlab", "gitea"]
+
+[example.maintenance-branches]
+title = "Maintenance branches and backports"
+summary = "Backport releases from `1.x` while `main` is on 2.x, with `branches` and the line rules."
+level = "advanced"
+marker = "sanity"
+gh = true
+
+[example.publish]
+title = "Publishing to PyPI, crates.io and npm"
+summary = "`release --publish` builds the tagged release and uploads it to each registry; `--dry-run` runs each tool's dry run."
+level = "intermediate"
+marker = "regression"
+requires = ["uv", "cargo", "npm"]
+timeout = 300
+
+[example.semver-checks]
+title = "API checks for Rust releases"
+summary = "`semver_checks = true` raises a release to major when cargo-semver-checks finds a breaking API change."
+level = "advanced"
+marker = "regression"
+requires = ["cargo", "cargo-semver-checks"]
+timeout = 600

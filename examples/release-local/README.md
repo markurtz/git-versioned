@@ -73,6 +73,8 @@ $ gitversioned release --json
     "CITATION.cff"
   ],
   "changed": [],
+  "changes": [],
+  "base": "main",
   "changelog": "## [1.3.0] - 2026-11-25\n\n### Added\n\n- **cli**: add --explain (#41)\n\n### Changed\n\n- describe the plan (#42)\n\n### Fixed\n\n- **core**: peel annotated tags (#40)\n\n### Security\n\n- Pin the build image by digest.\n"
 }
 ```

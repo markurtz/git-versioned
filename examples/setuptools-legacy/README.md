@@ -22,7 +22,7 @@ $ gitversioned version
 $ python -m build --wheel --no-isolation >/dev/null 2>&1 && ls dist
 legacy_app-0.4.2-py3-none-any.whl
 $ gitversioned version --explain | tail -1
-config    setup.cfg [tool:gitversioned]  (1 key set, 13 defaults)
+config    setup.cfg [tool:gitversioned]  (1 key set, 27 defaults)
 ```
 
 Before the first tag, the fallback from `setup.cfg` is the base:

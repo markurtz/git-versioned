@@ -11,6 +11,7 @@ ecosystem expects.
 | Pre-release | `1.2.0rc1`                        | `1.2.0-rc.1`                       |
 | Development | `1.2.1.dev20261125+abc1234`       | `1.2.1-dev.20261125+abc1234`       |
 | Nightly     | `1.3.0.dev20261125`               | `1.3.0-nightly.20261125`           |
+| Post        | `1.2.0.post1`                     | `1.2.0+post.1`                     |
 | Dirty tree  | `1.2.1.dev20261125+abc1234.dirty` | `1.2.1-dev.20261125+abc1234.dirty` |
 
 A development version is the next patch after the last release, dated with the
@@ -23,8 +24,9 @@ all digits with a leading zero, which Python packaging tools would renumber.
 
 The first source that answers wins:
 
-1. **A pin.** A `VERSION` argument, `GITVERSIONED__VERSION`, or
-   `version = "1.2.3"` in the settings.
+1. **A pin or a source.** A `VERSION` argument, `GITVERSIONED__VERSION`, or
+   `version = "1.2.3"` in the settings; or `version` naming a source: the branch
+   name, the latest commit subject, a file or a Python function.
 1. **Git tags.** The highest release tag reachable from `HEAD` that matches the
    tag template, plus the number of commits since.
 1. **The archive file.** `.git_archival.txt`, filled in by `git archive`, for
@@ -39,8 +41,9 @@ it. The date in a development or nightly version is the commit's date, so a
 rebuild gives the same version; `date = "build"` uses the build time, which
 honours `SOURCE_DATE_EPOCH` for reproducible builds.
 
-There are no version files to keep in sync and no version committed between
-releases. A tag is the only thing that makes a release.
+By default there are no version files to keep in sync and no version committed
+between releases: a tag is the only thing that makes a release. The `formats`
+setting spells dev and nightly versions another way.
 
 ## Warn on a laptop, fail in CI
 
@@ -63,7 +66,12 @@ last release.
 
 Below 1.0.0 every level shifts down one, and the plan says so (`minor, a patch
 below 1.0.0`): a breaking change is a minor bump and
-a feature is a patch bump. An explicit `--bump` is taken as written.
+a feature is a patch bump. An explicit `--bump` is taken as written, and
+`zero_shift = false` turns the shift off. `levels` gives any type its own level
+(`none` to release nothing); a breaking change stays major. Change files in
+`.changes/` count like commits and may set a `bump` of their own, and with
+`semver_checks = true` a breaking Rust API change found by
+`cargo semver-checks` makes the release major.
 
 ## Stamping
 
@@ -85,7 +93,11 @@ commits on main ──► gitversioned release --pr ──► release pull reque
 The release pull request holds one commit: the changelog section and the
 stamped manifests. It is rebuilt on every push to the release branch, so it
 always shows what the next release would be. Merging it is the decision to
-release; tagging the merge is what makes the version.
+release; tagging the merge is what makes the version. `release --publish`
+uploads it, and `forge_release = true` creates the forge release with the
+changelog section. The same flow runs on GitLab and Gitea, and from
+maintenance branches listed in `branches`, whose release pull requests merge
+into the branch.
 
 ## The changelog
 
@@ -94,7 +106,13 @@ kinds (Added, Changed, Deprecated, Removed, Fixed, Security), and the scope in
 bold before each entry. `chore`, `ci`, `test` and `release` commits are left
 out unless they are breaking. Lines written by hand under `## [Unreleased]`
 join the new section and `[Unreleased]` is left empty, so a project can keep
-notes there between releases. When `gh` is available, the pull
+notes there between releases. When the forge is reachable, the pull
 request title replaces a squash commit's subject, and a `## Changelog` block in
 a pull request body replaces the generated entry. A final release takes over
-the entries of its release candidates and replaces their sections.
+the entries of its release candidates and replaces their sections. Change files
+add entries written by hand, and `BREAKING CHANGE:` footers become a
+Migrations list.
+
+`changelog_layout = "scope"` puts a heading per scope first and kinds below it;
+`changelog_sections` renames or hides a type's heading; and
+`changelog_template` shapes the whole section from a template file.

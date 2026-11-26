@@ -11,7 +11,7 @@ Task-oriented guides for `gitversioned`. Unlike [Getting Started](../getting-sta
 
 ______________________________________________________________________
 
-The three commands, `version`, `check` and `release`, with real output for every pathway.
+The three commands, `version`, `check` and `release`, and `new`, with real output for every pathway.
 
 [:octicons-arrow-right-24: CLI Guide](cli.md)
 

@@ -22,7 +22,7 @@ ok    config        defaults
 ok    git           full history, 1 release tag, latest v1.4.0
 ok    targets       pyproject.toml
 warn  archive file  .git_archival.txt is not set up, so source tarballs lose the version. Run `gitversioned init`.
-warn  github        gh is missing or not signed in: release --pr and pull request titles in the changelog are unavailable.
+warn  github        gh is missing or not signed in: release --pr, GitHub releases and pull request titles in the changelog are unavailable.
 ```
 
 A nightly or a test build stamps the development version, builds, and puts the

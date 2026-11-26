@@ -52,7 +52,7 @@ ok    config        defaults
 ok    git           full history, 1 release tag, latest v1.3.0
 ok    targets       src/safety/version.py
 ok    archive file  .git_archival.txt and .gitattributes export-subst
-warn  github        gh is missing or not signed in: release --pr and pull request titles in the changelog are unavailable.
+warn  github        gh is missing or not signed in: release --pr, GitHub releases and pull request titles in the changelog are unavailable.
 ```
 
 ### A shallow clone
@@ -72,7 +72,7 @@ fail  shallow clone with no release tags reachable, so the version cannot be tru
 $ CI=true gitversioned check -C ../shallow | grep git
 fail  git           shallow clone, no tags reachable. Set fetch-depth: 0 on actions/checkout.
 ok    archive file  .git_archival.txt and .gitattributes export-subst
-warn  github        gh is missing or not signed in: release --pr and pull request titles in the changelog are unavailable.
+warn  github        gh is missing or not signed in: release --pr, GitHub releases and pull request titles in the changelog are unavailable.
 [exit 3]
 ```
 
@@ -98,7 +98,7 @@ version   1.3.1.dev20261125+4fb137b
 type      dev
 current   1.3.0  (tag v1.3.0, 4fb137b, 2 commits since)
 note      base 1.3.0 from .git_archival.txt (v1.3.0)
-config    defaults  (0 keys set, 14 defaults)
+config    defaults  (0 keys set, 28 defaults)
 ```
 
 A copy without the archive file has nothing to go on, so CI stops:

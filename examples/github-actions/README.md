@@ -1,6 +1,7 @@
 # GitHub Actions workflows
 
-Six workflows cover the whole release flow: pull request titles, the release
+Seven workflows cover the whole release flow: pull request titles (with or
+without the gitversioned action), the release
 pull request, tagging and publishing the merge, a manual release, nightly
 builds and hand-pushed tags. They sit in [`.github/workflows/`](.github/workflows)
 ready to copy, and every step that runs gitversioned is run below.
@@ -42,6 +43,34 @@ fail  title  'Add explain flag' is not a Conventional Commit title. Expected typ
 [exit 1]
 ```
 
+### The gitversioned action
+
+[`pr-title-action.yml`](.github/workflows/pr-title-action.yml) does the same
+with the action at the root of the gitversioned repository: no Python setup,
+the title passed as an input rather than through the shell, and the version as a
+step output.
+
+```console
+$ python ci.py .github/workflows/pr-title-action.yml --event github.event.pull_request.title="feat(cli): add --explain"
+job title
+  uses actions/checkout@v4: skipped
+  uses markurtz/git-versioned@v0.4.0
+ok
+  output version=1.0.0
+$ python ci.py .github/workflows/pr-title-action.yml --event github.event.pull_request.title='fix: $(touch pwned)' && ls pwned
+job title
+  uses actions/checkout@v4: skipped
+  uses markurtz/git-versioned@v0.4.0
+ok
+  output version=1.0.0
+ls: cannot access 'pwned': No such file or directory
+[exit 2]
+```
+
+The action takes `command`, `title`, `version` (the gitversioned release to
+run) and `working-directory`, and sets the `version` and `output` outputs. Any
+command works, such as `command: release --pr` with `GH_TOKEN` in `env`.
+
 ### The release pull request
 
 The pull request merges, and the push to `main` starts both
@@ -74,7 +103,7 @@ $ python ci.py .github/workflows/release.yml --event github.event.head_commit.me
 job tag
   uses actions/checkout@v4: skipped
   step Tag the release commit
-tag       v1.1.0 at da21321, pushed
+tag       v1.1.0 at 8d20541, pushed
   step Build
 beam-1.1.0-py3-none-any.whl
 beam-1.1.0.tar.gz
@@ -164,9 +193,9 @@ files     CHANGELOG.md
 
 Wrote CHANGELOG.md.
   step Tag it
-tag       v2.0.0 at 4c211b3, pushed
+tag       v2.0.0 at 1c6c66c, pushed
 $ git log --oneline -1 origin/main && git ls-remote --tags origin v2.0.0 | sed 's/^[0-9a-f]*\t//'
-4c211b3 release: v2.0.0
+1c6c66c release: v2.0.0
 refs/tags/v2.0.0
 ```
 

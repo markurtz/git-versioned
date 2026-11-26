@@ -32,6 +32,27 @@ jobs:
 With squash merges the pull request title becomes the commit subject, so this
 one check keeps the history releasable.
 
+### With the gitversioned action
+
+The repository root is also a composite action. It runs gitversioned without a
+Python setup, passes the title as an input rather than through the shell, and
+sets `version` and `output` step outputs:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- id: gv
+  uses: markurtz/git-versioned@v0.4.0
+  with:
+    command: check
+    title: ${{ github.event.pull_request.title }}
+- run: echo "version ${{ steps.gv.outputs.version }}"
+```
+
+`command` takes any command and its options, such as `release --pr` with
+`GH_TOKEN` in `env`; `version` pins the gitversioned release it runs.
+
 ## Keep the release pull request up to date
 
 ```yaml
@@ -85,6 +106,43 @@ jobs:
 
 `release --tag` reads the tag from the merged release commit, refuses a tag that
 is not newer than the last release, and pushes it.
+
+gitversioned can do the publishing and the GitHub release itself. With
+`forge_release = true`, give the job `GH_TOKEN` and, for PyPI trusted
+publishing, `id-token: write`:
+
+```yaml
+permissions:
+  contents: write
+  id-token: write
+steps:
+  - uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
+  - uses: astral-sh/setup-uv@v6
+  - run: uvx gitversioned release --tag --publish
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+It tags, builds and uploads to each registry, then creates the GitHub release
+with the changelog section as notes and the built files attached.
+
+## Maintenance branches
+
+Add the branches to the workflows' `on.push.branches` and to the `branches`
+setting, such as `branches = ["*.x"]`. A push to `1.x` then keeps a release
+pull request from `release/next-1.x` into `1.x`, and its merge is tagged the
+same way.
+
+## GitLab and Gitea
+
+The commands are the same. In GitLab CI set `GITLAB_TOKEN` (a project access
+token with the `api` scope); `CI_API_V4_URL` and `CI_PROJECT_PATH` are read on
+their own. In Gitea or Forgejo Actions set `GITEA_TOKEN`. `forge = "auto"`
+picks the forge from the CI environment and the `origin` host.
 
 ## Development and nightly builds
 
@@ -150,5 +208,5 @@ jobs:
 ## Run them
 
 The [github-actions example](https://github.com/markurtz/git-versioned/tree/main/examples/github-actions)
-holds all six workflows and runs every gitversioned step in them on each test
-run.
+holds all seven workflows, one of them with the action, and runs every
+gitversioned step in them on each test run.

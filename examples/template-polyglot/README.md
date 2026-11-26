@@ -31,7 +31,7 @@ ok    git           full history, 1 release tag, latest v0.3.0
 ok    targets       CITATION.cff, Cargo.toml, apps/desktop/package.json, apps/desktop/src-tauri/Cargo.toml, apps/web/package.json, crates/wasm/package.json, packages/client/package.json, src/template_polyglot/version.py, Cargo.lock, apps/desktop/src-tauri/Cargo.lock
 ok    scopes        core, oci, python, api, rust, cli, node, contract, db, web, desktop, docs, notebooks, python-ext, wasm, deps, deps-dev, ci, release
 warn  archive file  .git_archival.txt is not set up, so source tarballs lose the version. Run `gitversioned init`.
-warn  github        gh is missing or not signed in: release --pr and pull request titles in the changelog are unavailable.
+warn  github        gh is missing or not signed in: release --pr, GitHub releases and pull request titles in the changelog are unavailable.
 ```
 
 ### Pull request titles

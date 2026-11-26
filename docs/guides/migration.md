@@ -14,7 +14,7 @@ releases, and its surface is much smaller.
 | `gitversioned format`                           | `gitversioned version --write --dry-run`                |
 | `gitversioned overrides`                        | `gitversioned version --write` (targets are discovered) |
 | `gitversioned init-archive`                     | `gitversioned init`                                     |
-| No equivalent                                   | `gitversioned check`, `gitversioned release`            |
+| No equivalent                                   | `gitversioned check`, `release`, `new`                  |
 
 ## Settings
 
@@ -22,14 +22,14 @@ Old keys are rejected with an error that names the nearest new key.
 
 | 0.3                                                      | 0.4                                                               |
 | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| `output`, `output_strategies`                            | Removed. `version.py` is generated in one fixed shape.            |
+| `output`, `output_strategies`                            | `module_template`, a template for the generated `version.py`.    |
 | `overrides`                                              | `[[targets]]` with `key` or `pattern`; most files are discovered. |
-| `version_type`                                           | `--type` on the command line.                                     |
+| `version_type`                                           | `--type` on the command line, or `GITVERSIONED__TYPE` in a build. |
 | `version_standard`                                       | `--standard`; each file gets its own spelling.                    |
 | `regex_tag` and the other `regex_*` keys                 | `tag = "v{version}"`.                                             |
-| `format_main`, `format_dev`, `format_pre`, `format_post` | Fixed shapes; choose the base with `dev` and `nightly`.           |
+| `format_main`, `format_dev`, `format_pre`, `format_post` | `formats` for dev and nightly; `release --post` for post releases. |
 | `auto_increment`                                         | `dev` and `nightly`.                                              |
-| `source_type`, `version_source_*`                        | Removed. Sources are tried in a fixed order.                      |
+| `source_type`, `version_source_*`                        | `version = "branch"`, `"commit"`, `"file:PATH"` or `"python:MOD:FUNC"`. |
 | `dirty_ignore`                                           | Removed. Stamped files never count as dirty.                      |
 
 Environment overrides are spelled `GITVERSIONED__KEY`, with two underscores.

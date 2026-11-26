@@ -1,8 +1,9 @@
 # Configuration Guide
 
-gitversioned works with no configuration. Everything below is optional, and the
-whole surface is twelve settings, a list of extra files and a table of
-packages.
+gitversioned works with no configuration. Everything below is optional: twelve
+core settings, a list of extra files, a table of packages, and settings for the
+less common release flows (version sources, templates, bump rules, change
+files, changelog style, forges, maintenance branches and publishing).
 
 ## Where settings live
 
@@ -26,7 +27,7 @@ nearest valid key.
 
 | Key         | Default                | What it does                                                                     |
 | ----------- | ---------------------- | -------------------------------------------------------------------------------- |
-| `version`   | `"auto"`               | A pinned version, or `auto` to resolve from git.                                 |
+| `version`   | `"auto"`               | `auto` resolves from git; a version pins it; `branch`, `commit`, `file:PATH` or `python:MODULE:FUNCTION` read it from a source (see below). |
 | `fallback`  | `"0.1.0"`              | The base version before the first tag exists.                                    |
 | `tag`       | `"v{version}"`         | The tag template; also how release tags are recognised.                          |
 | `annotated` | `false`                | Create annotated tags that carry the changelog section.                          |
@@ -41,6 +42,71 @@ nearest valid key.
 
 The default types are `feat`, `fix`, `perf`, `refactor`, `docs`, `test`,
 `build`, `ci`, `chore`, `revert`, `deprecate` and `release`.
+
+### Release flow settings
+
+| Key                  | Default        | What it does                                                                                          |
+| -------------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
+| `formats`            | `{}`           | Templates for `dev` and `nightly` versions, such as `{dev = "{next}.dev{distance}"}`.                 |
+| `module_template`    | none           | A `string.Template` file that replaces the generated `version.py`.                                    |
+| `levels`             | `{}`           | Bump level per commit type: `major`, `minor`, `patch` or `none`. Breaking changes stay major.         |
+| `zero_shift`         | `true`         | Below 1.0.0 shift every level down one; `false` releases a feature as a minor from the first tag.     |
+| `changelog_layout`   | `"kind"`       | `kind` (Added, Fixed, with scopes in bold) or `scope` (a heading per scope, then kinds).              |
+| `changelog_sections` | `{}`           | Heading per commit type, such as `{perf = "Performance"}`; `false` hides a type unless it is breaking. |
+| `changelog_template` | none           | A `string.Template` file for a whole release section; it must start with `## [$version]`.             |
+| `changes`            | `".changes"`   | The folder of change files, hand-written changelog entries a release takes in and deletes.             |
+| `forge`              | `"auto"`       | `github`, `gitlab` or `gitea`; `auto` reads the `origin` host and the CI environment.                 |
+| `forge_release`      | `false`        | Create the forge release, with the changelog section as notes, when `release --tag` pushes a tag.     |
+| `branches`           | `[]`           | Maintenance branches (globs such as `"*.x"`) releases may also be cut from.                           |
+| `exclude`            | `[]`           | Files discovery leaves alone (globs or folders). A `[[targets]]` entry still wins.                    |
+| `semver_checks`      | `false`        | Run `cargo semver-checks` against the last tag; a breaking API change makes the release major.        |
+| `publish`            | by manifest    | Registries `release --publish` uploads to: `pypi`, `crates`, `npm`.                                   |
+
+#### Version sources
+
+`version = "branch"` reads `X.Y.Z` from the branch name (also from
+`GITHUB_HEAD_REF` or `GITHUB_REF_NAME` on a detached CI checkout), and
+`version = "commit"` from the `HEAD` subject; both fall back to tags when there
+is none. `file:VERSION` reads the first `X.Y.Z` in a file, and
+`python:pkg.meta:version` imports the module from the project root and calls the
+function. A source sets the version the way a pin does.
+
+#### Templates
+
+`formats` placeholders are `{next}` (the next release), `{base}` (the latest
+release), `{distance}` (commits since it), `{date}` (`YYYYMMDD`), `{sha}` (the
+short hash) and `{branch}`; the result must be a PEP 440 version.
+`module_template` placeholders are `$version`, `$version_semver`,
+`$version_tuple`, `$major`, `$minor`, `$patch`, `$tag`, `$distance`, `$commit`
+and `$commit_date`. `changelog_template` placeholders are `$version`,
+`$pep440`, `$tag`, `$date`, `$previous`, `$compare`, `$entries` and
+`$migrations`. Templates are substitutions, never code.
+
+#### Change files
+
+A change file in `.changes/` is Markdown with front matter:
+
+```markdown
+---
+type: feat
+scope: cli
+bump: minor      # optional: major, minor, patch or none
+breaking: false  # optional
+package: web     # optional: a package with its own tag
+---
+Add `--explain`, which shows why a version was chosen.
+```
+
+`gitversioned new` writes one. Change files count for the bump like commits,
+their entries land in the release section, and `release --write` deletes them.
+
+#### Forges
+
+| Forge          | Reached through        | Token          | Address                                                        |
+| -------------- | ---------------------- | -------------- | -------------------------------------------------------------- |
+| GitHub         | `gh`                   | `GH_TOKEN`     | The `origin` remote                                            |
+| GitLab         | REST API v4            | `GITLAB_TOKEN` | `origin`, `GITLAB_API_URL`, or `CI_API_V4_URL` and `CI_PROJECT_PATH` |
+| Gitea, Forgejo | REST API v1            | `GITEA_TOKEN`  | `origin`, `GITEA_API_URL`, or `GITHUB_SERVER_URL` and `GITHUB_REPOSITORY` |
 
 ### Example: every setting
 
@@ -58,6 +124,28 @@ local = true
 changelog = "CHANGELOG.md"
 types = ["feat", "fix", "perf", "refactor", "docs", "test", "build", "ci", "chore", "revert", "deprecate", "release"]
 scopes = ["core", "cli", "docs"]
+module_template = ".config/version.tmpl"
+zero_shift = true
+changelog_layout = "scope"
+changelog_template = ".config/changelog-section.tmpl"
+changes = ".changes"
+forge = "auto"
+forge_release = true
+branches = ["*.x"]
+exclude = ["docs/snippets/*"]
+semver_checks = false
+publish = ["pypi"]
+
+[formats]
+dev = "{next}.dev{distance}"
+
+[levels]
+perf = "minor"
+docs = "patch"
+
+[changelog_sections]
+perf = "Performance"
+refactor = false
 ```
 
 The same settings in the other homes:
@@ -118,8 +206,9 @@ Files under `node_modules`, `target`, `dist`, `build`, `site`, `examples`,
 `tests`, `test`, `testdata`, `fixtures`, `vendor` and `third_party` are left
 alone, and so are manifests that say they are never released: a
 `pyproject.toml` with the `Private :: Do Not Upload` classifier and a
-cargo-fuzz harness (`cargo-fuzz = true`). Edits are scoped text edits: only the version value changes, so
-comments, key order, quoting and line endings survive.
+cargo-fuzz harness (`cargo-fuzz = true`). `exclude` leaves out any other
+file, by glob or folder. Edits are scoped text edits: only the version value
+changes, so comments, key order, quoting and line endings survive.
 
 List any other file with `[[targets]]`:
 
@@ -194,11 +283,11 @@ settings were read from.
 
 These are fixed on purpose, so every repository behaves the same way.
 
-- **Bump rules.** A breaking change is major, `feat` is minor, every other
-  releasable type is patch. `chore`, `ci`, `test` and `release` commits and
-  merge commits do not release. Below 1.0.0 each level shifts down one.
-- **Release names.** The branch is `release/next`, the pull request title is
-  `release: <tag>`, and the labels are `release`, `release:rc` and
-  `release:major|minor|patch`.
-- **Changelog format.** Keep a Changelog sections, grouped by scope.
-- **Version sources.** Tags, the archive file, sdist metadata, or a pin.
+- **Breaking changes are major.** `levels` changes every other type, but a `!`
+  or a `BREAKING CHANGE:` footer always asks for a major release (a minor below
+  1.0.0 unless `zero_shift = false`).
+- **Release names.** The branch is `release/next` (`release/next-<branch>` on a
+  maintenance branch), the pull request title is `release: <tag>`, and the
+  labels are `release`, `release:rc` and `release:major|minor|patch`.
+- **Keep a Changelog.** Sections are `## [X.Y.Z] - YYYY-MM-DD`, so releases can
+  find, fold and replace them; layout, headings and templates sit on top.
