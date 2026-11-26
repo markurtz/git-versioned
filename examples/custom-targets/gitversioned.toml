@@ -1,0 +1,38 @@
+# Files that discovery cannot recognise by name, each listed once.
+
+# A dotted key in a YAML file: the version of an OpenAPI document.
+[[targets]]
+path = "api/openapi.yaml"
+key = "info.version"
+
+# A dotted key in a JSON file: a browser extension manifest.
+[[targets]]
+path = "web/manifest.json"
+key = "version"
+
+# A dotted key in a TOML file outside the standard manifests.
+[[targets]]
+path = "deploy.toml"
+key = "service.image.version"
+
+# A regular expression for any text file, with a (?P<version>...) group: the Go
+# constant, the install line in the docs and a marker comment in a shell script.
+[[targets]]
+path = "go/version/version.go"
+pattern = 'const Version = "(?P<version>[^"]+)"'
+
+[[targets]]
+path = "INSTALL.md"
+pattern = 'pip install relay==(?P<version>[^\s`]+)'
+
+[[targets]]
+path = "install.sh"
+pattern = 'VERSION="(?P<version>[^"]+)" # x-version'
+
+# A Python module with a placeholder, spelled in PEP 440 because it is a .py
+# file. commit = false keeps it out of release commits: builds stamp it, the
+# repository keeps the placeholder.
+[[targets]]
+path = "lib/_version.py"
+pattern = '__version__ = "(?P<version>[^"]+)"'
+commit = false

@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# Settings for gitversioned. Every key is optional; this one limits the scopes
+# that `gitversioned check` accepts in pull request titles.
 [tool.gitversioned]
-fallback = "0.1.0"
-changelog = "CHANGELOG.md"
 scopes = ["core", "docs"]

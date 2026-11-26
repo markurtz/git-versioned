@@ -1,0 +1,10 @@
+# A crate that spells its version out and names the core by path and
+# version, as crates outside [workspace.dependencies] do.
+[package]
+name = "demo-extra"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+demo-core = { path = "../core", version = "0.0.0" }

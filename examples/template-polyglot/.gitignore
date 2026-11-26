@@ -1,0 +1,5 @@
+# The parts of the rendered .gitignore that matter to versioning.
+src/template_polyglot/version.py
+target/
+node_modules/
+dist/

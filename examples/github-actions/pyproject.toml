@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling", "gitversioned>=0.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "beam"
+dynamic = ["version"]
+description = "A package released by GitHub Actions workflows."
+requires-python = ">=3.10"
+
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/beam"]

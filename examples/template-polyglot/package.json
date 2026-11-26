@@ -1,0 +1,13 @@
+{
+  "name": "template-polyglot-workspace",
+  "private": true,
+  "description": "pnpm workspace root of template-polyglot; the packages are listed in pnpm-workspace.yaml",
+  "type": "module",
+  "devDependencies": {
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

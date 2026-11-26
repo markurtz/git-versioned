@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# The binding's Python package. maturin compiles src/ into template_polyglot_core._native
+# and ships it with python/template_polyglot_core/. The version comes from Cargo.toml,
+# which release:stamp sets from the tag.
+[build-system]
+requires = ["maturin>=1.16,<2"]
+build-backend = "maturin"
+
+[project]
+name = "template-polyglot-core"
+dynamic = ["version"]
+description = "Compiled core of template-polyglot, used by template-polyglot when installed"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "Mark Kurtz" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Rust",
+  "Typing :: Typed",
+]
+# No runtime dependencies: the wheel is the compiled module and its stubs.
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/markurtz/template-polyglot.git"
+
+[tool.maturin]
+python-source = "python"
+module-name = "template_polyglot_core._native"
+# Leftovers of the editable install (python:setup) never reach a wheel or sdist.
+exclude = ["python/**/__pycache__/**", { path = "python/**/*.so", format = "sdist" }, { path = "python/**/*.pyd", format = "sdist" }]
+
+# Rebuild the editable install when the Rust sources change, not only this file.
+[tool.uv]
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "Cargo.toml" },
+  { file = "src/**/*.rs" },
+  { file = "../core/Cargo.toml" },
+  { file = "../core/src/**/*.rs" },
+]

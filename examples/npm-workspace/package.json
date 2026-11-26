@@ -1,0 +1,6 @@
+{
+  "name": "demo-workspace",
+  "private": true,
+  "description": "The workspace root: no version of its own, so it is never stamped.",
+  "workspaces": ["packages/*"]
+}

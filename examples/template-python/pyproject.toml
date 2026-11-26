@@ -1,0 +1,31 @@
+# ==============================================================================
+# Build: hatchling with the gitversioned hook, which takes the version from git
+# tags and writes src/text_stats/version.py (ignored by git) into every build.
+# ==============================================================================
+[build-system]
+requires = ["hatchling", "gitversioned>=0.4"]
+build-backend = "hatchling.build"
+
+# ==============================================================================
+# Project
+# ==============================================================================
+[project]
+name = "text-stats"
+dynamic = ["version"]
+description = "Count words and lines, as the template's demo package does."
+requires-python = ">=3.10"
+license = "Apache-2.0"
+
+[project.scripts]
+text-stats = "text_stats.__main__:main"
+
+# ==============================================================================
+# Version: no [tool.gitversioned] table, the defaults are the template's.
+# ==============================================================================
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/text_stats"]

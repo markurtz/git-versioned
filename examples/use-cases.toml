@@ -1,0 +1,700 @@
+# Copyright 2026 markurtz
+# SPDX-License-Identifier: Apache-2.0
+#
+# Every use case gitversioned is measured against, from four sources:
+#
+#   v03        what gitversioned 0.3.1 supported (main branch docs and examples)
+#   prd        the 0.4 PRD v3: user stories S1 to S14, commands, keys, exit codes
+#   template   what the markurtz/template generator (v0.6.1) needs from it
+#   competitor what release-please, release-plz, cargo-release, commitizen,
+#              changesets, semantic-release, setuptools-scm, uv and the newer
+#              polyglot tools offer
+#
+# Each entry names the examples that show it working (their README transcripts
+# are the tests) or, with status = "out-of-scope", the reason it is left out.
+# examples/test_manifest.py checks that every named example exists and that
+# every entry is one or the other. scripts/generate_examples.py renders this
+# file as docs/examples/use-cases.md.
+
+# ==============================================================================
+# 0.3.1
+# ==============================================================================
+
+[[use-case]]
+id = "V1"
+source = "v03"
+title = "Hatchling version source with a build hook that ships version.py"
+examples = ["hatchling", "template-python"]
+
+[[use-case]]
+id = "V2"
+source = "v03"
+title = "setuptools from pyproject.toml"
+examples = ["setuptools"]
+
+[[use-case]]
+id = "V3"
+source = "v03"
+title = "setuptools from setup.cfg and from setup.py"
+examples = ["setuptools-legacy"]
+
+[[use-case]]
+id = "V4"
+source = "v03"
+title = "Maturin build that keeps Cargo.toml and the wheel on one version"
+examples = ["maturin"]
+
+[[use-case]]
+id = "V5"
+source = "v03"
+title = "Print the version from the command line (calculate)"
+examples = ["version-shapes"]
+
+[[use-case]]
+id = "V6"
+source = "v03"
+title = "Write the version file from the command line (write, --output)"
+examples = ["version-shapes", "custom-targets"]
+note = "`--output` is gone: version.py has one fixed home, and other files are `[[targets]]`."
+
+[[use-case]]
+id = "V7"
+source = "v03"
+title = "Preview the formatted output before writing (format)"
+examples = ["version-shapes", "polyglot"]
+note = "`version --write --dry-run` prints the diff."
+
+[[use-case]]
+id = "V8"
+source = "v03"
+title = "Several files in one run: Cargo.toml, Dockerfile, regex overrides"
+examples = ["polyglot", "custom-targets", "docker"]
+
+[[use-case]]
+id = "V9"
+source = "v03"
+title = "Pass the version to docker build as a build argument"
+examples = ["docker"]
+
+[[use-case]]
+id = "V10"
+source = "v03"
+title = "Python API to resolve the version in a script"
+examples = ["python-api"]
+
+[[use-case]]
+id = "V11"
+source = "v03"
+title = "Archive support for GitHub zip and tarball downloads (init-archive)"
+examples = ["ci-safety"]
+
+[[use-case]]
+id = "V12"
+source = "v03"
+title = "Environment overrides for any setting"
+examples = ["configuration", "version-shapes"]
+
+[[use-case]]
+id = "V13"
+source = "v03"
+title = "Force a version type: release, dev, nightly"
+examples = ["version-shapes"]
+
+[[use-case]]
+id = "V14"
+source = "v03"
+title = "Auto-increment the base of dev builds (patch, minor, major)"
+examples = ["version-shapes"]
+
+[[use-case]]
+id = "V15"
+source = "v03"
+title = "Ignore files when deciding whether the tree is dirty (dirty_ignore)"
+examples = ["template-polyglot", "hatchling"]
+note = "Automatic: stamped values and build folders never count."
+
+[[use-case]]
+id = "V16"
+source = "v03"
+title = "PEP 440 or SemVer output (version_standard)"
+examples = ["version-shapes"]
+
+[[use-case]]
+id = "V17"
+source = "v03"
+title = "Custom tag patterns and per-package tag prefixes in a monorepo (regex_tag)"
+examples = ["monorepo-packages", "configuration"]
+
+[[use-case]]
+id = "V18"
+source = "v03"
+title = "Install from an sdist without git (version from PKG-INFO)"
+examples = ["hatchling"]
+
+[[use-case]]
+id = "V19"
+source = "v03"
+title = "Logging control"
+examples = ["configuration"]
+note = "`-v`, `-vv` and `-q` replace the logging settings."
+
+[[use-case]]
+id = "V20"
+source = "v03"
+title = "Version from a branch name, a commit message, a file or a function"
+status = "out-of-scope"
+reason = "PRD Q24: tags are the only version source, plus the pin, the archive file and sdist metadata. A VERSION file is served by `version = ...` or GITVERSIONED__VERSION."
+
+[[use-case]]
+id = "V21"
+source = "v03"
+title = "User templates for version strings and version.py (ExStr, output_strategies)"
+status = "out-of-scope"
+reason = "PRD Q26: no config value is a template, so nothing in config runs code. version.py has one built-in shape."
+
+[[use-case]]
+id = "V22"
+source = "v03"
+title = "Post releases (1.2.3.post1) and the post version type"
+status = "out-of-scope"
+reason = "SemVer has no post releases and the PRD fixes the version shapes. A post tag is reported as a lookalike tag instead of being used silently (see version-shapes)."
+
+# ==============================================================================
+# 0.4 PRD v3: stories
+# ==============================================================================
+
+[[use-case]]
+id = "S1"
+source = "prd"
+title = "Package builder: the right version in every build with no config"
+examples = ["hatchling", "setuptools", "maturin", "static-version", "template-python"]
+
+[[use-case]]
+id = "S2"
+source = "prd"
+title = "CI owner: shallow clones, a missing .git or a tarball never silently give a wrong version"
+examples = ["ci-safety"]
+
+[[use-case]]
+id = "S3"
+source = "prd"
+title = "Publisher: dev and nightly builds that PyPI and npm accept"
+examples = ["version-shapes", "github-actions"]
+
+[[use-case]]
+id = "S4"
+source = "prd"
+title = "Builder: building does not make the tree dirty"
+examples = ["hatchling", "template-polyglot", "rust-workspace"]
+
+[[use-case]]
+id = "S5"
+source = "prd"
+title = "Polyglot maintainer: one version across Python, Rust, npm, Helm, Docker and CITATION.cff"
+examples = ["polyglot", "template-polyglot"]
+
+[[use-case]]
+id = "S6"
+source = "prd"
+title = "Maintainer: see the next version and why"
+examples = ["next-version"]
+
+[[use-case]]
+id = "S7"
+source = "prd"
+title = "Reviewer: PR titles and commits validated the same way in CI and locally"
+examples = ["commit-checks", "github-actions"]
+
+[[use-case]]
+id = "S8"
+source = "prd"
+title = "Maintainer: a release PR with the changelog and the stamped files in it"
+examples = ["release-pr"]
+
+[[use-case]]
+id = "S9"
+source = "prd"
+title = "Maintainer: see what a release would do before anything changes"
+examples = ["release-local"]
+
+[[use-case]]
+id = "S10"
+source = "prd"
+title = "Maintainer: tag from the merged release PR, or by hand, with the same checks"
+examples = ["release-pr", "release-local", "template-python"]
+
+[[use-case]]
+id = "S11"
+source = "prd"
+title = "Maintainer: release candidates without a second workflow"
+examples = ["release-pr", "next-version"]
+
+[[use-case]]
+id = "S12"
+source = "prd"
+title = "Reader: a changelog grouped by kind then scope, without commit noise"
+examples = ["release-local", "release-pr"]
+
+[[use-case]]
+id = "S13"
+source = "prd"
+title = "Monorepo maintainer: optional per-package tags"
+examples = ["monorepo-packages", "polyglot"]
+
+[[use-case]]
+id = "S14"
+source = "prd"
+title = "Agent or script: every result as JSON and a trustworthy exit code"
+examples = ["version-shapes", "commit-checks", "release-local", "python-api"]
+
+# ==============================================================================
+# 0.4 PRD v3: commands, keys and behaviour
+# ==============================================================================
+
+[[use-case]]
+id = "P1"
+source = "prd"
+title = "version --next with --bump and --pre, numbered from existing tags"
+examples = ["next-version"]
+
+[[use-case]]
+id = "P2"
+source = "prd"
+title = "version --explain names the tag, the commits and the config home"
+examples = ["next-version", "configuration"]
+
+[[use-case]]
+id = "P3"
+source = "prd"
+title = "version --write and --dry-run stamp every target in its own spelling"
+examples = ["polyglot", "custom-targets"]
+
+[[use-case]]
+id = "P4"
+source = "prd"
+title = "check: repo setup report"
+examples = ["ci-safety", "hatchling"]
+
+[[use-case]]
+id = "P5"
+source = "prd"
+title = "check TITLE, --commits, --tag, --file and --warn"
+examples = ["commit-checks", "release-local"]
+
+[[use-case]]
+id = "P6"
+source = "prd"
+title = "release prints a plan; --write, --pr and --tag act"
+examples = ["release-local", "release-pr"]
+
+[[use-case]]
+id = "P7"
+source = "prd"
+title = "init adds the archive file and wires up the build backend"
+examples = ["ci-safety"]
+
+[[use-case]]
+id = "P8"
+source = "prd"
+title = "Shared options: -C, -p, --json, -v, -q"
+examples = ["version-shapes", "monorepo-packages", "configuration"]
+
+[[use-case]]
+id = "P9"
+source = "prd"
+title = "Exit codes: 0 ok, 1 check failed or nothing to release, 2 usage or config, 3 environment"
+examples = ["commit-checks", "next-version", "configuration", "ci-safety"]
+
+[[use-case]]
+id = "P10"
+source = "prd"
+title = "Root keys: version, fallback, tag, annotated, branch, dev, nightly, date, local, changelog, types, scopes"
+examples = ["configuration", "version-shapes", "release-local", "commit-checks"]
+
+[[use-case]]
+id = "P11"
+source = "prd"
+title = "[[targets]] with path, key, pattern and commit"
+examples = ["custom-targets", "polyglot"]
+
+[[use-case]]
+id = "P12"
+source = "prd"
+title = "[packages.<name>] with path and an optional own tag"
+examples = ["monorepo-packages", "polyglot"]
+
+[[use-case]]
+id = "P13"
+source = "prd"
+title = "One config home of six; two homes is an error; unknown keys name the nearest one"
+examples = ["configuration"]
+
+[[use-case]]
+id = "P14"
+source = "prd"
+title = "Bump overrides: VERSION, --bump, GITVERSIONED__BUMP, release:major|minor|patch labels"
+examples = ["next-version", "release-pr"]
+
+[[use-case]]
+id = "P15"
+source = "prd"
+title = "Release PR: branch release/next, title release: vX.Y.Z, label release, rc via release:rc"
+examples = ["release-pr"]
+
+[[use-case]]
+id = "P16"
+source = "prd"
+title = "Changelog from PR titles, with a ## Changelog block in the PR body overriding the entry"
+examples = ["release-pr"]
+
+[[use-case]]
+id = "P17"
+source = "prd"
+title = "Annotated tags carrying the changelog section"
+examples = ["release-local"]
+
+# ==============================================================================
+# The template generator (markurtz/template v0.6.1)
+# ==============================================================================
+
+[[use-case]]
+id = "T1"
+source = "template"
+title = "Python size: hatchling plus the build hook, version.py gitignored, no settings"
+examples = ["template-python"]
+
+[[use-case]]
+id = "T2"
+source = "template"
+title = "release:stamp replaced by version --write: Cargo workspace, workspace.dependencies, Cargo.lock, wasm and app package.json, src-tauri crate, CITATION.cff"
+examples = ["template-polyglot"]
+
+[[use-case]]
+id = "T3"
+source = "template"
+title = "Title scopes from .config/blocks.toml plus deps, deps-dev, ci and release"
+examples = ["template-polyglot", "commit-checks"]
+
+[[use-case]]
+id = "T4"
+source = "template"
+title = "pr.yml title check replaced by check \"$PR_TITLE\""
+examples = ["github-actions", "template-polyglot"]
+
+[[use-case]]
+id = "T5"
+source = "template"
+title = "release-pr.yml: release --pr on push to main, then the tag when it merges"
+examples = ["release-pr", "github-actions"]
+
+[[use-case]]
+id = "T6"
+source = "template"
+title = "release-manual.yml: release VERSION --tag by hand"
+examples = ["template-python", "github-actions"]
+
+[[use-case]]
+id = "T7"
+source = "template"
+title = "release:verify: tag format, CHANGELOG ## [X.Y.Z] section, tag is new"
+examples = ["template-python"]
+
+[[use-case]]
+id = "T8"
+source = "template"
+title = "release:build without the GITVERSIONED__DIRTY_IGNORE stand-in"
+examples = ["template-polyglot"]
+
+[[use-case]]
+id = "T9"
+source = "template"
+title = "Nightly image tag with no local part (nightly.yml)"
+examples = ["docker", "github-actions"]
+
+[[use-case]]
+id = "T10"
+source = "template"
+title = "python-ext with the plain maturin backend, versioned from the stamped Cargo workspace"
+examples = ["template-polyglot"]
+
+[[use-case]]
+id = "T11"
+source = "template"
+title = "Rust-first and CLI layouts: no Python, SemVer by default"
+examples = ["rust-workspace"]
+
+[[use-case]]
+id = "T12"
+source = "template"
+title = "Web and npm layouts: pnpm workspace, private apps, a versionless workspace root"
+examples = ["npm-workspace", "template-polyglot"]
+
+[[use-case]]
+id = "T13"
+source = "template"
+title = "Extras under packages/<name>/ built with their own pyproject.toml"
+examples = ["monorepo-packages"]
+
+[[use-case]]
+id = "T14"
+source = "template"
+title = "Commit-msg hook that warns only"
+examples = ["commit-checks"]
+
+[[use-case]]
+id = "T15"
+source = "template"
+title = "Keep a Changelog file with an [Unreleased] section that a release takes over"
+examples = ["template-python", "release-local"]
+
+[[use-case]]
+id = "T16"
+source = "template"
+title = "examples/ and tests/ manifests are never stamped"
+examples = ["template-polyglot"]
+
+[[use-case]]
+id = "T17"
+source = "template"
+title = "Pre-release detection for the npm next dist-tag and GHCR tags"
+examples = ["docker", "github-actions"]
+
+[[use-case]]
+id = "T18"
+source = "template"
+title = "Changelog grouped by scope first, with a Migrations list"
+status = "out-of-scope"
+reason = "The changelog layout is fixed as kinds then scope (PRD Q11). The template's CHANGELOG.md note describes scope first and should be updated to match."
+
+# ==============================================================================
+# Competitors
+# ==============================================================================
+
+[[use-case]]
+id = "C1"
+source = "competitor"
+title = "release-please, release-plz: a release PR kept up to date from main"
+examples = ["release-pr"]
+
+[[use-case]]
+id = "C2"
+source = "competitor"
+title = "release-please: force the next version (Release-As)"
+examples = ["next-version", "release-local"]
+note = "`release VERSION`, `--bump` or GITVERSIONED__BUMP."
+
+[[use-case]]
+id = "C3"
+source = "competitor"
+title = "release-please extra-files, cargo-release pre-release-replacements, bump-my-version: version in arbitrary files"
+examples = ["custom-targets"]
+
+[[use-case]]
+id = "C4"
+source = "competitor"
+title = "release-please manifest, changesets: many packages released independently"
+examples = ["monorepo-packages"]
+
+[[use-case]]
+id = "C5"
+source = "competitor"
+title = "changesets fixed groups: packages that always share one version"
+examples = ["monorepo-packages", "npm-workspace"]
+
+[[use-case]]
+id = "C6"
+source = "competitor"
+title = "changesets, release-plz: internal dependency versions follow a release"
+examples = ["rust-workspace", "npm-workspace"]
+
+[[use-case]]
+id = "C7"
+source = "competitor"
+title = "cargo-release: dry run by default"
+examples = ["release-local"]
+
+[[use-case]]
+id = "C8"
+source = "competitor"
+title = "cargo-release, release-plz: Rust workspace with one version and Cargo.lock kept in step"
+examples = ["rust-workspace"]
+
+[[use-case]]
+id = "C9"
+source = "competitor"
+title = "release-plz, cargo-release: per-crate tags such as core-v1.2.0"
+examples = ["monorepo-packages"]
+
+[[use-case]]
+id = "C10"
+source = "competitor"
+title = "commitizen cz bump: level from Conventional Commits, breaking changes from ! and BREAKING CHANGE footers"
+examples = ["next-version"]
+
+[[use-case]]
+id = "C11"
+source = "competitor"
+title = "commitizen cz check and pre-commit hook; commitlint"
+examples = ["commit-checks"]
+
+[[use-case]]
+id = "C12"
+source = "competitor"
+title = "commitizen major_version_zero, semantic-release 0.x: below 1.0 levels shift down"
+examples = ["next-version"]
+
+[[use-case]]
+id = "C13"
+source = "competitor"
+title = "commitizen --prerelease, uv version --bump beta, changesets pre mode: numbered pre-releases"
+examples = ["next-version", "release-pr"]
+
+[[use-case]]
+id = "C14"
+source = "competitor"
+title = "commitizen cz changelog, git-cliff: changelog from history in Keep a Changelog form"
+examples = ["release-local"]
+
+[[use-case]]
+id = "C15"
+source = "competitor"
+title = "commitizen tag_format, setuptools-scm tag_regex: custom tag names"
+examples = ["configuration", "monorepo-packages"]
+
+[[use-case]]
+id = "C16"
+source = "competitor"
+title = "setuptools-scm, hatch-vcs, uv-dynamic-versioning: dev versions with distance and hash"
+examples = ["version-shapes", "hatchling"]
+
+[[use-case]]
+id = "C17"
+source = "competitor"
+title = "setuptools-scm no-local-version: dev uploads to PyPI and TestPyPI"
+examples = ["version-shapes"]
+
+[[use-case]]
+id = "C18"
+source = "competitor"
+title = "setuptools-scm SETUPTOOLS_SCM_PRETEND_VERSION: pin the version for a build"
+examples = ["configuration", "ci-safety"]
+
+[[use-case]]
+id = "C19"
+source = "competitor"
+title = "setuptools-scm .git_archival.txt: versions from git archive tarballs"
+examples = ["ci-safety"]
+
+[[use-case]]
+id = "C20"
+source = "competitor"
+title = "setuptools-scm write_to, dunamai: a generated version module or file"
+examples = ["hatchling", "python-api"]
+
+[[use-case]]
+id = "C21"
+source = "competitor"
+title = "dunamai from git, versioningit: print the version for any language"
+examples = ["version-shapes", "rust-workspace"]
+
+[[use-case]]
+id = "C22"
+source = "competitor"
+title = "uv version and uv_build: static versions in pyproject.toml"
+examples = ["static-version"]
+
+[[use-case]]
+id = "C23"
+source = "competitor"
+title = "semantic-release: releases cut on merge without a human step"
+examples = ["release-pr", "github-actions"]
+note = "The release still goes through a reviewed PR; merging it is the human step, and the tag job runs on that merge."
+
+[[use-case]]
+id = "C24"
+source = "competitor"
+title = "changesets snapshot releases, semantic-release channels: throwaway builds"
+examples = ["version-shapes", "github-actions"]
+note = "`--type nightly` and dev builds with `local = false`."
+
+[[use-case]]
+id = "C25"
+source = "competitor"
+title = "versionx and bumpy: plan, then apply, with JSON from every command"
+examples = ["release-local", "version-shapes"]
+
+[[use-case]]
+id = "C26"
+source = "competitor"
+title = "multicz, versionx: one tool for Python, Rust and npm manifests"
+examples = ["polyglot", "template-polyglot"]
+
+[[use-case]]
+id = "C27"
+source = "competitor"
+title = "Publishing to PyPI, crates.io and npm"
+status = "out-of-scope"
+reason = "PRD not-goal: gitversioned stops at the tag. The template's release.yml publishes with trusted publishing."
+
+[[use-case]]
+id = "C28"
+source = "competitor"
+title = "GitHub Releases with notes"
+status = "out-of-scope"
+reason = "PRD not-goal: the release workflow creates the GitHub release. Its notes are the changelog section, which `release --json` and CHANGELOG.md carry."
+
+[[use-case]]
+id = "C29"
+source = "competitor"
+title = "changesets intent files"
+status = "out-of-scope"
+reason = "PRD not-goal: git history and PR text are the only inputs. The ## Changelog block in a PR body covers hand-written entries."
+
+[[use-case]]
+id = "C30"
+source = "competitor"
+title = "GitLab, Gitea and other forges for the release PR"
+status = "out-of-scope"
+reason = "PRD not-goal: release --pr uses gh. version, check, release --write and release --tag work on any git remote."
+
+[[use-case]]
+id = "C31"
+source = "competitor"
+title = "Hosted bot or GitHub App (release-please, Renovate-style)"
+status = "out-of-scope"
+reason = "PRD not-goal: a plain CLI run from the repository's own workflow with its own token."
+
+[[use-case]]
+id = "C32"
+source = "competitor"
+title = "cargo-semver-checks in release-plz: bump level from API changes"
+status = "out-of-scope"
+reason = "PRD Q25: the bump level comes from commits, flags and labels only. A diff hook waits for a repository that needs it."
+
+[[use-case]]
+id = "C33"
+source = "competitor"
+title = "semantic-release maintenance branches: releases from 1.x while main is on 2.x"
+status = "out-of-scope"
+reason = "Open question: release --tag requires a version newer than every tag, which blocks backports, and release --pr only runs on `branch`. Versions resolve correctly on a maintenance branch."
+
+[[use-case]]
+id = "C34"
+source = "competitor"
+title = "commitizen cz commit: an interactive commit prompt"
+status = "out-of-scope"
+reason = "Not in the PRD; editors and agents write the subject, and check validates it."
+
+[[use-case]]
+id = "C35"
+source = "competitor"
+title = "Custom commit type to bump mapping (commitizen bump_map, semantic-release releaseRules)"
+status = "out-of-scope"
+reason = "PRD Q25 and the fixed rules: breaking is major, feat minor, the rest patch, chore/ci/test none. `types` only limits which types check accepts."
+
+[[use-case]]
+id = "C36"
+source = "competitor"
+title = "Custom changelog templates and hidden types (git-cliff, conventional-changelog presets)"
+status = "out-of-scope"
+reason = "PRD Q27 fixed the layout; only the path is configurable."

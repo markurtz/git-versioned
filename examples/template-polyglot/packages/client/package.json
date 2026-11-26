@@ -1,0 +1,27 @@
+{
+  "name": "@markurtz/template-polyglot-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed client for the template-polyglot API, generated from its OpenAPI schema",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "generate": "openapi-ts --file openapi-ts.config.ts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "catalog:",
+    "msw": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

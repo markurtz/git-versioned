@@ -42,9 +42,9 @@ This file provides repository-specific context, setup instructions, executable c
   - `errors.py`: Errors, each carrying its exit code (1 check failed, 2 usage or config, 3 environment).
   - `plugins/`: Hatchling, setuptools and Maturin build integrations.
 - `tests/`: `unit/` (isolated logic), `integration/` (settings and build backends) and `e2e/` (one class per user story, run through the CLI in real git repositories built by `tests/conftest.py`).
-- `examples/`: Runnable projects per backend plus a polyglot repository, tested by `examples/test_examples.py`.
+- `examples/`: 22 runnable projects, one per topic, indexed by `examples/manifest.toml`. Each README's console transcripts are its test (`examples/conftest.py`); `examples/use-cases.toml` maps every use case to the examples that show it, and `examples/test_manifest.py` checks they agree.
 - `docs/`: Zensical documentation source.
-- `scripts/`: Developer and CI helpers, including `build_binary.py` and `generate_llms_full.py`.
+- `scripts/`: Developer and CI helpers, including `build_binary.py`, `generate_llms_full.py` and `generate_examples.py`.
 - `.github/workflows/`: CI/CD workflows (prefixed with `pipeline-` and `util-`).
 
 ### Design Rules
@@ -54,6 +54,7 @@ This file provides repository-specific context, setup instructions, executable c
 - File edits are scoped text edits that change only the version value. Never rewrite a manifest through a parser and serializer.
 - Tests for new behaviour belong in `tests/e2e` as a user story when the behaviour is visible from the command line.
 - After changing a guide, the source or `pyproject.toml`, run `python scripts/generate_llms_full.py`.
+- After changing behaviour an example shows, run `python -m pytest examples --update-examples`, read the diff, and run `python scripts/generate_examples.py` after changing `examples/manifest.toml` or `examples/use-cases.toml`.
 
 ## Environment & Developer Workflows
 

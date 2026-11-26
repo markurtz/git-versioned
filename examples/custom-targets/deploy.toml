@@ -1,0 +1,6 @@
+[service]
+name = "relay"
+
+[service.image]
+name = "ghcr.io/acme/relay"
+version = "0.0.0"

@@ -1,0 +1,9 @@
+{
+  "name": "@demo/core",
+  "version": "0.0.0",
+  "description": "The published library.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.js",
+  "files": ["index.js"]
+}

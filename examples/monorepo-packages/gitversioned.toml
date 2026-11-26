@@ -1,0 +1,8 @@
+# packages/core has its own tags and release line. packages/web has no tag, so
+# it follows the repository version, like a changesets "fixed" group.
+[packages.core]
+path = "packages/core"
+tag = "core-v{version}"
+
+[packages.web]
+path = "packages/web"

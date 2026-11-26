@@ -1,0 +1,7 @@
+# The same packages for pnpm users, plus a catalog entry that pins the library
+# for other workspaces; gitversioned.toml lists it as a target.
+packages:
+  - packages/*
+
+catalog:
+  "@demo/core": 0.0.0

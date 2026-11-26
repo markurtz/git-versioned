@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# The command line: a thin layer over the core crate. Published to crates.io as
+# template-polyglot (`cargo install template-polyglot`) and as dist archives on each GitHub release.
+[package]
+name = "template-polyglot"
+description = "Command line for template-polyglot"
+readme = "README.md"
+keywords = []
+categories = ["command-line-utilities"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "template-polyglot"
+path = "src/main.rs"
+
+[dependencies]
+# >>> template:demo
+template-polyglot-core.workspace = true
+# <<< template:demo
+anyhow.workspace = true
+clap.workspace = true
+# >>> template:demo
+serde_json.workspace = true
+# <<< template:demo
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true
+
+# dist builds this binary's release archives and installers.
+[package.metadata.dist]
+dist = true

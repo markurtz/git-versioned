@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# ==============================================================================
+# Cargo workspace
+# ==============================================================================
+# A virtual manifest: it ships nothing itself and anchors every crate in crates/
+# to one Cargo.lock, one target/ and shared package fields, dependencies and lints.
+
+[workspace]
+resolver = "3"
+members = [
+  "crates/*",
+  # The Rust legs of examples/ (examples/<topic>/rust), never published. Cargo
+  # fails on a pattern that matches nothing, so template:strip removes it.
+  "examples/*/rust", # template:demo
+]
+
+# Shared by every crate through `field.workspace = true`.
+[workspace.package]
+# release:stamp writes the tag's version here at release time; 0.0.0 between releases.
+version = "0.0.0"
+edition = "2024"
+# Latest stable minus two; rust:compat (cargo-hack) checks the workspace builds on it.
+rust-version = "1.98"
+license = "Apache-2.0"
+repository = "https://github.com/markurtz/template-polyglot"
+authors = ["Mark Kurtz"]
+
+# ==============================================================================
+# Dependencies
+# ==============================================================================
+# One version per dependency for the whole workspace; crates opt in with
+# `name.workspace = true`. Renovate bumps them (cargo manager).
+
+[workspace.dependencies]
+# The shared core, for the crates that wrap it.
+# >>> template:demo
+template-polyglot-core = { path = "crates/core", version = "0.0.0" }
+# <<< template:demo
+# Property tests in the core crate (fuzzing answer).
+proptest = "1.12"
+# Benchmarks in crates/core/benches (benchmarks answer).
+criterion = "0.8.2"
+# The command line (crates/cli).
+anyhow = "1.0.104"
+clap = { version = "4.6.9", features = ["derive"] }
+# >>> template:demo
+serde_json = "1.0.154"
+# <<< template:demo
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+# The Python binding (crates/python-ext): one abi3 wheel per platform.
+pyo3 = { version = "0.30.1", features = ["abi3-py311"] }
+# Without its default numpy support, which the binding does not use.
+pyo3-stub-gen = { version = "0.23.3", default-features = false }
+# The WebAssembly binding (crates/wasm). wasm-bindgen is pinned exactly: the
+# wasm-bindgen CLI in .config/mise/conf.d/wasm.toml must match it (wasm:lint).
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-test = "0.3.80"
+# >>> template:demo
+js-sys = "0.3.107"
+serde = { version = "1.0.229", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
+# <<< template:demo
+
+# ==============================================================================
+# Lints
+# ==============================================================================
+# Every crate inherits these with `[lints] workspace = true`; rust:lint passes
+# -D warnings, so a warning fails CI.
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+# Pedantic, minus the lints that fight ordinary library code.
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+
+# ==============================================================================
+# Profiles
+# ==============================================================================
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# ==============================================================================
+# dist: CLI release archives
+# ==============================================================================
+# The release workflow runs `dist build` per target (mise run cli:build locally).
+# dist plans GitHub releases (ci = "github"), but its generated workflow is never
+# written (allow-dirty), so gitversioned keeps the versions and tags.
+
+[workspace.metadata.dist]
+cargo-dist-version = "0.34.0"
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-pc-windows-msvc",
+]
+installers = ["shell", "powershell"]
+install-path = "CARGO_HOME"
+# dist adds the crate's README, LICENSE and CHANGELOG; NOTICE goes in too.
+include = ["NOTICE"]
+ci = "github"
+allow-dirty = ["ci"]
+# Build only the CLI, not every workspace crate (the binding needs maturin).
+precise-builds = true
+install-updater = false
+
+# The CLI's release archives (dist): the release profile, with symbols stripped.
+[profile.dist]
+inherits = "release"
+strip = true

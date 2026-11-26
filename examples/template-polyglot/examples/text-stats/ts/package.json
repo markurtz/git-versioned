@@ -1,0 +1,13 @@
+{
+  "name": "@markurtz-examples/text-stats",
+  "private": true,
+  "description": "The TypeScript leg of examples/text-stats: the WebAssembly package in Node",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "start": "node main.ts"
+  },
+  "dependencies": {
+    "@markurtz/template-polyglot": "workspace:*"
+  }
+}

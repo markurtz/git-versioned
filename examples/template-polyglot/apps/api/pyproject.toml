@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# The HTTP API over the root package, a uv workspace member. It is never published
+# to PyPI: api:build builds its wheel into the image (apps/api/Dockerfile).
+[build-system]
+requires = ["hatchling>=1.33"]
+build-backend = "hatchling.build"
+
+[project]
+name = "template-polyglot-api"
+# The API contract's version is API_VERSION in the package; this one never ships.
+version = "0.0.0"
+description = "HTTP API of template-polyglot"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "Mark Kurtz" }]
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+  "template-polyglot",
+  "fastapi>=0.165,<1",
+  "uvicorn>=0.54,<1",
+  # The database (db block): SQLModel tables, Alembic migrations, the Postgres driver.
+  "sqlmodel>=0.0.50,<0.1",
+  "alembic>=1.20,<2",
+  "psycopg[binary]>=3.3,<4",
+]
+
+[project.scripts]
+template-polyglot-api = "template_polyglot_api.__main__:main"
+template-polyglot-api-migrate = "template_polyglot_api.migrate:main"
+
+# The root package, from this workspace.
+[tool.uv.sources]
+template-polyglot = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/template_polyglot_api"]

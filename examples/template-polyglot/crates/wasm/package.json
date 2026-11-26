@@ -1,0 +1,43 @@
+{
+  "name": "@markurtz/template-polyglot",
+  "version": "0.0.0",
+  "description": "WebAssembly build of template-polyglot, for browsers and bundlers",
+  "license": "Apache-2.0",
+  "author": "Mark Kurtz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markurtz/template-polyglot.git",
+    "directory": "crates/wasm"
+  },
+  "files": [
+    "pkg/index.js",
+    "pkg/index.d.ts",
+    "pkg/index_bg.wasm",
+    "pkg/index_bg.wasm.d.ts",
+    "NOTICE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./pkg/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./pkg/index.d.ts",
+      "default": "./pkg/index.js"
+    },
+    "./index_bg.wasm": "./pkg/index_bg.wasm"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@vitest/browser-playwright": "catalog:",
+    "playwright": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

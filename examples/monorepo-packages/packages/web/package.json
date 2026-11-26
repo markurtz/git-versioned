@@ -1,0 +1,6 @@
+{
+  "name": "mono-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A web front end that ships with every release of the repository."
+}

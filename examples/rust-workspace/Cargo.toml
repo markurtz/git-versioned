@@ -1,0 +1,15 @@
+# A Cargo workspace whose crates share one version. It stays 0.0.0 in git;
+# `gitversioned version --write` stamps the tag's version before a build.
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Internal crates are pinned to the workspace version, so a published crate
+# depends on the matching release of its siblings.
+[workspace.dependencies]
+demo-core = { path = "crates/core", version = "0.0.0" }

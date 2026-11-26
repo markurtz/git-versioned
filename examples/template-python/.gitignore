@@ -1,0 +1,3 @@
+dist/
+.venv/
+src/text_stats/version.py
