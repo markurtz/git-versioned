@@ -71,6 +71,9 @@ docs = [
   "mkdocs-gen-files>=0.5.0",
   "mkdocstrings>=0.24.0",
   "mkdocstrings-python>=1.9.0",
+  # pymdown-extensions 12 changed the Highlight constructor, which mkdocstrings
+  # 1.0 still calls the old way. Remove the cap once mkdocstrings supports it.
+  "pymdown-extensions<12",
   # Temporary bridge: Zensical compatible fork of mike.
   # Update to Zensical native versioning once stabilized.
   "mike @ git+https://github.com/squidfunk/mike.git",

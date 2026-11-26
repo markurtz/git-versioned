@@ -1351,6 +1351,7 @@ dev = [
     { name = "mkdocstrings-python" },
     { name = "phmdoctest" },
     { name = "pip-audit" },
+    { name = "pymdown-extensions" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
@@ -1369,6 +1370,7 @@ docs = [
     { name = "mkdocs-gen-files" },
     { name = "mkdocstrings" },
     { name = "mkdocstrings-python" },
+    { name = "pymdown-extensions" },
     { name = "zensical" },
 ]
 environment = [
@@ -1433,6 +1435,7 @@ dev = [
     { name = "mkdocstrings-python", specifier = ">=1.9.0" },
     { name = "phmdoctest", specifier = ">=1.4,<2" },
     { name = "pip-audit", specifier = ">=2.7,<3" },
+    { name = "pymdown-extensions", specifier = "<12" },
     { name = "pytest", specifier = ">=9.0.3,<10" },
     { name = "pytest-cov", specifier = ">=7.1.0,<8" },
     { name = "pytest-mock", specifier = ">=3.15.1,<4" },
@@ -1451,6 +1454,7 @@ docs = [
     { name = "mkdocs-gen-files", specifier = ">=0.5.0" },
     { name = "mkdocstrings", specifier = ">=0.24.0" },
     { name = "mkdocstrings-python", specifier = ">=1.9.0" },
+    { name = "pymdown-extensions", specifier = "<12" },
     { name = "zensical", specifier = ">=0.0.40" },
 ]
 environment = [{ name = "hatch", specifier = ">=1.12.0" }]
