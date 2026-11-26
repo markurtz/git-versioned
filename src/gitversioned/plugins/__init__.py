@@ -72,7 +72,7 @@ def resolve_for_build(
     changes: list[Change] = []
     module = python_module(build_root / "pyproject.toml") if write else None
     if module is not None:
-        text = render_version_module(resolved)
+        text = render_version_module(resolved, config)
         old = module.read_text(encoding="utf-8") if module.is_file() else ""
         # An unpacked sdist ships the module written from git, with the tag and
         # commit that PKG-INFO lacks: keep it while it names the same version.

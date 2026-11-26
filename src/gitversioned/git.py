@@ -117,14 +117,19 @@ class Commit:
     """
     One commit as the changelog and the bump rules need it.
 
-    :param sha: Full commit hash.
+    :param sha: Full commit hash; empty for a change file.
     :param subject: First line of the message.
     :param body: Rest of the message.
+    :param level: A bump level that replaces the one the subject gives, set by a
+        change file's ``bump``; ``none`` asks for no release.
+    :param path: The change file this entry came from, if any.
     """
 
     sha: str
     subject: str
     body: str = ""
+    level: str | None = None
+    path: str | None = None
 
 
 @dataclass(frozen=True)

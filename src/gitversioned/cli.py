@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """
-The command line: ``version``, ``check``, ``release`` and the optional ``init``.
+The command line: ``version``, ``check`` and ``release``, plus ``new`` for change
+files and the optional ``init``.
 
 Every command accepts ``--root``, ``--package``, ``--json``, ``--verbose`` and
 ``--quiet``. Exit codes are 0 for success, 1 for a failed check or nothing to
@@ -32,6 +33,7 @@ import dataclasses
 import functools
 import json
 import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, cast
@@ -39,6 +41,7 @@ from typing import Annotated, Any, cast
 import typer
 
 from gitversioned import __version__, git
+from gitversioned.changes import write_change
 from gitversioned.checks import (
     Finding,
     check_commits,
@@ -59,9 +62,11 @@ from gitversioned.logging import configure_logging
 from gitversioned.model import Version
 from gitversioned.release import (
     changelog_path,
+    forge_release,
     open_release_pr,
     package_context,
     plan_release,
+    publish_release,
     tag_release,
     write_release,
 )
@@ -185,12 +190,6 @@ def _default_standard(config: Config) -> str:
     return "semver"
 
 
-def _branch_name(config: Config) -> str:
-    """Name the branch the release branch was rebuilt from."""
-    repo = git.Repo.open(config.root)
-    return (repo.branch() if repo is not None else None) or "HEAD"
-
-
 def _next(
     config: Config, resolved: Resolved, bump: str | None, pre: str | None
 ) -> Version:
@@ -235,7 +234,9 @@ def _explain(
         counted = _count(len(resolved.plan.reasons), "commit")
         since = f" since {resolved.tag}" if resolved.tag else ""
         if resolved.plan.level:
-            level = level_text(resolved.plan.level, resolved.base)
+            level = level_text(
+                resolved.plan.level, resolved.base, shift=resolved.plan.shift
+            )
             summary = f"{level}, the highest level of {counted}{since}"
         else:
             summary = f"no release: none of {counted}{since} needs one"
@@ -498,7 +499,7 @@ def check_command(
 
 @app.command("release")
 @_command
-def release_command(
+def release_command(  # noqa: PLR0913
     version: Annotated[
         str | None,
         typer.Argument(help="Release exactly this version.", metavar="[VERSION]"),
@@ -517,6 +518,10 @@ def release_command(
             "--pre", help="Make it a pre-release: rc, beta or alpha.", metavar="KIND"
         ),
     ] = None,
+    post: Annotated[
+        bool,
+        typer.Option("--post", help="Release a post release of the latest release."),
+    ] = False,
     write: Annotated[
         bool,
         typer.Option(
@@ -532,7 +537,20 @@ def release_command(
         ),
     ] = False,
     tag: Annotated[
-        bool, typer.Option("--tag", help="Tag the release commit and push the tag.")
+        bool,
+        typer.Option(
+            "--tag", help="Tag the release commit, push it and create the release."
+        ),
+    ] = False,
+    publish: Annotated[
+        bool,
+        typer.Option(
+            "--publish", help="Build and upload the tagged release to its registries."
+        ),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="With --publish: upload nothing."),
     ] = False,
     root: RootOpt = None,
     package: PackageOpt = None,
@@ -540,31 +558,34 @@ def release_command(
     verbose: VerboseOpt = 0,
     quiet: QuietOpt = False,
 ) -> None:
-    """Plan a release; --pr to open the release pull request; --tag to tag it."""
+    """Plan a release; --pr opens its pull request; --tag and --publish ship it."""
     _choice(bump, _LEVELS, "--bump")
     _choice(pre, _PRE, "--pre")
-    if sum((write, pr, tag)) > 1:
-        raise ConfigError("give one of --write, --pr or --tag.")
+    if sum((write, pr, tag)) > 1 or (publish and (write or pr)):
+        raise ConfigError("give one of --write, --pr or --tag (with --publish).")
+    if dry_run and not publish:
+        raise ConfigError("--dry-run goes with --publish.")
+    if post and (bump or pre or version):
+        raise ConfigError("--post takes no VERSION, --bump or --pre.")
     config = load_config(root)
-    if tag:
-        if bump or pre:
-            raise ConfigError("--tag takes a VERSION, not --bump or --pre.")
-        name, sha, pushed = tag_release(config, version=version, package=package)
-        if json_output:
-            _emit({"stage": "tag", "tag": name, "sha": sha, "pushed": pushed})
-        else:
-            typer.echo(
-                f"tag       {name} at {sha[:7]}, "
-                f"{'pushed' if pushed else 'created locally'}"
-            )
+    say = (lambda _text: None) if quiet or json_output else typer.echo
+    if tag or publish:
+        if bump or pre or post:
+            raise ConfigError("--tag takes a VERSION, not --bump, --pre or --post.")
+        _ship(
+            config,
+            version,
+            package,
+            tag=tag,
+            publish=publish,
+            dry_run=dry_run,
+            json_output=json_output,
+            say=say,
+        )
         return
     if pr:
         plan, request, opened = open_release_pr(
-            config,
-            version=version,
-            bump=bump,
-            pre=pre,
-            package=package,
+            config, version=version, bump=bump, pre=pre, package=package, post=post
         )
         if json_output:
             _emit(
@@ -573,6 +594,7 @@ def release_command(
                     "version": plan.version.pep440(),
                     "tag": plan.tag,
                     "branch": plan.branch,
+                    "base": plan.base,
                     "title": plan.title,
                     "files": plan.files,
                     "pr": {
@@ -582,23 +604,16 @@ def release_command(
                     },
                 }
             )
-        else:
-            typer.echo(f"release   {plan.version.pep440()}")
-            typer.echo(
-                f"branch    {plan.branch}  (rebuilt from {_branch_name(config)})"
-            )
-            typer.echo(f"commit    {plan.title}")
-            typer.echo(
-                f"pr        #{request.number} "
-                f"{'opened' if opened else 'updated'}  {request.url}"
-            )
+        say(f"release   {plan.version.pep440()}")
+        say(f"branch    {plan.branch}  (rebuilt from {plan.base})")
+        say(f"commit    {plan.title}")
+        say(
+            f"pr        #{request.number} "
+            f"{'opened' if opened else 'updated'}  {request.url}"
+        )
         return
     plan = plan_release(
-        config,
-        version=version,
-        bump=bump,
-        pre=pre,
-        package=package,
+        config, version=version, bump=bump, pre=pre, package=package, post=post
     )
     changed = write_release(config, plan) if write else []
     if json_output:
@@ -612,19 +627,169 @@ def release_command(
                 "level": plan.level,
                 "files": plan.files,
                 "changed": changed,
+                "changes": plan.consumed,
+                "base": plan.base,
                 "changelog": plan.section,
             }
         )
         return
-    typer.echo(f"release   {plan.version.pep440()}  ({plan.level})")
-    typer.echo(f"tag       {plan.tag}")
-    typer.echo(f"files     {', '.join(plan.files) or 'none'}")
-    typer.echo("")
-    typer.echo(plan.section)
+    say(f"release   {plan.version.pep440()}  ({plan.level})")
+    say(f"tag       {plan.tag}")
+    say(f"files     {', '.join(plan.files) or 'none'}")
+    say("")
+    say(plan.section)
     if write:
-        typer.echo(f"Wrote {', '.join(changed) or 'nothing (already up to date)'}.")
+        say(f"Wrote {', '.join(changed) or 'nothing (already up to date)'}.")
     else:
-        typer.echo("Nothing changed. Run with --write, --pr or --tag.")
+        say("Nothing changed. Run with --write, --pr or --tag.")
+
+
+def _ship(  # noqa: PLR0913
+    config: Config,
+    version: str | None,
+    package: str | None,
+    *,
+    tag: bool,
+    publish: bool,
+    dry_run: bool,
+    json_output: bool,
+    say: Callable[[str], None],
+) -> None:
+    """Run ``release --tag`` and ``--publish``: tag, upload, forge release."""
+    data: dict[str, Any] = {"stage": "tag" if tag else "publish"}
+    pushed = False
+    if tag:
+        name, sha, pushed = tag_release(config, version=version, package=package)
+        data |= {"tag": name, "sha": sha, "pushed": pushed}
+        where = "pushed" if pushed else "created locally"
+        say(f"tag       {name} at {sha[:7]}, {where}")
+    files: list[Path] = []
+    if publish:
+        name, done = publish_release(config, package=package, dry_run=dry_run)
+        files = [] if dry_run else done.files
+        data |= {
+            "tag": name,
+            "published": {"commands": done.commands, "dry_run": dry_run},
+        }
+        for command in done.commands:
+            say(f"publish   {command}")
+        if dry_run:
+            say("Dry run: nothing was uploaded.")
+    url = None
+    if pushed and not dry_run:
+        url = forge_release(config, package=package, files=files)
+    data["release"] = url
+    if url:
+        say(f"release   {url}")
+    if json_output:
+        _emit(data)
+
+
+def _commit_change(config: Config, title: str) -> str:
+    """Commit the staged changes with a checked title."""
+    repo = git.Repo.open(config.root)
+    if repo is None:
+        raise EnvironmentProblemError("--commit needs a git repository.")
+    repo.git("commit", "-q", "-m", title)
+    return repo.head() or ""
+
+
+def _ask(
+    config: Config,
+    type_: str | None,
+    scope: str | None,
+    message: str | None,
+    breaking: bool,
+) -> tuple[str, str | None, str, bool]:
+    """Prompt for the parts of a change that were not given as options."""
+    if not sys.stdin.isatty():
+        raise ConfigError(
+            "give --type and a MESSAGE, or run in a terminal to be asked."
+        )
+    if type_ is None:
+        type_ = typer.prompt(f"type ({', '.join(config.types)})", default="feat")
+    if scope is None:
+        scopes = config.allowed_scopes()
+        hint = f" ({', '.join(scopes)})" if scopes else ""
+        scope = typer.prompt(f"scope{hint}", default="", show_default=False) or None
+    if message is None:
+        message = typer.prompt("message")
+    if not breaking:
+        breaking = typer.confirm("breaking change?", default=False)
+    return str(type_), scope, str(message), breaking
+
+
+@app.command("new")
+@_command
+def new_command(  # noqa: PLR0913
+    message: Annotated[
+        str | None,
+        typer.Argument(help="What changed, for the changelog.", metavar="[MESSAGE]"),
+    ] = None,
+    type_: Annotated[
+        str | None,
+        typer.Option("--type", "-t", help="Commit type, such as feat or fix."),
+    ] = None,
+    scope: Annotated[
+        str | None, typer.Option("--scope", "-s", help="Scope, if any.")
+    ] = None,
+    breaking: Annotated[
+        bool, typer.Option("--breaking", help="Mark the change as breaking.")
+    ] = False,
+    bump: Annotated[
+        str | None,
+        typer.Option(
+            "--bump", help="Level replacing the type's: major, minor, patch or none."
+        ),
+    ] = None,
+    commit: Annotated[
+        bool,
+        typer.Option(
+            "--commit", help="Commit the staged changes with this title instead."
+        ),
+    ] = False,
+    root: RootOpt = None,
+    package: PackageOpt = None,
+    json_output: JsonOpt = False,
+    verbose: VerboseOpt = 0,
+    quiet: QuietOpt = False,
+) -> None:
+    """Record a change: a change file in .changes/, or a commit with --commit."""
+    _choice(bump, (*_LEVELS, "none"), "--bump")
+    config = load_config(root)
+    if message is None or type_ is None:
+        type_, scope, message, breaking = _ask(config, type_, scope, message, breaking)
+    title = (
+        f"{type_}{f'({scope})' if scope else ''}{'!' if breaking else ''}: {message}"
+    )
+    problems = [item for item in check_title(config, title) if item.status == "fail"]
+    if problems:
+        raise ConfigError(problems[0].message)
+    if commit:
+        if bump or package:
+            raise ConfigError("--commit takes no --bump or --package.")
+        sha = _commit_change(config, title)
+        if json_output:
+            _emit({"commit": sha, "title": title})
+        elif not quiet:
+            typer.echo(f"commit    {sha[:7]}  {title}")
+        return
+    if package is not None:
+        package_context(config, package)
+    path = write_change(
+        config,
+        type_=type_,
+        text=message,
+        scope=scope,
+        breaking=breaking,
+        bump=bump,
+        package=package,
+    )
+    relative = path.relative_to(config.root).as_posix()
+    if json_output:
+        _emit({"change": relative, "title": title})
+    elif not quiet:
+        typer.echo(f"wrote     {relative}  {title}")
 
 
 @app.command("init")

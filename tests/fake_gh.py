@@ -129,6 +129,22 @@ def main() -> None:  # noqa: C901, PLR0912
         out = found["url"]
     elif args[:2] == ["pr", "merge"]:
         pulls[args[2]]["state"] = "merged"
+    elif args[:2] == ["release", "create"]:
+        releases = state.setdefault("releases", {})
+        releases[args[2]] = {
+            "tag": args[2],
+            "notes": _option(args, "--notes") or "",
+            "draft": "--draft" in args,
+            "prerelease": "--prerelease" in args,
+            "assets": [],
+        }
+        out = f"https://github.com/acme/acme/releases/tag/{args[2]}"
+    elif args[:2] == ["release", "upload"]:
+        found = state["releases"][args[2]]
+        found["assets"] += [Path(item).name for item in args[3:] if item[0] != "-"]
+    elif args[:2] == ["release", "edit"]:
+        state["releases"][args[2]]["draft"] = "--draft=true" in args
+        out = f"https://github.com/acme/acme/releases/tag/{args[2]}"
     else:
         code = 2
     state_path.write_text(json.dumps(state), encoding="utf-8")

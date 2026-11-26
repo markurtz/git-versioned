@@ -32,20 +32,26 @@ Example:
 
 from __future__ import annotations
 
+import fnmatch
+import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 from loguru import logger
 
-from gitversioned import git, github
+from gitversioned import forges, git
 from gitversioned.changelog import (
+    MIGRATIONS,
     Entry,
+    Style,
     carried_entries,
     entries_from_commits,
     insert_section,
     read_section,
     render_section,
 )
+from gitversioned.changes import change_commits
 from gitversioned.checks import check_tag
 from gitversioned.commits import (
     BumpPlan,
@@ -61,7 +67,9 @@ from gitversioned.errors import (
     EnvironmentProblemError,
     NothingToReleaseError,
 )
+from gitversioned.forges import PullRequest
 from gitversioned.model import Version
+from gitversioned.publish import Published, publish, semver_breaks
 from gitversioned.resolve import (
     Resolved,
     match_tag,
@@ -77,9 +85,12 @@ __all__ = [
     "RELEASE_LABEL",
     "ReleasePlan",
     "changelog_path",
+    "forge_release",
+    "maintenance_branch",
     "open_release_pr",
     "package_context",
     "plan_release",
+    "publish_release",
     "tag_release",
     "write_release",
 ]
@@ -111,6 +122,8 @@ class ReleasePlan:
     :param package: Package being released, when not the repository.
     :param title: Title of the release commit and pull request.
     :param branch: Release branch name.
+    :param base: Branch the release pull request merges into.
+    :param consumed: Change files the release takes in and deletes.
     """
 
     version: Version
@@ -124,6 +137,8 @@ class ReleasePlan:
     package: str | None = None
     title: str = ""
     branch: str = RELEASE_BRANCH
+    base: str = "main"
+    consumed: list[str] = field(default_factory=list)
 
 
 def package_context(config: Config, package: str | None) -> tuple[str, str | None]:
@@ -186,25 +201,25 @@ def _require_repo(config: Config) -> git.Repo:
 
 
 def _pull_requests(
-    config: Config, commits: list[git.Commit], use_github: bool
-) -> dict[int, github.PullRequest]:
-    """Read the pull requests behind squash commits, when GitHub is reachable."""
-    requests: dict[int, github.PullRequest] = {}
-    if not use_github or not github.available(config.root):
+    forge: forges.Forge | None, commits: list[git.Commit]
+) -> dict[int, PullRequest]:
+    """Read the pull requests behind squash commits, when the forge is reachable."""
+    requests: dict[int, PullRequest] = {}
+    if forge is None or not forge.available():
         return requests
     for commit in commits:
         parsed = parse_subject(commit.subject)
         number = parsed.pr if parsed else None
         if number is None or number in requests:
             continue
-        found = github.pull_request(config.root, number)
+        found = forge.pull_request(number)
         if found is not None:
             requests[number] = found
     return requests
 
 
 def _label_bump(
-    commits: list[git.Commit], requests: dict[int, github.PullRequest]
+    commits: list[git.Commit], requests: dict[int, PullRequest]
 ) -> str | None:
     """Return the highest bump level asked for by pull request labels."""
     best: str | None = None
@@ -241,8 +256,14 @@ def _overrides(
     return None, None, "commits"
 
 
-def _level_text(
-    resolved: Resolved, explicit: str | None, bump: str | None, source: str
+def _level_text(  # noqa: PLR0913
+    resolved: Resolved,
+    plan: BumpPlan,
+    *,
+    explicit: str | None,
+    bump: str | None,
+    source: str,
+    why: str = "commits",
 ) -> str:
     """Describe how the release level was chosen, for the plan report."""
     level = bump or (explicit if explicit in _RANK else None)
@@ -255,9 +276,8 @@ def _level_text(
     elif resolved.base.pre is not None:
         text = f"final of {resolved.base.pep440()}"
     else:
-        text = (
-            f"{level_text(resolved.plan.level or 'patch', resolved.base)}, from commits"
-        )
+        named = level_text(plan.level or "patch", resolved.base, shift=plan.shift)
+        text = f"{named}, from {why}"
     if resolved.base is not None:
         text += f", from {resolved.base.pep440()}"
     return text
@@ -278,7 +298,64 @@ def _release_files(config: Config, package: str | None) -> list[str]:
     return files
 
 
-def plan_release(  # noqa: PLR0913
+_RANGE_RE = re.compile(r"^(?:.*/)?v?(?P<major>\d+)\.(?:(?P<minor>\d+)\.)?x$")
+
+
+def maintenance_branch(config: Config, branch: str | None) -> bool:
+    """
+    :return: True when a branch is one of the ``branches`` maintenance branches.
+    """
+    return bool(branch) and any(
+        fnmatch.fnmatchcase(branch or "", pattern) for pattern in config.branches
+    )
+
+
+def _current_branch(repo: git.Repo) -> str | None:
+    """The branch being released, also on a detached CI checkout."""
+    return (
+        repo.branch()
+        or os.environ.get("GITHUB_HEAD_REF")
+        or os.environ.get("GITHUB_REF_NAME")
+        or os.environ.get("CI_COMMIT_REF_NAME")
+        or None
+    )
+
+
+def _check_line(branch: str, target: Version) -> None:
+    """Keep a release on an ``N.x`` or ``N.M.x`` branch inside its line."""
+    match = _RANGE_RE.match(branch)
+    if match is None:
+        return
+    major = int(match["major"])
+    minor = int(match["minor"]) if match["minor"] is not None else None
+    if target.major != major or (minor is not None and target.minor != minor):
+        line = f"{major}.{minor}" if minor is not None else f"{major}"
+        raise CheckFailedError(
+            f"{target.pep440()} is outside the {line}.x line that {branch!r} "
+            "maintains. Release a smaller change, or release from the main branch."
+        )
+
+
+def _semver_plan(
+    config: Config, plan: BumpPlan, base: Version | None, baseline: str | None
+) -> tuple[BumpPlan, bool]:
+    """Raise the commit level to major when cargo semver-checks finds a break."""
+    if not config.semver_checks or baseline is None or base is None:
+        return plan, False
+    if plan.level == "major" or not semver_breaks(config, baseline):
+        return plan, False
+    return replace(plan, level="major"), True
+
+
+def _post_version(finals: dict[str, Version], last_final: str | None) -> str:
+    """The next post release of the latest final release."""
+    if last_final is None:
+        raise CheckFailedError("a post release needs an earlier final release.")
+    latest = finals[last_final]
+    return latest.with_parts(post=(latest.post or 0) + 1).pep440()
+
+
+def plan_release(  # noqa: PLR0913, PLR0914
     config: Config,
     *,
     version: str | None = None,
@@ -286,6 +363,7 @@ def plan_release(  # noqa: PLR0913
     pre: str | None = None,
     package: str | None = None,
     use_github: bool = True,
+    post: bool = False,
 ) -> ReleasePlan:
     """
     Compute what a release would do, changing nothing.
@@ -295,18 +373,20 @@ def plan_release(  # noqa: PLR0913
     :param bump: Level that replaces the one chosen from commits.
     :param pre: Make the release a pre-release of this kind.
     :param package: Package to release instead of the repository.
-    :param use_github: Read pull request titles, bodies and labels through ``gh``
-        when it is available.
+    :param use_github: Read pull request titles, bodies and labels from the
+        forge when it is reachable.
+    :param post: Release the next post release of the latest final release.
     :return: The plan.
     :raises NothingToReleaseError: If nothing releasable happened since the last
         release and no override is given.
     :raises CheckFailedError: If the chosen version is not newer than the last
-        release.
+        release, or leaves the line a maintenance branch keeps.
     """
     repo = _require_repo(config)
     _require_own_tag(config, package)
     template, scope = package_context(config, package)
     resolved = resolve(config, tag_template=template, path_scope=scope)
+    forge = forges.current(config)
 
     merged = repo.tags_merged()
     tags = release_tags(template, list(merged))
@@ -319,16 +399,22 @@ def plan_release(  # noqa: PLR0913
     since_final = repo.commits(
         merged[last_final] if last_final else None, path=scope_path, exclude=excluded
     )
-    requests = _pull_requests(config, since_final, use_github)
+    changes = change_commits(config, scope)
+    requests = _pull_requests(forge if use_github else None, since_final)
+    if post:
+        version = _post_version(finals, last_final)
     # Labels on every pull request since the last final release count, so a
     # final release after a candidate still sees them.
     explicit, chosen, source = _overrides(
         version, bump, _label_bump(since_final, requests)
     )
+    if post:
+        source = "--post"
+    bump_plan, broke = _semver_plan(config, resolved.plan, resolved.base, resolved.tag)
     target = next_version(
         resolved.base,
         resolved.known,
-        resolved.plan,
+        bump_plan,
         fallback=Version.parse(config.fallback),
         explicit=explicit,
         bump=chosen,
@@ -339,27 +425,50 @@ def plan_release(  # noqa: PLR0913
             f"{target.pep440()} is not newer than {resolved.tag} "
             f"({resolved.base.pep440()})."
         )
+    branch = _current_branch(repo)
+    maintained = maintenance_branch(config, branch) and branch != config.branch
+    if maintained and branch:
+        _check_line(branch, target)
+    style = replace(Style.from_config(config), pr_path=forge.pr_path)
     entries = _merge_entries(
-        carried_entries(_changelog_text(config, package), target),
-        entries_from_commits(since_final, requests),
+        carried_entries(
+            _changelog_text(config, package), target, (*style.kinds, MIGRATIONS)
+        ),
+        entries_from_commits(changes + since_final, requests, style),
     )
     day = git.build_time().strftime("%Y-%m-%d")
     name = tag_name(template, target)
     prefix = f"release({package})" if package else "release"
+    why = "cargo semver-checks" if broke else "commits"
+    level = _level_text(
+        resolved, bump_plan, explicit=explicit, bump=chosen, source=source, why=why
+    )
+    release_branch = f"{RELEASE_BRANCH}-{package}" if package else RELEASE_BRANCH
+    if maintained and branch:
+        release_branch += "-" + re.sub(r"[^A-Za-z0-9._-]+", "-", branch)
+    consumed = [commit.path for commit in changes if commit.path]
     return ReleasePlan(
         version=target,
         previous=resolved.base,
         tag=name,
-        level=_level_text(resolved, explicit, chosen, source),
+        level=level,
         section=render_section(
-            target, entries, day=day, repo_url=github.repo_url(repo)
+            target,
+            entries,
+            day=day,
+            repo_url=forge.web,
+            style=style,
+            tag=name,
+            previous=resolved.tag,
         ),
-        files=_release_files(config, package),
+        files=_release_files(config, package) + consumed,
         entries=entries,
-        bump=resolved.plan,
+        bump=bump_plan,
         package=package,
         title=f"{prefix}: {name}",
-        branch=f"{RELEASE_BRANCH}-{package}" if package else RELEASE_BRANCH,
+        branch=release_branch,
+        base=branch if maintained and branch else config.branch,
+        consumed=consumed,
     )
 
 
@@ -380,7 +489,8 @@ def _merge_entries(carried: list[Entry], derived: list[Entry]) -> list[Entry]:
 
 def write_release(config: Config, plan: ReleasePlan) -> list[str]:
     """
-    Apply a plan to the working tree: changelog and committed targets.
+    Apply a plan to the working tree: changelog, committed targets and the
+    change files it took in, which are deleted.
 
     :param config: The loaded configuration.
     :param plan: The plan to apply.
@@ -404,6 +514,11 @@ def write_release(config: Config, plan: ReleasePlan) -> list[str]:
         config, resolved, package=plan.package, committed_only=True
     )
     changed += [change.path for change in changes if change.written]
+    for relative in plan.consumed:
+        path = config.root / relative
+        if path.is_file():
+            path.unlink()
+            changed.append(relative)
     return changed
 
 
@@ -426,18 +541,22 @@ def open_release_pr(
     bump: str | None = None,
     pre: str | None = None,
     package: str | None = None,
-) -> tuple[ReleasePlan, github.PullRequest, bool]:
+    post: bool = False,
+) -> tuple[ReleasePlan, PullRequest, bool]:
     """
     Open the release pull request, or update the one already open.
 
     The release branch is rebuilt from the current commit every time, so the pull
     request always holds exactly one commit on top of the release branch's base.
+    On a maintenance branch from ``branches`` the pull request merges into that
+    branch, from ``release/next-<branch>``.
 
     :param config: The loaded configuration.
     :param version: Version to release exactly.
     :param bump: Level that replaces the one chosen from commits.
     :param pre: Make the release a pre-release of this kind.
     :param package: Package to release instead of the repository.
+    :param post: Release the next post release of the latest final release.
     :return: The plan, the pull request and whether it was newly opened.
     :raises CheckFailedError: If the working tree has uncommitted changes or
         the command runs on a branch other than the release branch.
@@ -445,18 +564,21 @@ def open_release_pr(
         tag does not exist yet, so the release is still waiting for its tag.
     """
     repo = _require_repo(config)
-    if not github.available(config.root):
-        raise EnvironmentProblemError(
-            "release --pr needs the GitHub CLI `gh`, signed in (set GH_TOKEN in CI)."
-        )
+    forge = forges.current(config)
+    forge.require("release --pr")
     if repo.dirty_paths():
         raise CheckFailedError(
             "the working tree has uncommitted changes; commit or stash them first."
         )
     current = repo.branch()
-    if current is not None and current != config.branch:
+    if (
+        current is not None
+        and current != config.branch
+        and not maintenance_branch(config, current)
+    ):
+        allowed = ", ".join(repr(name) for name in [config.branch, *config.branches])
         raise CheckFailedError(
-            f"release --pr runs on {config.branch!r}, not {current!r}: the release "
+            f"release --pr runs on {allowed}, not {current!r}: the release "
             "would carry this branch's unmerged commits."
         )
     _require_own_tag(config, package)
@@ -466,11 +588,14 @@ def open_release_pr(
             f"HEAD is the merged release commit for {pending}, which is not tagged "
             "yet. Run release --tag first."
         )
-    branch = f"{RELEASE_BRANCH}-{package}" if package else RELEASE_BRANCH
-    existing = github.find_open_pull_request(config.root, branch)
+    plan = plan_release(
+        config, version=version, bump=bump, pre=pre, package=package, post=post
+    )
+    existing = forge.find_open(plan.branch)
     if pre is None and existing is not None and RC_LABEL in existing.labels:
-        pre = "rc"
-    plan = plan_release(config, version=version, bump=bump, pre=pre, package=package)
+        plan = plan_release(
+            config, version=version, bump=bump, pre="rc", package=package, post=post
+        )
 
     start = current or repo.head() or "HEAD"
     repo.git("checkout", "-q", "-B", plan.branch)
@@ -482,7 +607,7 @@ def open_release_pr(
             for path in changed
         ]
         if paths:
-            repo.git("add", "--", *paths)
+            repo.git("add", "-A", "--", *paths)
         repo.git(*_identity(repo), "commit", "-q", "--allow-empty", "-m", plan.title)
         repo.git("push", "-q", "--force", "origin", plan.branch)
     except BaseException:
@@ -498,18 +623,15 @@ def open_release_pr(
         f"Add the `{RC_LABEL}` label to make it a release candidate.\n"
     )
     if existing is None:
-        request = github.create_pull_request(
-            config.root,
+        request = forge.create(
             head=plan.branch,
-            base=config.branch,
+            base=plan.base,
             title=plan.title,
             body=body,
             label=RELEASE_LABEL,
         )
         return plan, request, True
-    github.update_pull_request(
-        config.root, existing.number, title=plan.title, body=body
-    )
+    forge.update(existing.number, title=plan.title, body=body)
     return plan, existing, False
 
 
@@ -594,3 +716,85 @@ def tag_release(
     else:
         logger.info("no origin remote; tag {} was created locally only", name)
     return name, sha, pushed
+
+
+def _tag_at_head(
+    config: Config, repo: git.Repo, package: str | None
+) -> tuple[str, Version]:
+    """Find the release tag that points at ``HEAD``."""
+    template, _scope = package_context(config, package)
+    names: list[str] = (
+        repo.git("tag", "--points-at", "HEAD", check=False) or ""
+    ).split()
+    found = release_tags(template, names)
+    if not found:
+        raise CheckFailedError(
+            "HEAD has no release tag. Publish from the tagged release commit, "
+            "or run release --tag first."
+        )
+    name = max(found, key=lambda tag: found[tag].sort_key())
+    return name, found[name]
+
+
+def forge_release(
+    config: Config,
+    *,
+    package: str | None = None,
+    files: list[Path] | None = None,
+) -> str | None:
+    """
+    Create the forge release for the tag at ``HEAD``, with its changelog section.
+
+    It is skipped, with a warning, when ``forge_release`` is off or the forge
+    cannot be reached, so tagging never fails for want of a token.
+
+    :param config: The loaded configuration.
+    :param package: Package whose tag to release, or ``None``.
+    :param files: Files to attach (GitHub only).
+    :return: The release's address, or ``None`` when none was created.
+    """
+    if not config.forge_release:
+        return None
+    forge = forges.current(config)
+    if not forge.available():
+        logger.warning(
+            "no {} release created for the tag: it needs {}",
+            {"github": "GitHub", "gitlab": "GitLab", "gitea": "Gitea"}[forge.name],
+            forge.cli,
+        )
+        return None
+    repo = _require_repo(config)
+    name, version = _tag_at_head(config, repo, package)
+    changelog = changelog_path(config, package)
+    section = read_section(config.root / changelog, version) if changelog else None
+    notes = section.split("\n", 1)[1].strip() if section and "\n" in section else ""
+    return forge.create_release(
+        tag=name,
+        notes=notes or name,
+        prerelease=not version.is_final,
+        files=files or [],
+    )
+
+
+def publish_release(
+    config: Config,
+    *,
+    package: str | None = None,
+    dry_run: bool = False,
+) -> tuple[str, Published]:
+    """
+    Publish the release tagged at ``HEAD`` to its package registries.
+
+    :param config: The loaded configuration.
+    :param package: Package to publish instead of the repository.
+    :param dry_run: Run each tool's dry run instead of uploading.
+    :return: The tag and what ran.
+    :raises CheckFailedError: If ``HEAD`` is not a tagged release or a tool fails.
+    """
+    repo = _require_repo(config)
+    _require_own_tag(config, package)
+    name, version = _tag_at_head(config, repo, package)
+    done = publish(
+        config, package=package, prerelease=not version.is_final, dry_run=dry_run
+    )
+    return name, done

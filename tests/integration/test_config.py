@@ -39,7 +39,7 @@ class TestConfigHomes:
             "next",
         )
         assert config.changelog == "CHANGELOG.md"
-        assert len(Config.key_names()) == 14
+        assert len(Config.key_names()) == 28
 
     @pytest.mark.sanity
     @pytest.mark.parametrize(

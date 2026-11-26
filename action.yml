@@ -1,0 +1,59 @@
+# Copyright 2026 markurtz
+# SPDX-License-Identifier: Apache-2.0
+#
+# The gitversioned GitHub Action: runs one gitversioned command with no Python
+# setup. Usage:
+#
+#   - uses: actions/checkout@v4
+#     with: {fetch-depth: 0}
+#   - id: gv
+#     uses: markurtz/git-versioned@v0.4.0
+#     with:
+#       command: check
+#       title: ${{ github.event.pull_request.title }}
+#   - run: echo "${{ steps.gv.outputs.version }}"
+
+name: gitversioned
+description: Versions from git tags, stamped into every manifest, checked and released.
+author: markurtz
+branding:
+  icon: tag
+  color: blue
+
+inputs:
+  command:
+    description: >-
+      The command and its options, such as "check", "version --next" or
+      "release --pr". Split on spaces; pass a title through `title` instead.
+    default: version
+  title:
+    description: >-
+      A pull request title or other text passed as one last argument, so it is
+      never read by the shell.
+    default: ""
+  version:
+    description: The gitversioned version to run, such as 0.4.0. Empty for the latest.
+    default: ""
+  working-directory:
+    description: Folder to run in.
+    default: "."
+
+outputs:
+  version:
+    description: The current version, from `gitversioned version`.
+    value: ${{ steps.run.outputs.version }}
+  output:
+    description: What the command printed on stdout.
+    value: ${{ steps.run.outputs.output }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_VERSION: ${{ inputs.version }}
+      run: bash "$GITHUB_ACTION_PATH/action/run.sh"

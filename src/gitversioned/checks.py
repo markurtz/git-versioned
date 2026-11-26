@@ -32,8 +32,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from gitversioned import git, github
+from gitversioned import forges, git
 from gitversioned.changelog import read_section
+from gitversioned.changes import read_changes
 from gitversioned.commits import parse_subject
 from gitversioned.config import Config
 from gitversioned.errors import ConfigError
@@ -153,6 +154,24 @@ def check_commits(config: Config, revision_range: str) -> list[Finding]:
     ]
 
 
+def _line_conflict(everything: dict[str, Version], version: Version) -> Finding | None:
+    """Fail a tag older than a release already on its ``X.Y`` line."""
+    line = [
+        tag
+        for tag, found in everything.items()
+        if (found.major, found.minor) == (version.major, version.minor)
+        and found.sort_key() > version.sort_key()
+    ]
+    if not line:
+        return None
+    return Finding(
+        "fail",
+        "tag",
+        f"{version.pep440()} is older than {line[0]} on the same "
+        f"{version.major}.{version.minor} line.",
+    )
+
+
 def check_tag(
     config: Config,
     name: str,
@@ -164,9 +183,12 @@ def check_tag(
     Validate a tag before or right after it is created.
 
     The name must follow the tag template and be newer than every other release
-    tag. An existing tag passes only when it points at ``HEAD``, which is how a
-    release workflow verifies the tag that started it. When the changelog file
-    exists it must hold the release's section.
+    tag. With maintenance ``branches`` set, it must be newer than every release
+    reachable from ``HEAD`` instead, and no newer release of the same
+    ``X.Y`` line may exist, so a backport on ``1.x`` can follow ``2.0.0`` on
+    ``main``. An existing tag passes only when it points at ``HEAD``, which is
+    how a release workflow verifies the tag that started it. When the changelog
+    file exists it must hold the release's section.
 
     :param config: The loaded configuration.
     :param name: Tag name to validate.
@@ -191,7 +213,14 @@ def check_tag(
     at_head = ""
     if repo is not None:
         tags = repo.all_tags()
-        existing = release_tags(pattern, [tag for tag in tags if tag != name])
+        everything = release_tags(pattern, [tag for tag in tags if tag != name])
+        existing = everything
+        if config.branches:
+            reachable = set(repo.tags_merged())
+            existing = {tag: v for tag, v in everything.items() if tag in reachable}
+            conflict = _line_conflict(everything, version)
+            if conflict:
+                return [conflict]
         if name in tags:
             tagged = repo.git("rev-parse", f"{name}^{{commit}}", check=False)
             if tagged != repo.head():
@@ -211,19 +240,20 @@ def check_tag(
     else:
         findings = [Finding("ok", "tag", f"{shown}{at_head}, first release")]
     if changelog is not None and (config.root / changelog).is_file():
-        if read_section(config.root / changelog, version) is None:
-            findings.append(
-                Finding(
-                    "fail",
-                    "changelog",
-                    f"{changelog} has no [{version.semver()}] section. Run "
-                    f"`gitversioned release {version.semver()} --write` and "
-                    "commit it first.",
-                )
-            )
-        else:
-            findings.append(Finding("ok", "changelog", f"{changelog} has the section"))
+        findings.append(_changelog_finding(config, changelog, version))
     return findings
+
+
+def _changelog_finding(config: Config, changelog: str, version: Version) -> Finding:
+    """Report whether the changelog holds a release's section."""
+    if read_section(config.root / changelog, version) is not None:
+        return Finding("ok", "changelog", f"{changelog} has the section")
+    return Finding(
+        "fail",
+        "changelog",
+        f"{changelog} has no [{version.semver()}] section. Run "
+        f"`gitversioned release {version.semver()} --write` and commit it first.",
+    )
 
 
 def _check_git(config: Config, repo: git.Repo | None) -> Finding:
@@ -319,16 +349,50 @@ def _check_archive(config: Config, repo: git.Repo) -> Finding:
     )
 
 
-def _check_github(config: Config) -> Finding:
-    """Report whether the GitHub CLI is usable."""
-    if github.available(config.root):
-        return Finding("ok", "github", "gh is signed in")
+_TITLES = {"github": "GitHub", "gitlab": "GitLab", "gitea": "Gitea"}
+
+
+def _check_forge(config: Config) -> Finding:
+    """Report whether the forge (GitHub, GitLab or Gitea) is usable."""
+    forge = forges.current(config)
+    if forge.available():
+        detail = "gh is signed in" if forge.name == "github" else "token is set"
+        return Finding("ok", forge.name, detail)
+    missing = {
+        "github": "gh is missing or not signed in",
+        "gitlab": "GITLAB_TOKEN is not set",
+        "gitea": "GITEA_TOKEN is not set",
+    }[forge.name]
     return Finding(
         "warn",
-        "github",
-        "gh is missing or not signed in: release --pr and pull request titles in "
-        "the changelog are unavailable.",
+        forge.name,
+        f"{missing}: release --pr, {_TITLES[forge.name]} releases and pull "
+        "request titles in the changelog are unavailable.",
     )
+
+
+def _check_changes(config: Config) -> list[Finding]:
+    """Report the change files waiting for a release, and any malformed one."""
+    try:
+        waiting = read_changes(config) + [
+            change
+            for name, item in config.packages.items()
+            if item.tag
+            for change in read_changes(config, name)
+        ]
+    except ConfigError as error:
+        return [Finding("fail", "changes", str(error), exit_code=2)]
+    if not waiting:
+        return []
+    found: list[Finding] = []
+    for change in waiting:
+        found += [
+            item
+            for item in check_title(config, change.subject, area=change.path)
+            if item.status == "fail"
+        ]
+    plural = "" if len(waiting) == 1 else "s"
+    return found or [Finding("ok", "changes", f"{len(waiting)} change file{plural}")]
 
 
 def check_repo(config: Config) -> list[Finding]:
@@ -336,11 +400,13 @@ def check_repo(config: Config) -> list[Finding]:
     Check that the repository can give a trustworthy version.
 
     :param config: The loaded configuration.
-    :return: One finding per area: config, git, targets, archive file, github.
+    :return: One finding per area: config, git, targets, change files, archive
+        file, forge.
     """
     repo = git.Repo.open(config.root)
     findings = [Finding("ok", "config", config.home), _check_git(config, repo)]
     findings += _check_targets(config)
+    findings += _check_changes(config)
     if repo is not None and repo.head() is not None:
-        findings += [_check_archive(config, repo), _check_github(config)]
+        findings += [_check_archive(config, repo), _check_forge(config)]
     return findings

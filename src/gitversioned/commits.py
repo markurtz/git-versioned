@@ -15,9 +15,10 @@
 """
 Conventional Commit parsing and the rules that choose the next version.
 
-The rules are fixed: a breaking change raises major, ``feat`` raises minor, any
-other change raises patch, and ``chore``, ``ci``, ``test`` and ``release`` commits
-alone do not justify a release. Below 1.0 every level shifts down by one.
+By default a breaking change raises major, ``feat`` raises minor, any other
+change raises patch, and ``chore``, ``ci``, ``test`` and ``release`` commits
+alone do not justify a release. The ``levels`` setting replaces the level per
+type. Below 1.0 every level shifts down by one unless ``zero_shift`` is off.
 
 Example:
 ::
@@ -32,7 +33,9 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import cast
 
 from gitversioned.errors import ConfigError, NothingToReleaseError
 from gitversioned.git import Commit
@@ -58,7 +61,7 @@ _SUBJECT_RE = re.compile(
     r"(?:\((?P<scope>[^()\r\n]+)\))?"
     r"(?P<breaking>!)?: (?P<subject>\S.*)$"
 )
-_PR_RE = re.compile(r"\s*\(#(?P<pr>\d+)\)\s*$")
+_PR_RE = re.compile(r"\s*\([#!](?P<pr>\d+)\)\s*$")
 _BREAKING_RE = re.compile(r"^BREAKING[ -]CHANGE: ", re.MULTILINE)
 _MERGE_RE = re.compile(r"^Merge (branch|pull request|remote-tracking branch|tag) ")
 
@@ -91,10 +94,12 @@ class BumpPlan:
 
     :param level: The highest level found, or ``None`` when nothing is releasable.
     :param reasons: Each commit with the level it contributes.
+    :param shift: Shift levels down one below 1.0.0.
     """
 
     level: Level | None
     reasons: tuple[tuple[Level | None, Commit], ...]
+    shift: bool = True
 
 
 def parse_subject(
@@ -127,18 +132,27 @@ def parse_subject(
     )
 
 
-def level_of(parsed: ParsedCommit | None, subject: str = "") -> Level | None:
+def level_of(
+    parsed: ParsedCommit | None,
+    subject: str = "",
+    levels: Mapping[str, str] | None = None,
+) -> Level | None:
     """
     Decide the level one commit asks for.
 
     :param parsed: The parsed commit, or ``None`` for an unconventional subject.
     :param subject: The raw subject, used to skip merge commits.
+    :param levels: Level per commit type from the ``levels`` setting; ``none``
+        means no release.
     :return: ``major``, ``minor``, ``patch`` or ``None`` for no release.
     """
     if parsed is None:
         return None if _MERGE_RE.match(subject) else "patch"
     if parsed.breaking:
         return "major"
+    chosen = (levels or {}).get(parsed.type)
+    if chosen is not None:
+        return None if chosen == "none" else cast("Level", chosen)
     if parsed.type == "feat":
         return "minor"
     if parsed.type in NO_RELEASE_TYPES:
@@ -146,41 +160,55 @@ def level_of(parsed: ParsedCommit | None, subject: str = "") -> Level | None:
     return "patch"
 
 
-def plan_bump(commits: list[Commit]) -> BumpPlan:
+def plan_bump(
+    commits: list[Commit],
+    levels: Mapping[str, str] | None = None,
+    *,
+    shift: bool = True,
+) -> BumpPlan:
     """
     Find the highest level a list of commits asks for.
 
-    :param commits: Commits since the last release.
+    :param commits: Commits since the last release, and entries from change
+        files.
+    :param levels: Level per commit type from the ``levels`` setting.
+    :param shift: Shift levels down one below 1.0.0.
     :return: The level and the per-commit reasons.
     """
     reasons: list[tuple[Level | None, Commit]] = []
     best: Level | None = None
     for commit in commits:
-        level = level_of(parse_subject(commit.subject, commit.body), commit.subject)
+        if commit.level is not None:
+            level = None if commit.level == "none" else cast("Level", commit.level)
+        else:
+            level = level_of(
+                parse_subject(commit.subject, commit.body), commit.subject, levels
+            )
         reasons.append((level, commit))
         if level is not None and (
             best is None or _LEVEL_RANK[level] > _LEVEL_RANK[best]
         ):
             best = level
-    return BumpPlan(level=best, reasons=tuple(reasons))
+    return BumpPlan(level=best, reasons=tuple(reasons), shift=shift)
 
 
-def level_text(level: str, current: Version | None) -> str:
+def level_text(level: str, current: Version | None, *, shift: bool = True) -> str:
     """
     Name a commit-derived level, noting the shift below 1.0.
 
     :param level: Level the commits ask for.
     :param current: Version the release starts from, if any.
+    :param shift: Whether levels shift below 1.0.0.
     :return: ``minor``, or ``minor, a patch below 1.0.0`` when it shifts.
     """
-    if current is None or _shift(level, current) == level:
+    if current is None or _shift(level, current, shift=shift) == level:
         return level
-    return f"{level}, a {_shift(level, current)} below 1.0.0"
+    return f"{level}, a {_shift(level, current, shift=shift)} below 1.0.0"
 
 
-def _shift(level: str, current: Version) -> str:
+def _shift(level: str, current: Version, *, shift: bool = True) -> str:
     """Shift a commit-derived level down by one for a version below 1.0."""
-    if current.major > 0:
+    if current.major > 0 or not shift:
         return level
     return {"major": "minor", "minor": "patch", "patch": "patch"}[level]
 
@@ -253,7 +281,7 @@ def next_version(
                 "is a feat, a fix or another releasable type."
             )
         else:
-            target = current.bump(_shift(plan.level, current))
+            target = current.bump(_shift(plan.level, current, shift=plan.shift))
     if pre is None:
         return target
     numbers = [
