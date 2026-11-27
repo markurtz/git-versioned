@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# Citation metadata (https://citation-file-format.github.io). GitHub shows a
+# "Cite this repository" button from it; the README's BibTeX matches it.
+cff-version: 1.2.0
+title: "template-polyglot"
+message: "If you use this software, please cite it as below."
+type: software
+abstract: "Polyglot template with a Python root package, Rust crates, WebAssembly, a web app, an API, notebooks, a desktop app and a Zensical docs site"
+license: Apache-2.0
+authors:
+  - given-names: "Mark"
+    family-names: "Kurtz"
+repository-code: "https://github.com/markurtz/template-polyglot"
+url: "https://markurtz.github.io/template-polyglot"
+# version and date-released are written by the release pull request (gitversioned
+# stamps them with the other manifests), so GitHub's citation names the latest release.

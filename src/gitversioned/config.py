@@ -15,9 +15,9 @@
 """
 The configuration model, its homes and its environment overrides.
 
-A repository keeps its settings in exactly one home. The model has twelve root
-keys, four keys per target and two per package; unknown keys are errors, and any
-root key can be overridden with ``GITVERSIONED__KEY`` in the environment.
+A repository keeps its settings in exactly one home. Unknown keys are errors,
+and any root key can be overridden with ``GITVERSIONED__KEY`` in the
+environment. Every key has a default, so most repositories set none.
 
 Example:
 ::
@@ -44,6 +44,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from gitversioned import git
 from gitversioned.errors import ConfigError
+from gitversioned.model import Version
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -78,6 +79,8 @@ DEFAULT_TYPES: Annotated[tuple[str, ...], "Commit types the template allows"] = 
 )
 
 BumpBase = Literal["patch", "minor", "major", "next"]
+LevelName = Literal["major", "minor", "patch", "none"]
+Registry = Literal["pypi", "crates", "npm"]
 
 
 class TargetConfig(BaseModel):
@@ -130,7 +133,9 @@ class Config(BaseModel):
     """
     Every setting gitversioned has.
 
-    :param version: A pinned version, or ``auto`` to resolve from git.
+    :param version: ``auto`` to resolve from git tags, a pinned version, or a
+        source: ``branch`` or ``commit`` (the first ``X.Y.Z`` in the branch name
+        or the ``HEAD`` subject), ``file:PATH`` or ``python:MODULE:FUNCTION``.
     :param fallback: Base version when no tag exists yet.
     :param tag: Tag template; also how release tags are recognised.
     :param annotated: Create annotated tags carrying the changelog section.
@@ -141,9 +146,36 @@ class Config(BaseModel):
     :param local: Add the commit hash to development builds.
     :param changelog: Changelog file, or ``False`` to turn it off.
     :param types: Allowed commit types.
-    :param scopes: Allowed scopes, or a TOML file whose table names are the scopes.
+    :param scopes: Allowed scopes; an entry ending in ``.toml`` names a file whose
+        table names are scopes.
     :param targets: Extra files to stamp.
     :param packages: Packages with their own folder and optional tag.
+    :param formats: PEP 440 templates for ``dev`` and ``nightly`` versions, with
+        ``{next}``, ``{base}``, ``{distance}``, ``{date}``, ``{sha}`` and
+        ``{branch}`` placeholders.
+    :param module_template: File holding a ``string.Template`` for the
+        generated ``version.py``.
+    :param levels: Bump level per commit type, replacing the defaults (``feat``
+        minor, maintenance types none, others patch). Breaking changes are major.
+    :param zero_shift: Below 1.0.0, shift every level down one.
+    :param changelog_layout: ``kind`` (kinds, then scope in bold) or ``scope``
+        (a heading per scope, then kinds).
+    :param changelog_sections: Changelog heading per commit type; ``false``
+        hides the type.
+    :param changelog_template: File holding a ``string.Template`` for a release
+        section.
+    :param changes: Folder of change files, each one changelog entry.
+    :param forge: ``auto``, ``github``, ``gitlab`` or ``gitea``.
+    :param forge_release: Create a release on the forge, with the changelog section
+        as notes, when ``release --tag`` pushes a tag. Off by default, since many
+        release workflows already create one.
+    :param branches: Maintenance branches (glob patterns) releases may also be
+        cut from.
+    :param exclude: Files discovery leaves alone (glob patterns).
+    :param semver_checks: Raise the level when ``cargo semver-checks`` finds a
+        breaking API change.
+    :param publish: Registries ``release --publish`` uploads to; by default every
+        one with a package.
     :param root: Project root the paths are relative to.
     :param home: Where the settings were read from, for messages.
     """
@@ -164,6 +196,20 @@ class Config(BaseModel):
     scopes: list[str] | str = Field(default_factory=list)
     targets: list[TargetConfig] = Field(default_factory=list)
     packages: dict[str, PackageConfig] = Field(default_factory=dict)
+    formats: dict[Literal["dev", "nightly"], str] = Field(default_factory=dict)
+    module_template: str | None = None
+    levels: dict[str, LevelName] = Field(default_factory=dict)
+    zero_shift: bool = True
+    changelog_layout: Literal["kind", "scope"] = "kind"
+    changelog_sections: dict[str, str | Literal[False]] = Field(default_factory=dict)
+    changelog_template: str | None = None
+    changes: str = ".changes"
+    forge: Literal["auto", "github", "gitlab", "gitea"] = "auto"
+    forge_release: bool = False
+    branches: list[str] = Field(default_factory=list)
+    exclude: list[str] = Field(default_factory=list)
+    semver_checks: bool = False
+    publish: list[Registry] | None = None
 
     root: Path = Field(default_factory=Path.cwd, exclude=True)
     home: str = Field(default="defaults", exclude=True)
@@ -173,29 +219,50 @@ class Config(BaseModel):
     def _tag_template(self) -> Config:
         if "{version}" not in self.tag:
             raise ValueError("`tag` must contain {version}")
+        source = self.version
+        if not (
+            source in ("auto", "branch", "commit")
+            or source.startswith(("file:", "python:"))
+            or _looks_like_version(source)
+        ):
+            raise ValueError(
+                "`version` must be auto, branch, commit, file:PATH, "
+                f"python:MODULE:FUNCTION or a version, not {source!r}"
+            )
+        if source.startswith("python:") and source.count(":") != 2:  # noqa: PLR2004
+            raise ValueError(
+                f"`version` {source!r} must name a function: python:MODULE:FUNCTION"
+            )
         return self
 
     def allowed_scopes(self) -> list[str]:
         """
-        Resolve the allowed scopes, reading the scopes file when one is named.
+        Resolve the allowed scopes, reading any scopes file that is named.
 
-        Package names are always allowed once any scope is restricted.
+        A scope ending in ``.toml`` is a file whose table names are scopes, so a
+        list can mix a file with extra names. Package names are always allowed
+        once any scope is restricted.
 
         :return: Scope names; an empty list allows any scope.
-        :raises ConfigError: If the scopes file is missing or not valid TOML.
+        :raises ConfigError: If a scopes file is missing or not valid TOML.
         """
-        if isinstance(self.scopes, list):
-            scopes = list(self.scopes)
-        else:
-            path = self.root / self.scopes
-            try:
-                data = tomllib.loads(path.read_text(encoding="utf-8"))
-            except (OSError, tomllib.TOMLDecodeError) as error:
-                raise ConfigError(f"cannot read scopes file {path}: {error}") from error
-            scopes = [key for key, value in data.items() if isinstance(value, dict)]
+        entries = [self.scopes] if isinstance(self.scopes, str) else self.scopes
+        scopes: list[str] = []
+        for entry in entries:
+            names = self._scopes_file(entry) if entry.endswith(".toml") else [entry]
+            scopes += [name for name in names if name not in scopes]
         if scopes:
             scopes += [name for name in self.packages if name not in scopes]
         return scopes
+
+    def _scopes_file(self, name: str) -> list[str]:
+        """Read the table names of one scopes file."""
+        path = self.root / name
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError) as error:
+            raise ConfigError(f"cannot read scopes file {path}: {error}") from error
+        return [key for key, value in data.items() if isinstance(value, dict)]
 
     @classmethod
     def key_names(cls) -> list[str]:
@@ -203,6 +270,11 @@ class Config(BaseModel):
         :return: The names of the settings a home may hold.
         """
         return [name for name, field in cls.model_fields.items() if not field.exclude]
+
+
+def _looks_like_version(text: str) -> bool:
+    """Tell whether a `version` value is a literal version."""
+    return Version.try_parse(text) is not None
 
 
 _HOME_ORDER = (
@@ -332,8 +404,33 @@ def _inside(path: Path, parent: Path) -> bool:
     return True
 
 
+_RETIRED: dict[str, str] = {
+    "output": "version.py has one fixed home; list other files in [[targets]].",
+    "output_strategies": "set `module_template` to shape version.py.",
+    "overrides": "most files are discovered; list the rest in [[targets]].",
+    "version_type": "pass --type, or set GITVERSIONED__TYPE.",
+    "version_standard": "pass --standard; each file gets its own spelling.",
+    "regex_tag": 'set `tag`, such as tag = "v{version}".',
+    "auto_increment": "set `dev` and `nightly`.",
+    "source_type": "set `version`: auto, branch, commit, file:PATH or python:M:F.",
+    "dirty_ignore": "stamped files and build folders never count as dirty.",
+    "logging": "use -v, -vv or -q.",
+}
+_RETIRED_PREFIXES: dict[str, str] = {
+    "regex_": 'set `tag`, such as tag = "v{version}".',
+    "format_": "set `formats = {dev = ..., nightly = ...}`.",
+    "version_source_": "set `version`: auto, branch, commit, file:PATH or python:M:F.",
+}
+
+
 def _suggest(name: str, valid: list[str]) -> str:
-    """Return a hint naming the nearest valid key."""
+    """Return a hint naming the nearest valid key, or the 0.3 key's replacement."""
+    retired = _RETIRED.get(name) or next(
+        (hint for prefix, hint in _RETIRED_PREFIXES.items() if name.startswith(prefix)),
+        None,
+    )
+    if retired:
+        return f" `{name}` was removed in 0.4: {retired}"
     close = difflib.get_close_matches(name, valid, n=1)
     return f" Did you mean `{close[0]}`?" if close else ""
 
@@ -373,7 +470,7 @@ def load_config(
         if not name.startswith(ENV_PREFIX):
             continue
         key = name[len(ENV_PREFIX) :].lower()
-        if key == "bump":
+        if key in ("bump", "type"):
             continue
         if key not in valid:
             # The environment is shared with other tools and older gitversioned
@@ -390,11 +487,13 @@ def load_config(
         config = Config(**data)
     except ValidationError as error:
         problems = "; ".join(
-            f"{'.'.join(str(part) for part in item['loc']) or 'config'}: {item['msg']}"
+            (f"{'.'.join(str(part) for part in item['loc'])}: " if item["loc"] else "")
+            + str(item["msg"]).removeprefix("Value error, ")
             for item in error.errors()
         )
         raise ConfigError(f"invalid config in {label}: {problems}") from error
     config.root = root
     config.home = label
     config.keys_set = tuple(keys_set)
+    logger.info(f"settings from {label}: {', '.join(keys_set) or 'all defaults'}")
     return config

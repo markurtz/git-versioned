@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Check a release tag: its format, its CHANGELOG.md section, and that it is new (or, with --tagged, at HEAD)"
+#USAGE arg "<tag>"
+#USAGE flag "--tagged" help="The tag must already exist, at HEAD"
+set -euo pipefail
+tag="${1:?usage: release:verify <tag> [--tagged]}"
+if [[ "${2:-}" == "--tagged" ]] && ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+  echo "fail  tag  $tag does not exist yet." >&2
+  exit 1
+fi
+exec gitversioned check --tag "$tag"

@@ -12,3 +12,8 @@ requires-python = ">=3.10"
 python-source = "python"
 module-name = "demo_maturin._native"
 features = ["pyo3/extension-module"]
+# version.py is generated at build time and ignored by git, which Maturin also
+# honours: include it explicitly in the wheel and the sdist.
+include = [
+  { path = "python/demo_maturin/version.py", format = ["sdist", "wheel"] },
+]

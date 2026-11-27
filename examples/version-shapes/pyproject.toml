@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling", "gitversioned>=0.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "shapes"
+dynamic = ["version"]
+description = "Shows every version shape gitversioned prints."
+requires-python = ">=3.10"
+
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.hatch.build.hooks.gitversioned]

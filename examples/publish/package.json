@@ -1,0 +1,6 @@
+{
+  "name": "beam-gv",
+  "version": "0.0.0",
+  "description": "An example package for gitversioned's publish example.",
+  "license": "Apache-2.0"
+}

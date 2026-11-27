@@ -1,0 +1,259 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+# Managed by markurtz/template (version in .copier-answers.yml) — local edits are kept by copier update but may conflict
+# Enabled blocks, resolved for this repo. Input to `mise run gen`.
+# Change blocks with `mise run template:blocks`, never by hand.
+
+[core]
+description = "Community and policy files, repo tooling, workflows and the derived-file tasks"
+kind = "core"
+folder = "."
+requires = []
+uses = []
+ecosystems = ["github-actions"]
+verbs = ["setup", "hooks", "format", "lint", "security", "test-int", "test-e2e"]
+paths = [".github/**", ".config/**", ".mise/tasks/core/**", ".mise/tasks/agents/**", ".mise/tasks/repo/**", ".mise/tasks/release/**", ".mise/tasks/template/**", ".mise/tasks/examples/**", "examples/manifest.toml", "examples/*.md", "mise.toml", "*.md"]
+owners = "@markurtz"
+ignore = []
+system = ["git", "curl", "ca-certificates"]
+hosts = ["github.com", "api.github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com", "raw.githubusercontent.com", "mise.run", "mise.jdx.dev", "mise-versions.jdx.dev", "pypi.org", "files.pythonhosted.org"]
+
+[[core.secrets]]
+name = "BOTS_APP_CLIENT_ID"
+kind = "variable"
+environment = ""
+used_by = "release-pr, release-manual, Renovate (renovate.yml), and settings-drift issues"
+how = "Create a GitHub App owned by the repo owner with contents, pull requests, issues and workflows write, plus administration, environments, secrets, variables, pages, checks, commit statuses and Dependabot alerts read (Renovate needs the last three); install it on this repo and copy its Client ID"
+optional = false
+
+[[core.secrets]]
+name = "BOTS_APP_PRIVATE_KEY"
+kind = "secret"
+environment = "bots"
+used_by = "The same jobs as BOTS_APP_CLIENT_ID, to mint a short-lived token (it stays in the bots environment)"
+how = "Generate a private key on the GitHub App's settings page and paste the whole PEM file"
+optional = false
+
+[oci]
+description = "Container image on Docker Hardened Images: hadolint, dclint, trivy, container-structure-test and GHCR publishing"
+kind = "app"
+folder = "."
+requires = ["core"]
+uses = ["python"]
+ecosystems = ["docker", "docker-compose"]
+verbs = ["lint", "format", "security", "build", "test-e2e"]
+paths = ["Dockerfile", ".dockerignore", "compose*.yaml", ".config/cst.yaml", ".config/hadolint.yaml", ".config/dclint.yaml"]
+owners = "@markurtz"
+ignore = []
+hosts = ["dhi.io", "ghcr.io"]
+
+[[oci.secrets]]
+name = "DHI_USERNAME"
+kind = "variable"
+environment = "dhi"
+used_by = "Image builds in CI (dhi.io pulls)"
+how = "Your Docker Hub user name; Docker Hardened Images on dhi.io need a free Docker account"
+optional = false
+
+[[oci.secrets]]
+name = "DHI_TOKEN"
+kind = "secret"
+environment = "dhi"
+used_by = "Image builds in CI (dhi.io pulls)"
+how = "A Docker Hub personal access token with read-only scope"
+optional = false
+
+[[oci.secrets]]
+name = "DHI_USERNAME"
+kind = "variable"
+environment = "bots"
+used_by = "Renovate's image updates (it reads dhi.io tags)"
+how = "The same Docker Hub user name as in the dhi environment"
+optional = false
+
+[[oci.secrets]]
+name = "DHI_TOKEN"
+kind = "secret"
+environment = "bots"
+used_by = "Renovate's image updates (it reads dhi.io tags)"
+how = "The same read-only Docker Hub token as in the dhi environment"
+optional = false
+
+[[oci.secrets]]
+name = "DHI_USERNAME"
+kind = "variable"
+environment = "ghcr"
+used_by = "GHCR publishing on main and release tags (dhi.io pulls)"
+how = "The same Docker Hub user name as in the dhi environment"
+optional = false
+
+[[oci.secrets]]
+name = "DHI_TOKEN"
+kind = "secret"
+environment = "ghcr"
+used_by = "GHCR publishing on main and release tags (dhi.io pulls)"
+how = "The same read-only Docker Hub token as in the dhi environment"
+optional = false
+
+[python]
+description = "Root Python package: uv, ruff, ty, pytest, Sybil, coverage, checked wheel builds and the API reference"
+kind = "lib"
+folder = "."
+requires = ["core"]
+uses = ["python-ext"]
+ecosystems = ["uv"]
+verbs = ["setup", "format", "lint", "types", "test-unit", "test-int", "test-e2e", "test-docs", "cov", "build", "docs"]
+paths = ["src/**", "tests/**", "examples/**", "conftest.py", "pyproject.toml", "uv.lock", ".python-version", ".mise/tasks/python/**"]
+owners = "@markurtz"
+ignore = ["/src/*/version.py", "/coverage/", "/.hypothesis/", "/docs/reference/cli.md"]
+
+[api]
+description = "FastAPI service in apps/api over the root package: a uv workspace member with a committed, drift-checked openapi.json, shipped as its own image"
+kind = "app"
+folder = "apps/api"
+requires = ["python", "oci"]
+uses = ["python", "db"]
+ecosystems = ["docker"]
+verbs = ["setup", "lint", "test-unit", "build", "test-e2e"]
+paths = ["apps/api/**", ".mise/tasks/api/**"]
+owners = "@markurtz"
+ignore = []
+
+[rust]
+description = "Rust core crate in a cargo workspace: rustfmt, clippy, cargo-machete, nextest, llvm-cov, cargo-deny and cargo-hack"
+kind = "crate"
+folder = "crates/core"
+requires = ["core"]
+uses = []
+ecosystems = ["cargo"]
+verbs = ["setup", "format", "lint", "test-unit", "test-int", "cov", "security", "build", "compat", "docs"]
+paths = ["crates/core/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "deny.toml", ".config/nextest.toml", ".config/about.toml", ".config/about.hbs", ".mise/tasks/rust/**"]
+owners = "@markurtz"
+ignore = ["/target/", "/crates/core/fuzz/target/", "/crates/core/fuzz/corpus/", "/crates/core/fuzz/artifacts/", "/crates/core/fuzz/coverage/", "/crates/core/fuzz/Cargo.lock"]
+watch = ["crates/**"]
+system = ["build-essential", "pkg-config"]
+hosts = ["sh.rustup.rs", "static.rust-lang.org", "index.crates.io", "static.crates.io"]
+
+[cli]
+description = "Rust command line over the core crate: clap, anyhow and tracing, with release archives and installers built by dist"
+kind = "crate"
+folder = "crates/cli"
+requires = ["rust"]
+uses = ["rust"]
+ecosystems = []
+verbs = ["test-e2e", "build"]
+paths = ["crates/cli/**", ".mise/tasks/cli/**"]
+owners = "@markurtz"
+ignore = []
+
+[node]
+description = "Root pnpm workspace for the JavaScript packages: Node and pnpm pins, catalogs, oxlint and oxfmt"
+kind = "root"
+folder = "."
+requires = ["core"]
+uses = []
+ecosystems = ["npm"]
+verbs = ["setup", "format", "lint"]
+paths = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".config/oxlintrc.json", ".config/oxfmtrc.json", ".mise/tasks/node/**"]
+owners = "@markurtz"
+ignore = ["node_modules/"]
+hosts = ["nodejs.org", "registry.npmjs.org"]
+
+[contract]
+description = "Typed TypeScript client for the API in packages/client, generated by Hey API from the committed openapi.json on every setup and build"
+kind = "lib"
+folder = "packages/client"
+requires = ["api", "node"]
+uses = ["api"]
+ecosystems = []
+verbs = ["setup", "types", "test-unit", "build"]
+paths = ["packages/client/**", "apps/api/openapi.json"]
+owners = "@markurtz"
+ignore = ["/packages/client/src/generated/", "/packages/client/dist/"]
+
+[db]
+description = "The API's database: SQLModel tables, Alembic migrations in apps/api/migrations checked against the models, and a Postgres compose service"
+kind = "lib"
+folder = "apps/api/migrations"
+requires = ["api"]
+uses = []
+ecosystems = []
+verbs = ["lint", "test-int", "test-e2e"]
+paths = ["apps/api/migrations/**", "apps/api/alembic.ini", "apps/api/src/*/db.py", ".mise/tasks/db/**"]
+owners = "@markurtz"
+ignore = ["/apps/api/*.db"]
+
+[web]
+description = "Static web app (Next.js or Astro) in strict TypeScript: Vitest and Testing Library, Playwright with axe, size-limit, Lighthouse CI and TypeDoc, deployed to GitHub Pages under /app/"
+kind = "app"
+folder = "apps/web"
+requires = ["node"]
+uses = []
+ecosystems = []
+verbs = ["types", "test-unit", "test-e2e", "build", "docs"]
+paths = ["apps/web/**"]
+owners = "@markurtz"
+ignore = ["/apps/web/out/", "/apps/web/.next/", "/apps/web/.astro/", "/apps/web/next-env.d.ts", "/apps/web/test-results/", "/apps/web/playwright-report/", "/apps/web/.lighthouseci/"]
+hosts = ["cdn.playwright.dev", "playwright.download.prss.microsoft.com"]
+
+[desktop]
+description = "Desktop app in apps/desktop: Tauri 2 around the web app's static build, with unsigned installers for Linux, macOS and Windows on each release"
+kind = "app"
+folder = "apps/desktop"
+requires = ["web", "rust"]
+uses = ["web"]
+ecosystems = ["cargo@src-tauri"]
+verbs = ["format", "lint", "test-unit", "security", "build"]
+paths = ["apps/desktop/**", ".mise/tasks/desktop/**"]
+owners = "@markurtz"
+ignore = ["/apps/desktop/src-tauri/target/", "/apps/desktop/src-tauri/gen/"]
+system = ["libwebkit2gtk-4.1-dev", "librsvg2-dev", "libxdo-dev", "libssl-dev", "libayatana-appindicator3-dev"]
+
+[docs]
+description = "Zensical documentation site published to GitHub Pages"
+kind = "site"
+folder = "docs"
+requires = ["core"]
+uses = []
+ecosystems = []
+verbs = ["build", "serve", "deploy", "test-int"]
+paths = ["docs/**", "zensical.toml", ".mise/tasks/docs/**", ".config/vale.ini", ".config/vale/**"]
+owners = "@markurtz"
+ignore = ["/site/", "/.cache/", "/docs/.scripts/__pycache__/", "/docs/api/", "/docs/examples/", "/docs/packages/", "/docs/reference/api.md", "/docs/reference/configuration.md", "/docs/reference/rust.md"]
+hosts = ["fonts.googleapis.com", "fonts.gstatic.com", "unpkg.com", "cdn.jsdelivr.net"]
+
+[notebooks]
+description = "marimo notebooks in notebooks/ over the root package: plain Python files, linted by marimo check and run headless as integration tests"
+kind = "lib"
+folder = "notebooks"
+requires = ["python"]
+uses = ["python"]
+ecosystems = []
+verbs = ["lint", "test-int"]
+paths = ["notebooks/**"]
+owners = "@markurtz"
+ignore = ["/notebooks/__marimo__/"]
+
+[python-ext]
+description = "Python binding of the core crate: PyO3 built by maturin as an abi3 wheel, with committed pyo3-stub-gen stubs"
+kind = "crate"
+folder = "crates/python-ext"
+requires = ["rust", "python"]
+uses = ["rust"]
+ecosystems = []
+verbs = ["lint", "test-unit", "build"]
+paths = ["crates/python-ext/**", ".mise/tasks/python-ext/**"]
+owners = "@markurtz"
+ignore = ["/crates/python-ext/python/*/*.so", "/crates/python-ext/python/*/*.pyd"]
+
+[wasm]
+description = "WebAssembly binding of the core crate: wasm-bindgen built by wasm-pack, shrunk by wasm-opt within a size budget, published to npm"
+kind = "crate"
+folder = "crates/wasm"
+requires = ["rust", "node"]
+uses = ["rust"]
+ecosystems = []
+verbs = ["lint", "test-unit", "test-int", "build"]
+paths = ["crates/wasm/**"]
+owners = "@markurtz"
+ignore = ["/crates/wasm/pkg/"]

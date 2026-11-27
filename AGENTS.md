@@ -20,7 +20,7 @@ This file provides repository-specific context, setup instructions, executable c
 
 ## System Overview
 
-`gitversioned` gives a repository one version, taken from its git tags. It resolves that version, stamps it into every Python, Rust, npm, Helm and container manifest with scoped text edits, validates Conventional Commit titles and drives a reviewed release (changelog, release pull request, tag). The command line has three commands, `version`, `check` and `release`, plus an optional `init`.
+`gitversioned` gives a repository one version, taken from its git tags. It resolves that version, stamps it into every Python, Rust, npm, Helm and container manifest with scoped text edits, validates Conventional Commit titles and drives a reviewed release (changelog, release pull request, tag). The command line has three commands, `version`, `check` and `release`, plus `new` for change files and an optional `init`. Releases run on GitHub (`gh`), GitLab and Gitea (REST APIs), and the repository root is also a composite GitHub Action (`action.yml`, `action/run.sh`).
 
 - **Primary Language:** Python 3.10+
 - **Configuration & Build Backend:** Hatch (using `hatchling.build`)
@@ -29,22 +29,24 @@ This file provides repository-specific context, setup instructions, executable c
 ## Core Directories & Architecture
 
 - `src/gitversioned/`: The library, one flat package.
-  - `cli.py`: The Typer app and the four commands. `__main__.py` only calls it.
+  - `cli.py`: The Typer app and the five commands. `__main__.py` only calls it.
   - `model.py`: `Version`, printed as PEP 440 or SemVer.
-  - `config.py`: The settings model (twelve root keys, `[[targets]]`, `[packages]`), its homes and `GITVERSIONED__KEY` overrides.
+  - `config.py`: The settings model (the root keys, `[[targets]]`, `[packages]`), its homes and `GITVERSIONED__KEY` overrides.
   - `git.py`: All git access, the archive file and sdist metadata.
-  - `resolve.py`: Resolves the version of a checkout.
-  - `commits.py`: Conventional Commit parsing and bump rules.
+  - `resolve.py`: Resolves the version of a checkout, including the `version` sources and `formats` templates.
+  - `commits.py`: Conventional Commit parsing and bump rules (`levels`, `zero_shift`).
+  - `changes.py`: Change files in `.changes/`, read, turned into commit-like entries and written by `new`.
   - `editors.py`, `targets.py`: Locating version values in files, discovery and stamping.
-  - `changelog.py`, `github.py`, `release.py`: Changelog sections, the `gh` CLI wrapper, release planning, the release pull request and tagging.
+  - `changelog.py`, `github.py`, `forges.py`, `release.py`: Changelog sections and their style, the `gh` CLI wrapper, the GitHub/GitLab/Gitea forge layer, release planning, the release pull request, tagging and the forge release.
+  - `publish.py`: `release --publish` (PyPI, crates.io, npm) and `cargo semver-checks`.
   - `checks.py`: Findings for `check`.
   - `scaffold.py`: The `init` step.
   - `errors.py`: Errors, each carrying its exit code (1 check failed, 2 usage or config, 3 environment).
   - `plugins/`: Hatchling, setuptools and Maturin build integrations.
-- `tests/`: `unit/` (isolated logic), `integration/` (settings and build backends) and `e2e/` (one class per user story, run through the CLI in real git repositories built by `tests/conftest.py`).
-- `examples/`: Runnable projects per backend plus a polyglot repository, tested by `examples/test_examples.py`.
+- `tests/`: `unit/` (isolated logic), `integration/` (settings and build backends) and `e2e/` (one class per user story, run through the CLI in real git repositories built by `tests/conftest.py`). `tests/fake_gh.py` stands in for `gh` and `tests/fake_forge.py` serves stand-in GitLab and Gitea APIs.
+- `examples/`: 29 runnable projects, one per topic, indexed by `examples/manifest.toml`. Each README's console transcripts are its test (`examples/conftest.py`); `examples/use-cases.toml` maps every use case to the examples that show it, and `examples/test_manifest.py` checks they agree.
 - `docs/`: Zensical documentation source.
-- `scripts/`: Developer and CI helpers, including `build_binary.py` and `generate_llms_full.py`.
+- `scripts/`: Developer and CI helpers, including `build_binary.py`, `generate_llms_full.py` and `generate_examples.py`.
 - `.github/workflows/`: CI/CD workflows (prefixed with `pipeline-` and `util-`).
 
 ### Design Rules
@@ -54,6 +56,7 @@ This file provides repository-specific context, setup instructions, executable c
 - File edits are scoped text edits that change only the version value. Never rewrite a manifest through a parser and serializer.
 - Tests for new behaviour belong in `tests/e2e` as a user story when the behaviour is visible from the command line.
 - After changing a guide, the source or `pyproject.toml`, run `python scripts/generate_llms_full.py`.
+- After changing behaviour an example shows, run `python -m pytest examples --update-examples`, read the diff, and run `python scripts/generate_examples.py` after changing `examples/manifest.toml` or `examples/use-cases.toml`.
 
 ## Environment & Developer Workflows
 

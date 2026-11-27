@@ -1,0 +1,4 @@
+# The pnpm catalog entry is the one file discovery cannot know about.
+[[targets]]
+path = "pnpm-workspace.yaml"
+key = "catalog.@demo/core"

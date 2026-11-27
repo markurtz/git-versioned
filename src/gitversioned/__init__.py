@@ -32,6 +32,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from loguru import logger
+
 from gitversioned.config import Config, load_config
 from gitversioned.errors import (
     CheckFailedError,
@@ -44,6 +46,8 @@ from gitversioned.model import Version
 from gitversioned.release import ReleasePlan, plan_release
 from gitversioned.resolve import Resolved, resolve
 from gitversioned.targets import stamp
+
+logger.disable("gitversioned")
 
 __all__ = [
     "CheckFailedError",

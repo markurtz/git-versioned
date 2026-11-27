@@ -1,0 +1,9 @@
+[package]
+name = "beam-gv"
+version = "0.0.0"
+edition = "2021"
+description = "An example crate for gitversioned's publish example."
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"

@@ -1,0 +1,8 @@
+# A second image, built with Podman. A label that reads a build argument is
+# left alone: the argument decides the value at build time.
+FROM python:3.13-slim
+
+ARG VERSION=0.0.0
+LABEL org.opencontainers.image.version="${VERSION}"
+
+CMD ["sh", "-c", "echo worker"]

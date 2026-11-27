@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling", "gitversioned>=0.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mono-core"
+dynamic = ["version"]
+description = "An extra package with its own release line."
+requires-python = ">=3.10"
+
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mono_core"]

@@ -1,0 +1,55 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+# The pnpm workspace: every npm package in the repo, one lockfile (pnpm-lock.yaml)
+# and one catalog of versions. Packages depend on `catalog:` instead of a version,
+# so a version changes here only; Renovate bumps the catalog (npm manager).
+packages:
+  - crates/wasm
+  - apps/web
+  - packages/client
+  - apps/desktop
+  # The TypeScript and browser legs of examples/, never published.
+  - examples/*/ts
+  - examples/*/web
+catalog:
+  # Lint and format, run by node:lint and node:format.
+  oxfmt: 0.78.0
+  oxlint: 1.93.0
+  # Tests: Vitest (browser mode in Playwright's Chromium for the wasm package).
+  vitest: 5.1.0
+  playwright: 1.65.1
+  "@vitest/browser-playwright": 5.1.0
+  # The web app (apps/web).
+  next: 16.4.6
+  react: 19.3.1
+  react-dom: 19.3.1
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
+  "@types/node": 26.6.6
+  "@vitejs/plugin-react": 6.3.0
+  jsdom: 31.0.1
+  "@testing-library/react": 16.3.3
+  "@testing-library/dom": 10.4.2
+  "@testing-library/jest-dom": 7.0.1
+  "@testing-library/user-event": 14.6.10
+  "@playwright/test": 1.65.1
+  "@axe-core/playwright": 4.14.0
+  size-limit: 14.3.0
+  "@size-limit/file": 14.3.0
+  "@lhci/cli": 0.16.1
+  typedoc: 0.28.20
+  # TypeScript 6, the last JavaScript-API line, which TypeDoc and astro check need.
+  typescript: 6.0.3
+  # Mocks every request in unit tests.
+  msw: 3.0.5
+  # The API client (packages/client), generated from apps/api/openapi.json.
+  "@hey-api/openapi-ts": 0.99.0
+  # The desktop app (apps/desktop); its tauri crates are pinned in its Cargo.lock.
+  "@tauri-apps/cli": 2.12.4
+# Supply chain: never install a version younger than 7 days (Renovate's minimumReleaseAge
+# too), and run no dependency's install scripts unless it is listed in allowBuilds.
+minimumReleaseAge: 10080
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
+strictDepBuilds: true

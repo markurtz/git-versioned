@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# The WebAssembly binding: wasm-bindgen exports over the core crate, built by
+# wasm-pack (mise run wasm:build) and published to npm as @markurtz/template-polyglot
+# (package.json), never to crates.io.
+[package]
+name = "template-polyglot-wasm"
+description = "WebAssembly binding of template-polyglot"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "template_polyglot_wasm"
+# cdylib is the .wasm module; rlib lets the native tests and clippy link the crate.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# >>> template:demo
+template-polyglot-core.workspace = true
+serde.workspace = true
+serde-wasm-bindgen.workspace = true
+# <<< template:demo
+wasm-bindgen.workspace = true
+
+[dev-dependencies]
+# >>> template:demo
+js-sys.workspace = true
+# <<< template:demo
+wasm-bindgen-test.workspace = true
+
+# wasm:build runs the pinned wasm-opt itself, so wasm-pack downloads nothing.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lints]
+workspace = true

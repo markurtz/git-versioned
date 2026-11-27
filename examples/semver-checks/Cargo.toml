@@ -1,0 +1,6 @@
+[package]
+name = "beam-api"
+version = "0.0.0"
+edition = "2021"
+description = "An example crate for gitversioned's semver-checks example."
+license = "Apache-2.0"

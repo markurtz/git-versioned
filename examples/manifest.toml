@@ -1,0 +1,209 @@
+# Copyright 2026 markurtz
+# SPDX-License-Identifier: Apache-2.0
+#
+# The index of every example: one [example.<topic>] table per folder under
+# examples/. Each topic's README.md is its test: examples/conftest.py runs the
+# console transcripts in it. scripts/generate_examples.py builds
+# examples/README.md and the docs pages from this file, and
+# examples/test_manifest.py checks that the tables, the folders and the use case
+# inventory (use-cases.toml) agree.
+#
+# Keys per example:
+#   title, summary  shown in the indexes
+#   level           beginner | intermediate | advanced
+#   marker          pytest intent marker: smoke | sanity | regression
+#   requires        executables the example needs; it is skipped without them
+#   gh              true to sign the stand-in GitHub CLI in
+#   timeout         seconds per command (default 120)
+
+[example.hatchling]
+title = "Hatchling, zero config"
+summary = "A Python package whose version comes from git tags at build time, with nothing configured."
+level = "beginner"
+marker = "smoke"
+
+[example.setuptools]
+title = "setuptools from pyproject.toml"
+summary = "A setuptools package versioned from tags, with settings and scopes in `pyproject.toml`."
+level = "beginner"
+marker = "smoke"
+
+[example.setuptools-legacy]
+title = "setuptools from setup.cfg and setup.py"
+summary = "Older setuptools layouts: settings in `setup.cfg` and a `setup.py` that only calls `setup()`."
+level = "beginner"
+marker = "sanity"
+
+[example.static-version]
+title = "Static versions for uv_build and other backends"
+summary = "Backends that read a static version, such as uv_build, get it stamped into `pyproject.toml` before the build."
+level = "intermediate"
+marker = "sanity"
+requires = ["uv"]
+timeout = 600
+
+[example.version-shapes]
+title = "Every version shape"
+summary = "Release, dev, dirty, nightly and pre-release versions in PEP 440 and SemVer, with the settings and variables that shape them."
+level = "beginner"
+marker = "smoke"
+
+[example.next-version]
+title = "The next version and why"
+summary = "Bump levels from Conventional Commits, with `--explain`, `--bump`, `--pre` and every override."
+level = "intermediate"
+marker = "sanity"
+
+[example.commit-checks]
+title = "Pull request titles and commit messages"
+summary = "`check` validates titles, commit ranges and commit-msg hook files against the allowed types and scopes."
+level = "beginner"
+marker = "smoke"
+
+[example.ci-safety]
+title = "No silent wrong versions in CI"
+summary = "Shallow clones, missing tags and tarball downloads: warnings on a laptop, failures in CI, and the archive file that fixes tarballs."
+level = "intermediate"
+marker = "sanity"
+
+[example.release-local]
+title = "Releasing from a terminal"
+summary = "Plan a release, write the changelog, commit and tag it by hand, with the same checks a workflow runs."
+level = "intermediate"
+marker = "sanity"
+
+[example.release-pr]
+title = "The release pull request"
+summary = "`release --pr` keeps `release/next` and its pull request up to date, labels make release candidates, and `release --tag` tags the merge."
+level = "advanced"
+marker = "sanity"
+gh = true
+
+[example.configuration]
+title = "Settings, homes and the environment"
+summary = "The six settings homes, the rules that keep them unambiguous, environment overrides and `--explain`."
+level = "intermediate"
+marker = "sanity"
+
+[example.custom-targets]
+title = "Files discovery cannot find"
+summary = "`[[targets]]` with a dotted key in TOML, JSON or YAML, a regular expression for any text file, and files that are never committed."
+level = "intermediate"
+marker = "sanity"
+
+[example.maturin]
+title = "Maturin through the wrapper backend"
+summary = "A Rust extension for Python whose `Cargo.toml` and wheel share the tag's version, built for real."
+level = "intermediate"
+marker = "sanity"
+requires = ["cargo"]
+timeout = 600
+
+[example.rust-workspace]
+title = "A Rust workspace"
+summary = "A Cargo workspace with an inherited version, internal path dependencies and a lock file, stamped and built offline."
+level = "intermediate"
+marker = "sanity"
+requires = ["cargo"]
+timeout = 600
+
+[example.npm-workspace]
+title = "An npm workspace"
+summary = "npm packages with internal dependencies, a private workspace root and a pnpm catalog entry, stamped and packed."
+level = "intermediate"
+marker = "sanity"
+requires = ["npm"]
+timeout = 600
+
+[example.monorepo-packages]
+title = "Packages with their own tags"
+summary = "`[packages]` gives a folder its own tag and release line, while other packages follow the repository version."
+level = "advanced"
+marker = "sanity"
+
+[example.polyglot]
+title = "One version for every manifest"
+summary = "Python, a Cargo workspace, npm, Helm, a citation file, a Dockerfile and a docs page stamped by one command."
+level = "advanced"
+marker = "sanity"
+
+[example.docker]
+title = "Container images"
+summary = "OCI labels stamped in a Dockerfile, the version passed as a build argument, and image tags that registries accept."
+level = "intermediate"
+marker = "sanity"
+
+[example.python-api]
+title = "The Python API"
+summary = "Resolve, stamp and plan a release from a Python script."
+level = "intermediate"
+marker = "sanity"
+
+[example.github-actions]
+title = "GitHub Actions workflows"
+summary = "Six workflows: pull request titles, the release pull request, tagging the merge, a manual release, nightly builds and hand-pushed tags, each run here."
+level = "advanced"
+marker = "sanity"
+gh = true
+
+[example.template-python]
+title = "A template python-size repository"
+summary = "The layout markurtz/template renders for a Python package: no settings, the build hook, Keep a Changelog and the manual release path."
+level = "advanced"
+marker = "sanity"
+
+[example.template-polyglot]
+title = "A template polyglot repository"
+summary = "The manifests markurtz/template renders for every block, stamped by `version --write` in place of `release:stamp`."
+level = "advanced"
+marker = "sanity"
+timeout = 600
+
+[example.version-sources]
+title = "Version sources, templates and post releases"
+summary = "The version from a branch, a commit, a file or a function; dev and nightly templates; a custom version module; post releases."
+level = "intermediate"
+marker = "sanity"
+
+[example.change-files]
+title = "Change files and the commit prompt"
+summary = "Hand-written changelog entries in `.changes/`, released and deleted with the release; `new --commit` commits with a checked title."
+level = "intermediate"
+marker = "sanity"
+
+[example.changelog-style]
+title = "Changelog layouts, headings and templates"
+summary = "Kinds-first or scope-first sections, renamed and hidden types, Migrations from `BREAKING CHANGE:` footers and a section template."
+level = "intermediate"
+marker = "sanity"
+
+[example.forges]
+title = "GitHub releases, GitLab and Gitea"
+summary = "The release pull request and forge release on GitHub, GitLab and Gitea, with `forge_release` and `forge`."
+level = "advanced"
+marker = "sanity"
+gh = true
+forge = ["gitlab", "gitea"]
+
+[example.maintenance-branches]
+title = "Maintenance branches and backports"
+summary = "Backport releases from `1.x` while `main` is on 2.x, with `branches` and the line rules."
+level = "advanced"
+marker = "sanity"
+gh = true
+
+[example.publish]
+title = "Publishing to PyPI, crates.io and npm"
+summary = "`release --publish` builds the tagged release and uploads it to each registry; `--dry-run` runs each tool's dry run."
+level = "intermediate"
+marker = "regression"
+requires = ["uv", "cargo", "npm"]
+timeout = 300
+
+[example.semver-checks]
+title = "API checks for Rust releases"
+summary = "`semver_checks = true` raises a release to major when cargo-semver-checks finds a breaking API change."
+level = "advanced"
+marker = "regression"
+requires = ["cargo", "cargo-semver-checks"]
+timeout = 600

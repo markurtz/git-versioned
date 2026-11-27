@@ -1,0 +1,3 @@
+# Settings for this repository. Only the scopes differ from the defaults: titles
+# may name one of these, or no scope at all.
+scopes = ["core", "cli", "docs", "deps", "ci", "release"]

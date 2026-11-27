@@ -1,12 +1,15 @@
 # Command Line Guide
 
-`gitversioned` has three commands, one per job, and an optional setup step.
+`gitversioned` has three commands, one per job: `version`, `check` and
+`release`. `new` records a change for the changelog, and `init` is an optional
+setup step.
 
 | Command   | Job                                                                |
 | --------- | ------------------------------------------------------------------ |
 | `version` | Print the version, print the next one, or stamp it into the files. |
 | `check`   | Validate the repository setup, a title, a commit range or a tag.   |
-| `release` | Plan a release, open the release pull request, tag the merge.      |
+| `release` | Plan a release, open the release pull request, tag and publish it. |
+| `new`     | Record a change: a change file, or a commit with a checked title.  |
 | `init`    | Optional: add the archive file and wire up the build backend.      |
 
 Every command takes the same shared options.
@@ -163,7 +166,8 @@ ok    commits  2 commits
 ```
 
 `--file` reads the first line of a file, which is what a `commit-msg` hook
-passes. `--warn` reports problems and still exits 0.
+passes. `--warn` reports problems as `warn` and still exits 0, which suits a
+hook that should only advise.
 
 ### A tag name
 
@@ -172,18 +176,23 @@ $ gitversioned check --tag v1.5.0
 ok    tag  1.5.0, newer than v1.4.0
 ```
 
-Use this in a workflow that runs when a tag is pushed, to reject tags that do
-not match the template or that are not newer than the last release.
+The tag must match the template and be newer than the last release. If it
+exists already, it must point at `HEAD`. When the project has a changelog, it
+must have the version's `## [1.5.0]` section. Use this in a workflow that runs
+when a tag is pushed, or before tagging by hand; `release --tag` runs the same
+checks.
 
 ______________________________________________________________________
 
 ## `release`
 
 ```text
-gitversioned release [VERSION] [--bump LEVEL] [--pre KIND] [--write] [--pr] [--tag]
+gitversioned release [VERSION] [--bump LEVEL] [--pre KIND] [--post]
+                     [--write | --pr | --tag] [--publish [--dry-run]]
 ```
 
-A release has three stages. Without a flag the command only shows the plan.
+A release has three stages, and an optional fourth that uploads it. Without a
+flag the command only shows the plan; `-q` hides the report.
 
 ### Plan
 
@@ -193,7 +202,7 @@ release   1.5.0  (minor, from commits, from 1.4.0)
 tag       v1.5.0
 files     CHANGELOG.md, CITATION.cff, Dockerfile, charts/demo/Chart.yaml, crates/cli/Cargo.toml, crates/core/Cargo.toml, Cargo.lock, docs/install.md
 
-## 1.5.0 - 2026-11-25
+## [1.5.0] - 2026-11-25
 
 ### Added
 
@@ -208,9 +217,9 @@ Nothing changed. Run with --write, --pr or --tag.
 
 ### `--write`: update the working tree
 
-Writes the changelog section and stamps every committed target. Nothing is
-committed, so this is the stage to use when you make the release commit
-yourself.
+Writes the changelog section, stamps every committed target and deletes the
+change files the section took in. Nothing is committed, so this is the stage to
+use when you make the release commit yourself.
 
 ### `--pr`: open or update the release pull request
 
@@ -221,8 +230,13 @@ changelog section. Run it on every push to the release branch and the pull
 request always shows what the next release will be. It refuses to run on any
 other branch, and exits with code 1 when `HEAD` is a merged release commit that
 is not tagged yet, so it never reopens a release that is waiting for
-`release --tag`. It needs the GitHub CLI
-`gh`, signed in (`GH_TOKEN` in CI).
+`release --tag`. On GitHub it needs the GitHub CLI `gh`, signed in (`GH_TOKEN`
+in CI); on GitLab `GITLAB_TOKEN` and on Gitea `GITEA_TOKEN` (see the `forge`
+setting).
+
+On a maintenance branch listed in `branches`, such as `1.x`, the branch is
+`release/next-1.x` and the pull request merges into `1.x`. A branch named
+`N.x` or `N.M.x` only releases versions on that line.
 
 Add the label `release:rc` to the pull request to make it a release candidate.
 Add `release:major`, `release:minor` or `release:patch` to a merged pull request
@@ -234,6 +248,34 @@ Run on the `branch` setting's branch (`main` by default) right after the release
 pull request merges. It reads the
 tag from the release commit's subject, checks it is newer than the last
 release, creates it and pushes it. Pass a `VERSION` to tag `HEAD` by hand.
+Either way it runs the checks of `check --tag` first, so a version without its
+changelog section is never tagged. With `forge_release = true` it then creates
+the GitHub, GitLab or Gitea release for the pushed tag, with the changelog
+section as its notes.
+
+### `--publish`: upload to the registries
+
+Builds the release tagged at `HEAD` and uploads it to PyPI (`uv build` and
+`uv publish`, or `python -m build` and `twine upload`), crates.io
+(`cargo publish --workspace --locked`) and npm (`npm publish`, `--tag next` for
+a pre-release). `publish` picks the registries; by default every one with a
+public manifest. `--dry-run` runs each tool's dry run. With `--tag` it tags
+first, and the GitHub release gets the built files attached.
+
+```console
+$ gitversioned release --publish --dry-run
+publish   cargo publish --workspace --locked --dry-run
+publish   npm publish --dry-run
+publish   uv build --out-dir dist
+publish   uv publish --dry-run dist/beam_gv-1.0.0-py3-none-any.whl dist/beam_gv-1.0.0.tar.gz
+Dry run: nothing was uploaded.
+```
+
+### `--post`: a post release
+
+Plans the next post release of the latest release, `1.4.0.post1` (tag
+`v1.4.0.post1`, SemVer `1.4.0+post.1`), for a packaging fix that ships the same
+code. It works with `--write` and `--pr`.
 
 ### Choosing the version
 
@@ -242,8 +284,32 @@ The first of these that is set decides:
 1. The `VERSION` argument.
 1. `--bump major|minor|patch`.
 1. `GITVERSIONED__BUMP` in the environment (a level or a version).
-1. A `release:major|minor|patch` label on a merged pull request.
-1. The commits since the last release.
+1. A `release:major|minor|patch` label on a pull request merged since the last
+   final release.
+1. The commits and change files since the last release, by the `levels`
+   setting, raised to major when `semver_checks` finds a breaking API change.
+
+______________________________________________________________________
+
+## `new`
+
+```text
+gitversioned new [MESSAGE] [--type TYPE] [--scope SCOPE] [--breaking] [--bump LEVEL] [--commit]
+```
+
+Records a change. By default it writes a change file to `.changes/`, which the
+next release takes into its changelog section and deletes; `--bump` sets the
+level the change asks for, including `none`. With `--commit` it commits the
+staged changes with the title instead. The title is checked like `check TITLE`.
+Without `--type` and a message, in a terminal, it asks for type, scope,
+message and whether the change is breaking.
+
+```console
+$ gitversioned new --type feat --scope cli "Add --explain."
+wrote     .changes/20261125-add-explain.md  feat(cli): Add --explain.
+$ gitversioned new --commit -t fix -s core "Handle empty input."
+commit    c7887ac  fix(core): Handle empty input.
+```
 
 ______________________________________________________________________
 

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling", "gitversioned>=0.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "relay"
+dynamic = ["version"]
+description = "Shows a release cut from a terminal."
+requires-python = ">=3.10"
+
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.gitversioned]
+# Tags carry the changelog section as their message.
+annotated = true

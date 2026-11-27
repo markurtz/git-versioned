@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# The Python binding: a PyO3 extension module over the core crate, built by maturin
+# (pyproject.toml) and published to PyPI as template-polyglot-core, never to crates.io.
+[package]
+name = "template-polyglot-python-ext"
+description = "Python binding of template-polyglot"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "_native"
+# cdylib is the extension module; rlib lets the stub_gen binary link the crate.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# >>> template:demo
+template-polyglot-core.workspace = true
+# <<< template:demo
+pyo3.workspace = true
+pyo3-stub-gen.workspace = true
+
+# PyO3's macros expand to unsafe code, so this crate cannot inherit
+# unsafe_code = "forbid"; the rest of the workspace lints apply as written.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"

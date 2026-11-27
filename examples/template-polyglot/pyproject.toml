@@ -1,0 +1,378 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# ==============================================================================
+# Build System
+# ==============================================================================
+# hatchling builds the package; gitversioned derives the version from git tags,
+# so releases never edit this file.
+
+[build-system]
+requires = ["hatchling>=1.33", "gitversioned>=0.4"]
+build-backend = "hatchling.build"
+
+
+# ==============================================================================
+# Project Metadata
+# ==============================================================================
+
+[project]
+name = "template-polyglot"
+dynamic = ["version"]
+description = "Polyglot template with a Python root package, Rust crates, WebAssembly, a web app, an API, notebooks, a desktop app and a Zensical docs site"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+# LICENSES/ holds the same text for REUSE; shipping both would duplicate it.
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Mark Kurtz" }]
+maintainers = [{ name = "Mark Kurtz" }]
+keywords = []
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Typing :: Typed",
+]
+# Runtime libraries of the root package; other packages do not inherit them.
+dependencies = [
+  "httpx>=0.28",             # HTTP client, mocked with respx in tests
+  "pydantic>=2.14",          # data models
+  "pydantic-settings>=2.16", # one BaseSettings class, env prefix from the package name
+  "rich>=15.0",              # CLI output and the RichHandler log handler
+  "typer>=0.29",             # the CLI in __main__.py
+]
+
+[project.optional-dependencies]
+# Adds an OpenTelemetry log handler when installed and enabled in settings.
+# The handler lives in opentelemetry-instrumentation-logging (the SDK's own is
+# deprecated); contrib packages only publish beta versions.
+opentelemetry = [
+  "opentelemetry-api>=1.45",
+  "opentelemetry-sdk>=1.45",
+  "opentelemetry-instrumentation-logging>=0.66b2",
+]
+# The compiled core (crates/python-ext); without it the package runs in pure Python.
+fast = ["template-polyglot-core"]
+
+[project.scripts]
+template-polyglot = "template_polyglot.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/markurtz/template-polyglot"
+Repository = "https://github.com/markurtz/template-polyglot.git"
+Issues = "https://github.com/markurtz/template-polyglot/issues"
+Documentation = "https://markurtz.github.io/template-polyglot/"
+Changelog = "https://github.com/markurtz/template-polyglot/blob/main/CHANGELOG.md"
+
+
+# ==============================================================================
+# Dependency Groups (uv)
+# ==============================================================================
+# Python tools that import or inspect the code live here; standalone binaries
+# are pinned in .config/mise/conf.d/. `dev` is installed by default.
+
+[dependency-groups]
+test = [
+  "pytest>=9.2,<10",
+  "pytest-asyncio>=1.5,<2",
+  "pytest-cov>=7.1,<8",
+  # Coverage of a PR's changed lines (python:cov with COVERAGE_BASE)
+  "diff-cover>=11.0,<12",
+  "pytest-mock>=3.17,<4",
+  # @pytest.mark.flaky(reruns=2), opt-in per test only: no global reruns
+  "pytest-rerunfailures>=16.7,<17",
+  "pytest-xdist>=3.8,<4",
+  # httpx mocking
+  "respx>=0.23",
+  # The client of FastAPI's TestClient (apps/api/tests); starlette moved to httpx2
+  "httpx2>=2.16,<3",
+  # Code samples in README.md and docs/ (test-docs)
+  "sybil>=10.1,<11",
+  # Property tests; the ci and dev profiles live in tests/conftest.py
+  "hypothesis>=6.170,<7",
+]
+lint = [
+  "ruff>=0.17,<1",
+  "ty>=0.0.107",
+  # Swap for ty: uncomment and set PYTHON_TYPES=mypy in mise.toml.
+  # "mypy>=2.4,<3",
+]
+docs = [
+  "zensical>=0.1.3",             # the docs site (docs:build runs it with uv)
+  "mkdocstrings-python>=2.0.11", # Python API reference pages
+]
+notebooks = [
+  "marimo>=0.25,<0.26", # the notebooks in notebooks/ (notebooks:serve, notebooks:lint)
+  "altair>=6.3,<7",     # their charts
+]
+dev = [{ include-group = "test" }, { include-group = "lint" }, { include-group = "docs" }, { include-group = "notebooks" }]
+
+[tool.uv]
+exclude-newer = "7 days"
+default-groups = ["dev"]
+
+# Workspace members share uv.lock and the .venv: `uv sync` installs each editable
+# (the binding through maturin).
+[tool.uv.workspace]
+members = ["crates/python-ext", "apps/api"]
+
+[tool.uv.sources]
+template-polyglot-core = { workspace = true }
+
+
+# ==============================================================================
+# Versioning and Packaging
+# ==============================================================================
+
+[tool.hatch.version]
+source = "gitversioned"
+
+# Pull request titles may use a block name from .config/blocks.toml, or deps,
+# deps-dev, ci or release, as their scope.
+[tool.gitversioned]
+scopes = [".config/blocks.toml", "deps", "deps-dev", "ci", "release"]
+
+# Writes src/template_polyglot/version.py at build time (gitignored).
+[tool.hatch.build.hooks.gitversioned]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/template_polyglot"]
+
+# Paths start with / so they match only at the root (README.md would also match
+# examples/*/README.md). The sdist carries the tests so distributors can run them.
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/",
+  "/tests/",
+  "/LICENSE",
+  "/NOTICE",
+  "/README.md",
+  "/CHANGELOG.md",
+]
+exclude = ["/.gitignore"]
+
+
+# ==============================================================================
+# Ruff: Formatting and Linting
+# ==============================================================================
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py311"
+# Agent hooks run on the machine's own python3, not the project's Python.
+per-file-target-version = { ".agents/hooks/*.py" = "py311" }
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+  # Rules reference: https://docs.astral.sh/ruff/rules/
+
+  # Code Style / Formatting
+  "E",   # pycodestyle errors: PEP 8 spacing, indentation and line length
+  "W",   # pycodestyle warnings: whitespace and blank-line conventions
+  "A",   # flake8-builtins: no shadowing of Python built-in names
+  "C",   # conventions: comprehension and complexity style
+  "COM", # flake8-commas: consistent trailing commas
+  "ERA", # eradicate: no commented-out code
+  "I",   # isort: sorted, grouped imports
+  "ICN", # flake8-import-conventions: standard import aliases
+  "N",   # pep8-naming: PEP 8 names for classes, functions and variables
+  "PT",  # flake8-pytest-style: pytest best practices
+  "PTH", # flake8-use-pathlib: pathlib over os.path
+  "Q",   # flake8-quotes: consistent quotes
+  "TC",  # flake8-type-checking: type-only imports under TYPE_CHECKING
+  "TID", # flake8-tidy-imports: no relative parent imports
+  "RUF", # Ruff-specific rules, including sorted __all__ (RUF022)
+
+  # Code Structure / Complexity
+  "C4",  # flake8-comprehensions: simpler list, set and dict comprehensions
+  "C90", # mccabe: cyclomatic complexity limit
+  "ISC", # flake8-implicit-str-concat: no accidental string concatenation
+  "PIE", # flake8-pie: misc. unnecessary code
+  "RET", # flake8-return: return and control-flow simplifications
+  "SIM", # flake8-simplify: simpler expressions
+
+  # Code Security / Bug Prevention
+  "ARG",   # flake8-unused-arguments: no unused arguments
+  "ASYNC", # flake8-async: correct async patterns
+  "B",     # flake8-bugbear: likely bugs and design problems
+  "BLE",   # flake8-blind-except: no bare `except Exception`
+  "F",     # Pyflakes: unused imports, undefined names
+  "INP",   # flake8-no-pep420: packages need __init__.py
+  "PGH",   # pygrep-hooks: no blanket type: ignore / noqa
+  "PL",    # Pylint: broad correctness and convention checks
+  "RSE",   # flake8-raise: correct raise statements
+  "S",     # flake8-bandit: security issues
+  "SLF",   # flake8-self: no private member access across objects
+  "T10",   # flake8-debugger: no debugger calls
+  "T20",   # flake8-print: no print statements
+  "TRY",   # tryceratops: exception-handling best practices
+  "UP",    # pyupgrade: modern syntax for the minimum Python
+  "YTT",   # flake8-2020: sys.version misuse
+
+  # Code Documentation
+  "D",   # pydocstyle: module, class and function docstrings
+  "FIX", # flake8-fixme: no FIXME/XXX left behind (TODO allowed, see ignore)
+]
+ignore = [
+  "COM812",  # conflicts with the formatter's trailing-comma handling
+  "ISC001",  # conflicts with the formatter's string handling
+  "D105",    # magic methods are documented by their protocol
+  "D107",    # __init__ is documented on the class
+  "D203",    # one-blank-line-before-class conflicts with D211
+  "D213",    # multi-line summary on the second line conflicts with D212
+  "FIX002",  # TODO comments are allowed; they track deferred work
+  "PLR0913", # explicit keyword-only parameters are preferred over option objects
+  "RET505",  # allow `else` after `return` for readability
+  "TC001",   # keep first-party imports at module level even when only used in hints
+  "TC002",   # same for third-party imports (pydantic and typer read hints at runtime)
+  "TC003",   # same for standard-library imports
+  "TRY003",  # short messages at the raise site read better than exception subclasses
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"**/tests/**/*.py" = [
+  "S101",    # asserts are the point of tests
+  "S603",    # tests run fixed argument lists, never a shell
+  "ARG",     # fixtures are often requested only for their side effects
+  "D",       # test names and class docstrings carry the documentation
+  "PLR2004", # magic values are expected in assertions
+  "SLF001",  # tests may reach into private helpers
+  "INP001",  # test folders are not packages
+]
+"examples/**/*.py" = [
+  "INP001",  # each example is a standalone script
+  "T201",    # examples print their results
+  "S101",    # each example asserts its own output, so test-examples catches drift
+  "PLR2004", # the expected counts are the example's data
+]
+"apps/api/migrations/**/*.py" = [
+  "INP001", # Alembic loads the migrations as scripts, not a package
+]
+"{notebooks/**/*.py,examples/**/notebook.py}" = [
+  "INP001",  # each notebook is a standalone marimo app
+  "ANN",     # cells are functions marimo calls; their arguments are other cells' names
+  "D103",    # cells are named _ and carry no docstrings
+  "B018",    # a cell's last expression is its output
+  "F811",    # every cell is named _
+  "PLC0415", # imports live in cells, which marimo runs in dependency order
+  "PLR1711", # marimo writes a bare return in cells that define nothing
+]
+# Files the template manages, whose long header line keeps E501 off: the root
+# conftest, the agent hooks and the docs build macros.
+"conftest.py" = ["INP001", "E501"]
+# The README and community modules repo:gen loads: long Markdown sentences.
+".mise/tasks/repo/_*.py" = [
+  "INP001", # loaded by path from the tasks beside it, not a package
+  "E501",
+]
+# The examples runner the example, test-examples and examples:gen tasks load.
+".mise/tasks/examples/_*.py" = [
+  "INP001",  # loaded by path from the tasks beside it, not a package
+  "E501",
+  "T201",    # the tasks report on stdout
+  "S602",    # cli.md transcripts are shell commands from the repo itself
+  "S603",    # fixed tool commands, never user input
+  "S607",    # uv, cargo, pnpm and docker come from mise and PATH
+  "SIM112",  # mise passes usage flags as lowercase usage_* variables
+  "C901",    # one branch per surface
+  "PLR0911",
+  "PLR0912",
+]
+".agents/hooks/*.py" = [
+  "INP001", # hook scripts, not a package
+  "E501",
+  "S603",   # runs fixed formatter commands, never a shell
+  "S607",   # formatters are resolved from PATH (mise)
+]
+# Written by pyo3-stub-gen from the Rust doc comments (python-ext:stubs).
+"crates/python-ext/python/*/_native/*.pyi" = [
+  "D",      # docstrings are the Rust doc comments, as written
+  "E501",
+  "RUF100", # the generator's own noqa line
+]
+"docs/.scripts/*.py" = [
+  "INP001", # build scripts loaded by the docs plugins, not a package
+  "T201",   # build scripts may print progress
+  "E501",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.isort]
+known-first-party = ["template_polyglot", "template_polyglot_core", "template_polyglot_api"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+
+# ==============================================================================
+# ty: Type Checking
+# ==============================================================================
+# PYTHON_TYPES=mypy in mise.toml swaps in mypy with the same scope.
+[tool.ty.src]
+include = ["src", "tests", "conftest.py", "crates/python-ext/python", "crates/python-ext/tests", "apps/api/src", "apps/api/tests", "apps/api/migrations", "docs/.scripts"]
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "tests", "conftest.py", "crates/python-ext/python", "crates/python-ext/tests", "apps/api/src", "apps/api/tests", "apps/api/migrations", "docs/.scripts"]
+strict = true
+
+
+# ==============================================================================
+# pytest: Tests
+# ==============================================================================
+# Tiers live in folders (tests/unit, tests/integration, tests/e2e) and carry a
+# tier marker; every test also carries one intent marker (smoke, sanity or
+# regression), which sets how often CI runs it.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-n auto --strict-markers --strict-config -ra"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+log_level = "WARNING"
+xfail_strict = true
+filterwarnings = ["error"]
+markers = [
+  "unit: fast, isolated tests of one module or function",
+  "integration: tests of modules working together",
+  "e2e: tests against the built and installed package",
+  "smoke: quick tests of the critical path, run on every pull request",
+  "sanity: detailed tests of core behavior and edge cases, run on main",
+  "regression: deep tests and past bugs, run nightly and before releases",
+]
+
+
+# ==============================================================================
+# Coverage
+# ==============================================================================
+# Branch coverage per tier; the PR gate compares each block with main.
+
+[tool.coverage.run]
+branch = true
+source = ["template_polyglot"]
+parallel = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 80
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "if __name__ == .__main__.:"]

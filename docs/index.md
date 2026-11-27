@@ -49,7 +49,7 @@ the build backends.
 | Every Python build                       | none: the Hatchling, setuptools or Maturin hook |
 | Print the version in a script            | `gitversioned version`                          |
 | Stamp every manifest before a build      | `gitversioned version --write`                  |
-| Nightly build                            | `gitversioned version --type nightly --write`   |
+| Nightly build                            | `GITVERSIONED__TYPE=nightly python -m build`    |
 | What the next release would be, and why  | `gitversioned version --next --explain`         |
 | Is this repository set up correctly      | `gitversioned check`                            |
 | Pull request title check                 | `gitversioned check "$PR_TITLE"`                |

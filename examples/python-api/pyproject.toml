@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling", "gitversioned>=0.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "apidemo"
+dynamic = ["version"]
+description = "Shows the gitversioned Python API."
+requires-python = ">=3.10"
+
+[tool.hatch.version]
+source = "gitversioned"
+
+[tool.hatch.build.hooks.gitversioned]

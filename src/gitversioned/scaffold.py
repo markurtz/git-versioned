@@ -92,6 +92,16 @@ def scaffold(config: Config) -> list[tuple[str, str, str]]:
                     '+ [tool.hatch.version] source = "gitversioned"',
                 )
             )
+        hatch = "hatchling" in text and "[tool.hatch.version]" in (
+            pyproject.read_text(encoding="utf-8")
+        )
+        if hatch and "[tool.hatch.build.hooks.gitversioned]" not in text:
+            # The hook ships version.py in the wheel and sdist even though git
+            # ignores it.
+            _append(pyproject, "\n[tool.hatch.build.hooks.gitversioned]\n")
+            actions.append(
+                ("edit", "pyproject.toml", "+ [tool.hatch.build.hooks.gitversioned]")
+            )
         if not _requires_gitversioned(text):
             actions.append(
                 (

@@ -61,8 +61,16 @@ def _option(args: list[str], name: str) -> str | None:
     return args[args.index(name) + 1] if name in args else None
 
 
-def main() -> None:
-    """Handle the subset of ``gh`` commands gitversioned uses."""
+def _jq(data: dict, query: str) -> str:
+    """Answer the two ``--jq`` shapes the examples use: ``.key`` and ``.labels[].name``."""
+    if query == ".labels[].name":
+        return "\n".join(label["name"] for label in data.get("labels", []))
+    value = data.get(query.lstrip("."))
+    return value if isinstance(value, str) else json.dumps(value)
+
+
+def main() -> None:  # noqa: C901, PLR0912
+    """Handle the subset of ``gh`` commands gitversioned and the examples use."""
     state_path = Path(os.environ["FAKE_GH_STATE"])
     state = json.loads(state_path.read_text(encoding="utf-8"))
     args = sys.argv[1:]
@@ -78,6 +86,8 @@ def main() -> None:
         found = pulls.get(args[2])
         if found is None:
             code = 1
+        elif "--jq" in args:
+            out = _jq(found, _option(args, "--jq") or ".")
         else:
             out = json.dumps(found)
     elif args[:2] == ["pr", "list"]:
@@ -91,11 +101,12 @@ def main() -> None:
         )
     elif args[:2] == ["pr", "create"]:
         number = max([int(key) for key in pulls] + [56]) + 1
+        label = _option(args, "--label")
         pulls[str(number)] = {
             "number": number,
             "title": _option(args, "--title"),
-            "body": _option(args, "--body"),
-            "labels": [{"name": _option(args, "--label")}],
+            "body": _option(args, "--body") or "",
+            "labels": [{"name": label}] if label else [],
             "url": f"https://github.com/acme/acme/pull/{number}",
             "head": _option(args, "--head"),
             "base": _option(args, "--base"),
@@ -103,8 +114,37 @@ def main() -> None:
         }
         out = pulls[str(number)]["url"]
     elif args[:2] == ["pr", "edit"]:
-        pulls[args[2]]["title"] = _option(args, "--title")
-        pulls[args[2]]["body"] = _option(args, "--body")
+        found = pulls[args[2]]
+        for name, key in (("--title", "title"), ("--body", "body")):
+            value = _option(args, name)
+            if value is not None:
+                found[key] = value
+        added = _option(args, "--add-label")
+        if added and added not in [label["name"] for label in found["labels"]]:
+            found["labels"].append({"name": added})
+        removed = _option(args, "--remove-label")
+        found["labels"] = [
+            label for label in found["labels"] if label["name"] != removed
+        ]
+        out = found["url"]
+    elif args[:2] == ["pr", "merge"]:
+        pulls[args[2]]["state"] = "merged"
+    elif args[:2] == ["release", "create"]:
+        releases = state.setdefault("releases", {})
+        releases[args[2]] = {
+            "tag": args[2],
+            "notes": _option(args, "--notes") or "",
+            "draft": "--draft" in args,
+            "prerelease": "--prerelease" in args,
+            "assets": [],
+        }
+        out = f"https://github.com/acme/acme/releases/tag/{args[2]}"
+    elif args[:2] == ["release", "upload"]:
+        found = state["releases"][args[2]]
+        found["assets"] += [Path(item).name for item in args[3:] if item[0] != "-"]
+    elif args[:2] == ["release", "edit"]:
+        state["releases"][args[2]]["draft"] = "--draft=true" in args
+        out = f"https://github.com/acme/acme/releases/tag/{args[2]}"
     else:
         code = 2
     state_path.write_text(json.dumps(state), encoding="utf-8")

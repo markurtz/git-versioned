@@ -60,6 +60,7 @@ _VERSION_RE = re.compile(
     ^v?
     (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)
     (?:[-._]?(?P<pre>alpha|beta|preview|pre|rc|a|b|c)[-._]?(?P<pre_num>\d+)?)?
+    (?:[-._]?(?:post|rev|r)[-._]?(?P<post>\d+))?
     (?:[-._]?(?P<dev_kind>dev|nightly)[-._]?(?P<dev>\d+)?)?
     (?:\+(?P<local>[0-9A-Za-z.-]+))?
     $
@@ -81,6 +82,9 @@ class Version:
     :param local: Local build label, normally the short commit hash.
     :param nightly: Whether the development number marks a nightly build, which
         changes only the SemVer spelling.
+    :param post: Post-release number, such as ``1`` for ``1.2.3.post1``. SemVer
+        has no post releases, so its spelling carries the number as build
+        metadata (``1.2.3+post.1``).
     """
 
     major: int
@@ -90,6 +94,7 @@ class Version:
     dev: int | None = None
     local: str | None = None
     nightly: bool = False
+    post: int | None = None
 
     @classmethod
     def parse(cls, text: str) -> Version:
@@ -126,14 +131,22 @@ class Version:
         dev = None
         if match["dev_kind"]:
             dev = int(match["dev"] or 0)
+        post = int(match["post"]) if match["post"] else None
+        local = match["local"]
+        # The SemVer spelling of a post release keeps the number as build
+        # metadata: read it back.
+        found = re.match(r"^post\.(\d+)(?:\.(.+))?$", local or "")
+        if found and post is None:
+            post, local = int(found[1]), found[2]
         return cls(
             major=int(match["major"]),
             minor=int(match["minor"]),
             patch=int(match["patch"]),
             pre=pre,
             dev=dev,
-            local=match["local"],
+            local=local,
             nightly=(match["dev_kind"] or "").lower() == "nightly",
+            post=post,
         )
 
     @property
@@ -146,7 +159,7 @@ class Version:
     @property
     def is_final(self) -> bool:
         """
-        :return: True for a plain ``X.Y.Z`` release.
+        :return: True for a plain ``X.Y.Z`` release or a post release of one.
         """
         return self.pre is None and self.dev is None
 
@@ -170,6 +183,7 @@ class Version:
         dev: int | None = None,
         local: str | None = None,
         nightly: bool = False,
+        post: int | None = None,
     ) -> Version:
         """
         Return a copy with the variable parts replaced.
@@ -178,9 +192,10 @@ class Version:
         :param dev: Development number.
         :param local: Local build label.
         :param nightly: Whether the development number marks a nightly.
+        :param post: Post-release number.
         :return: The new version.
         """
-        return replace(self, pre=pre, dev=dev, local=local, nightly=nightly)
+        return replace(self, pre=pre, dev=dev, local=local, nightly=nightly, post=post)
 
     def pep440(self) -> str:
         """
@@ -189,6 +204,8 @@ class Version:
         text = f"{self.major}.{self.minor}.{self.patch}"
         if self.pre is not None:
             text += f"{_PRE_PEP440[self.pre[0]]}{self.pre[1]}"
+        if self.post is not None:
+            text += f".post{self.post}"
         if self.dev is not None:
             text += f".dev{self.dev}"
         if self.local:
@@ -208,9 +225,22 @@ class Version:
             parts += ["nightly" if self.nightly else "dev", str(self.dev)]
         if parts:
             text += "-" + ".".join(parts)
+        build = [f"post.{self.post}"] if self.post is not None else []
         if self.local:
-            text += "+" + re.sub(r"[^0-9A-Za-z.-]", ".", self.local)
+            build.append(re.sub(r"[^0-9A-Za-z.-]", ".", self.local))
+        if build:
+            text += "+" + ".".join(build)
         return text
+
+    def tag_spelling(self) -> str:
+        """
+        :return: The spelling used in tag names: SemVer, except that a post
+            release keeps PEP 440's ``.postN``, since build metadata cannot tell
+            two tags apart.
+        """
+        if self.post is None:
+            return self.semver()
+        return f"{self.release.semver()}.post{self.post}"
 
     def render(self, standard: str) -> str:
         """
@@ -221,7 +251,7 @@ class Version:
         """
         return self.pep440() if standard == "pep440" else self.semver()
 
-    def sort_key(self) -> tuple[int, int, int, int, int, int, int]:
+    def sort_key(self) -> tuple[int, int, int, int, int, int, int, int]:
         """
         Return a key ordering versions the way both standards agree on.
 
@@ -237,12 +267,14 @@ class Version:
         else:
             pre_rank, pre_num = 3, 0
         dev_rank, dev_num = (1, 0) if self.dev is None else (0, self.dev)
+        post = -1 if self.post is None else self.post
         return (
             self.major,
             self.minor,
             self.patch,
             pre_rank,
             pre_num,
+            post,
             dev_rank,
             dev_num,
         )

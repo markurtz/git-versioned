@@ -34,16 +34,25 @@ from __future__ import annotations
 
 import dataclasses
 import difflib
+import fnmatch
 import re
+import string
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
+
+from loguru import logger
 
 from gitversioned import git
 from gitversioned.config import Config, TargetConfig
-from gitversioned.editors import json_span, toml_span, toml_table_spans, yaml_span
+from gitversioned.editors import (
+    json_span,
+    json_spans,
+    toml_span,
+    toml_table_spans,
+    yaml_span,
+)
 from gitversioned.errors import ConfigError
 from gitversioned.model import Standard
 from gitversioned.resolve import Resolved
@@ -85,6 +94,14 @@ _SKIP_DIRS = {
 _DOCKER_LABEL = re.compile(
     r"""org\.opencontainers\.image\.version\s*=\s*(?P<q>["']?)(?P<value>[^"'\s\\]+)(?P=q)"""
 )
+_NPM_DEPENDENCY_TABLES = (
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies",
+)
+_NPM_SINGLE_VERSION = re.compile(r"^[\^~=]?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
+_DEPENDENCY_DEPTH = 2
 _CARGO_DEP_TABLE = re.compile(r"(^|\.)(dev-|build-)?dependencies$")
 _INLINE_VERSION = re.compile(r"""\bversion\s*=\s*(?P<q>["'])(?P<value>[^"']*)(?P=q)""")
 _INLINE_PATH = re.compile(r"\bpath\s*=")
@@ -157,6 +174,17 @@ class Target:
         for span in sorted(
             self.locate(text), key=lambda item: item.start, reverse=True
         ):
+            if span.kind.startswith("add-"):
+                key = span.kind.removeprefix("add-")
+                value = values.get(key)
+                if value is None:
+                    continue
+                name = "date-released" if key == "date" else key
+                lead = "" if not text or text.endswith("\n") else "\n"
+                text = (
+                    f'{text[: span.start]}{lead}{name}: "{value}"\n{text[span.end :]}'
+                )
+                continue
             new = values.get(span.kind)
             if new is None:
                 continue
@@ -282,6 +310,34 @@ def _npm_locate(text: str) -> list[Span]:
     return _spans("version", json_span(text, ["version"]))
 
 
+def _npm_workspace_locate(names: set[str]) -> Callable[[str], list[Span]]:
+    """
+    Build a locator for a package.json in a repository with several packages.
+
+    Besides the package's own version it finds dependencies on the other
+    packages of the repository that name a single version (``1.2.0``,
+    ``^1.2.0``, ``~1.2.0``), so they follow a release as Cargo path
+    dependencies do. ``workspace:`` and ``*`` ranges are left alone.
+
+    :param names: Names of the npm packages in the repository.
+    :return: The locator.
+    """
+
+    def locate(text: str) -> list[Span]:
+        spans = _npm_locate(text)
+        for path, (start, end) in json_spans(text).items():
+            if (
+                len(path) == _DEPENDENCY_DEPTH
+                and path[0] in _NPM_DEPENDENCY_TABLES
+                and path[1] in names
+                and _NPM_SINGLE_VERSION.match(text[start:end])
+            ):
+                spans.append(Span("req", start, end))
+        return spans
+
+    return locate
+
+
 def _tauri_locate(text: str) -> list[Span]:
     """Locate the version of a Tauri config, in either schema."""
     return _spans("version", json_span(text, ["version"])) or _spans(
@@ -298,9 +354,17 @@ def _helm_locate(text: str) -> list[Span]:
 
 def _citation_locate(text: str) -> list[Span]:
     """Locate the version and the release date of a citation file."""
-    return _spans("version", yaml_span(text, ["version"])) + _spans(
+    spans = _spans("version", yaml_span(text, ["version"])) + _spans(
         "date", yaml_span(text, ["date-released"])
     )
+    kinds = {span.kind for span in spans}
+    # A citation file may leave both keys to the release: they are added at the
+    # end, version first, so GitHub's citation names the latest release.
+    if "date" not in kinds:
+        spans.append(Span("add-date", len(text), len(text)))
+    if "version" not in kinds:
+        spans.append(Span("add-version", len(text), len(text)))
+    return spans
 
 
 def _docker_locate(text: str) -> list[Span]:
@@ -324,10 +388,9 @@ _NAMED: dict[str, tuple[str, Standard, Callable[[str], list[Span]]]] = {
 
 def _is_dockerfile(name: str) -> bool:
     """Tell whether a file name is a Dockerfile."""
-    return (
-        name == "Dockerfile"
-        or name.startswith("Dockerfile.")
-        or name.endswith(".Dockerfile")
+    return any(
+        name == base or name.startswith(f"{base}.") or name.endswith(f".{base}")
+        for base in ("Dockerfile", "Containerfile")
     )
 
 
@@ -407,8 +470,24 @@ def _candidates(config: Config, base: Path) -> list[Path]:
             continue
         if _SKIP_DIRS.intersection(relative.parts[:-1]):
             continue
+        if _excluded(config, path):
+            continue
         found.append(base / relative)
     return sorted(found)
+
+
+def _excluded(config: Config, path: Path) -> bool:
+    """Tell whether the ``exclude`` setting leaves a file alone."""
+    if not config.exclude:
+        return False
+    try:
+        name = path.resolve().relative_to(config.root.resolve()).as_posix()
+    except ValueError:
+        return False
+    return any(
+        fnmatch.fnmatch(name, pattern) or name.startswith(pattern.rstrip("/") + "/")
+        for pattern in config.exclude
+    )
 
 
 def _search_scope(config: Config, package: str | None) -> tuple[Path, list[Path]]:
@@ -438,8 +517,8 @@ def _within(path: Path, base: Path, excluded: list[Path]) -> bool:
 
 def _named_target(path: Path, base: Path) -> Target | None:
     """Build the target for a discovered file that already holds a version."""
-    root_only = path.name == "CITATION.cff" or "Dockerfile" in path.name
-    if root_only and path.parent.resolve() != base:
+    # GitHub reads only the citation file at the root; a nested one is a copy.
+    if path.name == "CITATION.cff" and path.parent.resolve() != base:
         return None
     target = _by_name(path)
     if target is None:
@@ -448,11 +527,31 @@ def _named_target(path: Path, base: Path) -> Target | None:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return None
-    if target.kind == "cargo":
+    if target.kind == "citation":
+        found = re.search(r"(?m)^cff-version:", text) is not None
+    elif _never_released(target.kind, text):
+        found = False
+    elif target.kind == "cargo":
         # A crate that inherits the workspace version still pins its path
         # dependencies, and those requirements must follow the release.
-        return target if target.locate(text) else None
-    return target if target.current(text) is not None else None
+        found = bool(target.locate(text))
+    else:
+        found = target.current(text) is not None
+    return target if found else None
+
+
+def _never_released(kind: str, text: str) -> bool:
+    """
+    Tell whether a manifest marks itself as never released.
+
+    A Python project with the ``Private :: Do Not Upload`` classifier and a
+    cargo-fuzz harness keep their placeholder versions.
+    """
+    if kind == "pyproject":
+        return "Private :: Do Not Upload" in text
+    if kind == "cargo":
+        return re.search(r"(?m)^cargo-fuzz\s*=\s*true", text) is not None
+    return False
 
 
 def _discovered(paths: list[Path], base: Path) -> list[Target]:
@@ -477,6 +576,7 @@ def _discovered(paths: list[Path], base: Path) -> list[Target]:
         target = _named_target(path, base)
         if target is not None:
             targets.append(target)
+    _link_npm_packages(targets)
     if crate_names and any(target.kind == "cargo" for target in targets):
         targets.extend(
             Target(
@@ -489,6 +589,31 @@ def _discovered(paths: list[Path], base: Path) -> list[Target]:
             for folder in lock_dirs
         )
     return targets
+
+
+def _link_npm_packages(targets: list[Target]) -> None:
+    """Let the package.json targets of a multi-package repository pin each other."""
+    names = {
+        name
+        for target in targets
+        if target.kind == "npm"
+        for name in [_npm_name(target.path)]
+        if name
+    }
+    if len(names) > 1:
+        for target in targets:
+            if target.kind == "npm":
+                target.locate = _npm_workspace_locate(names)
+
+
+def _npm_name(path: Path) -> str | None:
+    """Read the ``name`` of a package.json file."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    span = json_span(text, ["name"])
+    return text[span[0] : span[1]] if span else None
 
 
 def discover(config: Config, *, package: str | None = None) -> list[Target]:
@@ -519,25 +644,35 @@ def discover(config: Config, *, package: str | None = None) -> list[Target]:
     return targets
 
 
-def render_version_module(resolved: Resolved) -> str:
+def render_version_module(resolved: Resolved, config: Config | None = None) -> str:
     """
     Render the generated ``version.py`` for a resolved version.
 
     The module carries the version and git metadata only, so two builds of the
-    same commit produce the same file.
+    same commit produce the same file. With ``module_template`` set, that file
+    is a ``string.Template`` filled with ``$version``, ``$version_semver``,
+    ``$version_tuple``, ``$major``, ``$minor``, ``$patch``, ``$tag``,
+    ``$distance``, ``$commit`` and ``$commit_date``.
 
     :param resolved: The resolved version.
+    :param config: The configuration, for ``module_template``.
     :return: Python source.
+    :raises ConfigError: If the template cannot be read or names an unknown
+        placeholder.
     """
     version = resolved.version
     parts: list[object] = [version.major, version.minor, version.patch]
     if version.pre is not None:
         parts.append(f"{version.pre[0]}{version.pre[1]}")
+    if version.post is not None:
+        parts.append(f"post{version.post}")
     if version.dev is not None:
         parts.append(f"dev{version.dev}")
     if version.local:
         parts.append(version.local)
     date = resolved.date.isoformat() if resolved.date else None
+    if config is not None and config.module_template:
+        return _custom_module(config, resolved, tuple(parts), date)
     return (
         '"""Version information generated by gitversioned. Do not edit or commit."""\n'
         "\n"
@@ -565,14 +700,45 @@ def render_version_module(resolved: Resolved) -> str:
     ).replace("'", '"')
 
 
+def _custom_module(
+    config: Config, resolved: Resolved, parts: tuple[object, ...], date: str | None
+) -> str:
+    """Fill the ``module_template`` file."""
+    name = str(config.module_template)
+    try:
+        template = string.Template((config.root / name).read_text(encoding="utf-8"))
+    except OSError as error:
+        raise ConfigError(f"cannot read module_template {name}: {error}") from error
+    version = resolved.version
+    values = {
+        "version": version.pep440(),
+        "version_semver": version.semver(),
+        "version_tuple": repr(parts),
+        "major": str(version.major),
+        "minor": str(version.minor),
+        "patch": str(version.patch),
+        "tag": resolved.tag or "",
+        "distance": str(resolved.distance),
+        "commit": resolved.sha or "",
+        "commit_date": date or "",
+    }
+    try:
+        return template.substitute(values)
+    except (KeyError, ValueError) as error:
+        raise ConfigError(
+            f"module_template {name} uses an unknown placeholder {error}. "
+            f"Placeholders: {', '.join('$' + key for key in values)}."
+        ) from error
+
+
 def _values(target: Target, resolved: Resolved) -> dict[str, str]:
     """Build the replacement values for a target."""
     rendered = resolved.version.render(target.standard)
     # Requirements never carry build metadata: Cargo ignores it with a warning.
-    requirement = dataclasses.replace(resolved.version, local=None)
+    requirement = dataclasses.replace(resolved.version, local=None, post=None)
     values = {"version": rendered, "req": requirement.render(target.standard)}
     if resolved.type == "release":
-        day = datetime.now(tz=timezone.utc)
+        day = git.build_time()
         values["date"] = day.strftime("%Y-%m-%d")
     return values
 
@@ -609,7 +775,7 @@ def stamp(
         old_text = _read_exact(target.path) if target.path.is_file() else ""
         if target.generated:
             old = _generated_version(old_text)
-            new_text = render_version_module(resolved)
+            new_text = render_version_module(resolved, config)
         else:
             old = target.current(old_text)
             new_text = target.apply(old_text, _values(target, resolved))
@@ -622,6 +788,13 @@ def stamp(
             )
         )
         changed = new_text != old_text
+        logger.info(
+            "{} {}: {} -> {}",
+            "would stamp" if dry_run else "stamp",
+            relative,
+            old or "none",
+            rendered if changed else "unchanged",
+        )
         if changed and not dry_run:
             target.path.parent.mkdir(parents=True, exist_ok=True)
             with target.path.open("w", encoding="utf-8", newline="") as handle:
@@ -659,6 +832,10 @@ def _relative(path: Path, root: Path) -> str:
 def _same_but_for_spans(target: Target, head: str, work: str) -> bool:
     """Tell whether two versions of a file differ only inside located values."""
     head_spans = sorted(target.locate(head), key=lambda item: item.start)
+    if any(span.kind.startswith("add-") for span in head_spans):
+        # Keys the stamp added to a citation file are the only allowed change.
+        added = re.compile(r'(?m)^(?:version|date-released): "[^"\n]*"\n?')
+        return added.sub("", work).rstrip("\n") == head.rstrip("\n")
     work_spans = sorted(target.locate(work), key=lambda item: item.start)
     if len(head_spans) != len(work_spans) or not head_spans:
         return False

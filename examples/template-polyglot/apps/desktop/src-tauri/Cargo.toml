@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# The desktop shell: its own Cargo workspace and lockfile, apart from the root one,
+# so the rust block's jobs never build Tauri or need the system webview libraries.
+[package]
+name = "template-polyglot-desktop"
+# release:stamp writes the tag's version here at release time; 0.0.0 between releases.
+version = "0.0.0"
+description = "Desktop app of template-polyglot"
+edition = "2024"
+rust-version = "1.98"
+license = "Apache-2.0"
+repository = "https://github.com/markurtz/template-polyglot"
+publish = false
+
+[lib]
+name = "template_polyglot_desktop"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "2.12.5", features = [] }
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+
+[workspace]
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true

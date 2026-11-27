@@ -116,7 +116,10 @@ All of them derive from `GitVersionedError`.
 
 ## Logging
 
-gitversioned logs through Loguru. To get the same output as the command line:
+gitversioned logs through Loguru and is silent as a library: importing it
+disables its logger, as Loguru advises for libraries. Turn it on with
+`logger.enable("gitversioned")` to send its messages to your own handlers, or
+get the same output as the command line:
 
 <!--phmdoctest-skip-->
 

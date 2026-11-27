@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import re
 
-__all__ = ["json_span", "toml_span", "toml_table_spans", "yaml_span"]
+__all__ = ["json_span", "json_spans", "toml_span", "toml_table_spans", "yaml_span"]
 
 _TOML_HEADER = re.compile(r"^\s*\[\[?\s*(?P<name>[^\]]+?)\s*\]\]?\s*(?:#.*)?$")
 
@@ -177,6 +177,22 @@ def json_span(text: str, path: list[str]) -> tuple[int, int] | None:
     except IndexError:
         return None
     return scanner.spans.get(tuple(path))
+
+
+def json_spans(text: str) -> dict[tuple[str, ...], tuple[int, int]]:
+    """
+    Find every string value in a JSON document.
+
+    :param text: JSON source.
+    :return: Key path to the span of each string value between its quotes;
+        empty when the document is malformed.
+    """
+    scanner = _JsonScanner(text)
+    try:
+        scanner.value(())
+    except IndexError:
+        return {}
+    return scanner.spans
 
 
 _YAML_LINE = re.compile(

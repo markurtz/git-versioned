@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Tag main by hand at a version whose CHANGELOG.md section is merged (release-manual.yml)"
+#USAGE arg "<version>"
+set -euo pipefail
+exec gitversioned release "${1:?usage: release:manual <version>}" --tag

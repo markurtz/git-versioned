@@ -30,14 +30,17 @@ Example:
 
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal, cast
 
 from loguru import logger
 
 from gitversioned import git
+from gitversioned.changes import change_commits
 from gitversioned.commits import BumpPlan, next_version, plan_bump
 from gitversioned.config import Config
 from gitversioned.errors import (
@@ -50,6 +53,7 @@ from gitversioned.model import Version
 __all__ = [
     "BuildType",
     "Resolved",
+    "env_build_type",
     "match_tag",
     "own_tag_folders",
     "release_tags",
@@ -58,6 +62,28 @@ __all__ = [
 ]
 
 BuildType = Literal["release", "dev", "nightly"]
+_BUILD_TYPES: Annotated[tuple[str, ...], "Values of GITVERSIONED__TYPE"] = (
+    "release",
+    "dev",
+    "nightly",
+)
+
+
+def env_build_type() -> BuildType | None:
+    """
+    Read the ``GITVERSIONED__TYPE`` override, which build plugins honour too.
+
+    :return: ``release``, ``dev`` or ``nightly``, or ``None`` when unset.
+    :raises ConfigError: When the variable holds another value.
+    """
+    value = os.environ.get("GITVERSIONED__TYPE", "").strip().lower()
+    if not value:
+        return None
+    if value not in _BUILD_TYPES:
+        raise ConfigError(
+            f"GITVERSIONED__TYPE must be release, dev or nightly, not {value!r}."
+        )
+    return cast("BuildType", value)
 
 
 _SHORT_SHA = 7
@@ -82,6 +108,7 @@ class Resolved:
     :param plan: What the commits since the tag ask for.
     :param notes: Lines for ``--explain``.
     :param warnings: Problems that did not stop resolution.
+    :param branch: Branch checked out, if any.
     """
 
     version: Version
@@ -97,6 +124,7 @@ class Resolved:
     plan: BumpPlan = field(default_factory=lambda: BumpPlan(None, ()))
     notes: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    branch: str | None = None
 
     @property
     def short_sha(self) -> str | None:
@@ -126,10 +154,11 @@ def tag_name(template: str, version: Version) -> str:
     Build a tag name from a template.
 
     :param template: Tag template containing ``{version}``.
-    :param version: Version to name; spelled as SemVer.
+    :param version: Version to name; spelled as SemVer (a post release keeps
+        ``.postN``).
     :return: The tag name.
     """
-    return template.replace("{version}", version.semver())
+    return template.replace("{version}", version.tag_spelling())
 
 
 def match_tag(template: str, name: str) -> Version | None:
@@ -153,6 +182,9 @@ def match_tag(template: str, name: str) -> Version | None:
     if version is None or version.dev is not None or version.local:
         return None
     return version
+
+
+_VERSION_LIKE_RE = re.compile(r"\d+\.\d+\.\d+")
 
 
 def release_tags(template: str, names: list[str]) -> dict[str, Version]:
@@ -217,8 +249,18 @@ def _shape(
     else:
         target = base.bump(rule)
     stamp = resolved.date if config.date == "commit" and resolved.date else None
-    stamp = stamp or datetime.now(tz=timezone.utc)
+    stamp = stamp or git.build_time()
     number = int(stamp.strftime("%Y%m%d"))
+    template = config.formats.get(build_type)  # type: ignore[call-overload]
+    if template:
+        return _formatted(
+            template,
+            resolved,
+            target=target,
+            base=base,
+            number=number,
+            build_type=build_type,
+        )
     if build_type == "nightly":
         return target.with_parts(pre=target.pre, dev=number, nightly=True)
     local: str | None = None
@@ -230,6 +272,49 @@ def _shape(
         ]
         local = ".".join(parts) or None
     return target.with_parts(pre=target.pre, dev=number, local=local)
+
+
+def _formatted(  # noqa: PLR0913
+    template: str,
+    resolved: Resolved,
+    *,
+    target: Version,
+    base: Version,
+    number: int,
+    build_type: str,
+) -> Version:
+    """Render a ``formats`` template and read it back as a version."""
+    fields = {
+        "next": target.pep440(),
+        "base": base.pep440(),
+        "distance": resolved.distance,
+        "date": number,
+        "sha": resolved.short_sha or "0",
+        "branch": re.sub(r"[^0-9A-Za-z]+", ".", resolved.branch or "detached").strip(
+            "."
+        ),
+    }
+    try:
+        text = template.format(**fields)
+    except (KeyError, IndexError, ValueError) as error:
+        raise ConfigError(
+            f"formats.{build_type} {template!r} has an unknown placeholder: {error}. "
+            f"Use {', '.join('{' + name + '}' for name in fields)}."
+        ) from error
+    version = Version.try_parse(text)
+    if version is None:
+        raise ConfigError(
+            f"formats.{build_type} gave {text!r}, which is not a PEP 440 version."
+        )
+    if build_type == "nightly" and version.dev is not None:
+        version = version.with_parts(
+            pre=version.pre,
+            dev=version.dev,
+            local=version.local,
+            nightly=True,
+            post=version.post,
+        )
+    return version
 
 
 def _next_pre(base: Version, known: list[Version]) -> Version:
@@ -267,8 +352,9 @@ def resolve(
 
     :param config: The loaded configuration.
     :param pin: A version to use as is, skipping git.
-    :param build_type: Force ``release``, ``dev`` or ``nightly``; by default a
-        clean tagged ``HEAD`` is a release and anything else a development build.
+    :param build_type: Force ``release``, ``dev`` or ``nightly``; by default
+        ``GITVERSIONED__TYPE``, else a clean tagged ``HEAD`` is a release and
+        anything else a development build.
     :param tag_template: Tag template to use instead of the configured one, for a
         package with its own tags.
     :param path_scope: Folder, relative to the project root, whose commits count;
@@ -276,15 +362,24 @@ def resolve(
     :return: The resolved version and how it was reached.
     :raises EnvironmentProblemError: In CI, when no trustworthy version exists.
     """
+    build_type = build_type or env_build_type()
     template = tag_template or config.tag
-    pinned = pin or (config.version if config.version != "auto" else None)
+    source, note = "pin", ""
+    pinned = pin
+    if pinned is None and config.version != "auto":
+        found = _source_version(config)
+        if found is not None:
+            pinned, source, note = found
     if pinned:
         version = Version.parse(pinned)
         kind: BuildType = "release"
         if version.dev is not None:
             kind = "nightly" if version.nightly else "dev"
         return Resolved(
-            version=version, type=kind, source="pin", notes=[f"pinned to {pinned}"]
+            version=version,
+            type=kind,
+            source=source,
+            notes=[note or f"pinned to {pinned}"],
         )
 
     warnings: list[str] = []
@@ -301,17 +396,103 @@ def resolve(
         # surrounding history says nothing about this package.
         repo = None
     if repo is None:
-        return _resolve_without_git(config, template, build_type, fallback, warnings)
-
-    return _resolve_with_git(
-        config,
-        repo=repo,
-        template=template,
-        build_type=build_type,
-        path_scope=path_scope,
-        fallback=fallback,
-        warnings=warnings,
+        resolved = _resolve_without_git(
+            config, template, build_type, fallback, warnings
+        )
+    else:
+        resolved = _resolve_with_git(
+            config,
+            repo=repo,
+            template=template,
+            build_type=build_type,
+            path_scope=path_scope,
+            fallback=fallback,
+            warnings=warnings,
+        )
+    logger.info(
+        "version {} ({}, from {}); tag {}, {} commit{} since{}",
+        resolved.version.pep440(),
+        resolved.type,
+        resolved.source,
+        resolved.tag or "none",
+        resolved.distance,
+        "" if resolved.distance == 1 else "s",
+        f", dirty: {', '.join(resolved.dirty)}" if resolved.dirty else "",
     )
+    return resolved
+
+
+_SOURCE_VERSION_RE = re.compile(
+    r"(?<![\d.])\d+\.\d+\.\d+(?:[-.]?(?:rc|alpha|beta|a|b)[-.]?\d+)?(?:\.post\d+)?"
+)
+
+
+def _source_version(config: Config) -> tuple[str, str, str] | None:
+    """
+    Read the version from the ``version`` setting's source.
+
+    :return: The version text, the source name and a note, or ``None`` when a
+        ``branch`` or ``commit`` source names no version, so tags decide.
+    :raises ConfigError: If a file or function source gives no version.
+    """
+    setting = config.version
+    if Version.try_parse(setting) is not None:
+        return setting, "pin", f"pinned to {setting}"
+    if setting in ("branch", "commit"):
+        repo = git.Repo.open(config.root)
+        if setting == "branch":
+            text = (
+                (repo.branch() if repo else None)
+                or os.environ.get("GITHUB_HEAD_REF", "")
+                or os.environ.get("GITHUB_REF_NAME", "")
+            )
+        else:
+            text = (
+                repo.git("log", "-1", "--format=%s", check=False) if repo else ""
+            ) or ""
+        found = _SOURCE_VERSION_RE.search(text or "")
+        if found is None:
+            logger.info(f"the {setting} {text!r} names no version; using tags")
+            return None
+        return found[0], setting, f"version {found[0]} from the {setting} {text!r}"
+    if setting.startswith("file:"):
+        name = setting[len("file:") :]
+        path = config.root / name
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise ConfigError(f"cannot read version file {name}: {error}") from error
+        found = _SOURCE_VERSION_RE.search(content)
+        if found is None:
+            raise ConfigError(f"version file {name} holds no X.Y.Z version.")
+        return found[0], "file", f"version {found[0]} from {name}"
+    return _function_version(config, setting[len("python:") :])
+
+
+def _function_version(config: Config, spec: str) -> tuple[str, str, str]:
+    """Call a ``module:function`` from the project and read its version."""
+    import importlib  # noqa: PLC0415
+    import sys  # noqa: PLC0415
+
+    module_name, _, function_name = spec.partition(":")
+    root = str(config.root.resolve())
+    added = root not in sys.path
+    if added:
+        sys.path.insert(0, root)
+    try:
+        # The project's own config names this module, the way setuptools' attr: does.
+        # nosemgrep: non-literal-import
+        module = importlib.import_module(module_name)
+        value = getattr(module, function_name)()
+    except Exception as error:  # noqa: BLE001
+        raise ConfigError(f"version function {spec} failed: {error}") from error
+    finally:
+        if added:
+            sys.path.remove(root)
+    text = str(value).strip()
+    if Version.try_parse(text) is None:
+        raise ConfigError(f"version function {spec} returned {text!r}, not a version.")
+    return text, "function", f"version {text} from {spec}()"
 
 
 def _resolve_with_git(  # noqa: PLR0913
@@ -335,6 +516,7 @@ def _resolve_with_git(  # noqa: PLR0913
         date=repo.head_date(),
         known=list(release_tags(template, repo.all_tags()).values()),
         warnings=warnings,
+        branch=repo.branch(),
     )
     scope = (config.root / path_scope) if path_scope else None
     excluded = [] if scope else own_tag_folders(config)
@@ -357,9 +539,31 @@ def _resolve_with_git(  # noqa: PLR0913
         )
         logger.info(message)
         resolved.notes.append(message)
+        # Version-like tags in another spelling are a misconfigured template, not
+        # a new repository: say so rather than silently using the fallback.
+        lookalikes = sorted(name for name in merged if _VERSION_LIKE_RE.search(name))
+        if lookalikes:
+            many = len(lookalikes) > 1
+            noun = "tags" if many else "tag"
+            verb = (
+                "look like versions but do" if many else "looks like a version but does"
+            )
+            warning = (
+                f"{noun} {', '.join(lookalikes[:3])} {verb}"
+                f" not match the tag template {template!r}; using fallback "
+                f"{fallback.pep440()}. Set `tag` to match them."
+            )
+            logger.warning(warning)
+            warnings.append(warning)
     commits = repo.commits(since, path=scope, exclude=excluded)
     resolved.distance = len(commits)
-    resolved.plan = plan_bump(commits)
+    try:
+        changes = change_commits(config, path_scope)
+    except ConfigError as error:
+        # A broken change file fails `check` and `release`, never a build.
+        logger.warning("ignoring change files: {}", error)
+        changes = []
+    resolved.plan = plan_bump(commits + changes, config.levels, shift=config.zero_shift)
 
     resolved.dirty = _counted_dirty(config, repo)
     at_tag = resolved.base is not None and resolved.distance == 0 and not resolved.dirty

@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+
+# The core crate: the logic every other surface (CLI, Python binding, WASM) wraps.
+[package]
+name = "template-polyglot-core"
+description = "Core library of template-polyglot"
+readme = "README.md"
+keywords = []
+categories = []
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "template_polyglot_core"
+
+[dependencies]
+
+[dev-dependencies]
+criterion.workspace = true
+proptest.workspace = true
+
+# >>> template:demo
+[[bench]]
+name = "analyze"
+harness = false
+# <<< template:demo
+
+[lints]
+workspace = true

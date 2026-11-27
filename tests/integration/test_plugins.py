@@ -226,7 +226,8 @@ class TestInit:
             == "*.png binary\n.git_archival.txt  export-subst\n"
         )
         assert repo.read("pyproject.toml").endswith(
-            '[tool.hatch.version]\nsource = "gitversioned"\n'
+            '[tool.hatch.version]\nsource = "gitversioned"\n\n'
+            "[tool.hatch.build.hooks.gitversioned]\n"
         )
         assert "$Format:%H$" in repo.read(".git_archival.txt")
         before = {

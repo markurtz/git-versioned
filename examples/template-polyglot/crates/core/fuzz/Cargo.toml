@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the template-polyglot project
+# template:demo-file: `mise run template:strip` removes this file.
+
+# Fuzz targets for the core crate (cargo-fuzz, libFuzzer). `mise run rust:fuzz`
+# runs them on nightly; they sit outside the workspace, so stable builds skip them.
+[package]
+name = "template-polyglot-core-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+template-polyglot-core = { path = ".." }
+
+# Its own workspace, so the root workspace does not take it in.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "analyze"
+path = "fuzz_targets/analyze.rs"
+test = false
+doc = false
+bench = false

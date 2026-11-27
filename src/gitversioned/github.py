@@ -22,6 +22,7 @@ each caller degrades or fails with a clear message when ``gh`` is not usable.
 Example:
 ::
     from pathlib import Path
+
     from gitversioned import github
 
     if github.available(Path.cwd()):
@@ -38,6 +39,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
+
 from gitversioned import git
 from gitversioned.errors import EnvironmentProblemError
 
@@ -45,6 +48,7 @@ __all__ = [
     "PullRequest",
     "available",
     "create_pull_request",
+    "create_release",
     "find_open_pull_request",
     "gh",
     "pull_request",
@@ -90,6 +94,7 @@ def gh(args: list[str], cwd: Path, *, check: bool = True) -> str | None:
                 "https://cli.github.com to use release --pr."
             )
         return None
+    logger.debug(f"gh {' '.join(args[:3])}")
     result = subprocess.run(  # noqa: S603
         ["gh", *args],  # noqa: S607
         cwd=cwd,
@@ -238,3 +243,35 @@ def update_pull_request(cwd: Path, number: int, *, title: str, body: str) -> Non
     :param body: New description.
     """
     gh(["pr", "edit", str(number), "--title", title, "--body", body], cwd)
+
+
+def create_release(
+    cwd: Path,
+    *,
+    tag: str,
+    notes: str,
+    prerelease: bool,
+    files: list[Path] | None = None,
+) -> str:
+    """
+    Create a GitHub release for an existing tag, with its notes and files.
+
+    The release is created as a draft, the files are uploaded, then it is
+    published, which also works with immutable releases.
+
+    :param cwd: Folder inside the repository.
+    :param tag: Tag the release is for; it must already be pushed.
+    :param notes: Release notes in Markdown.
+    :param prerelease: Mark the release as a pre-release.
+    :param files: Files to attach.
+    :return: The release's web address.
+    """
+    args = ["release", "create", tag, "--title", tag, "--notes", notes]
+    args += ["--verify-tag", "--draft"]
+    if prerelease:
+        args.append("--prerelease")
+    url = gh(args, cwd) or ""
+    if files:
+        gh(["release", "upload", tag, "--clobber", *map(str, files)], cwd)
+    published = gh(["release", "edit", tag, "--draft=false"], cwd)
+    return (published or url).strip()

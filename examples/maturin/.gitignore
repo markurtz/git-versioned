@@ -2,3 +2,4 @@ target/
 dist/
 python/demo_maturin/version.py
 *.so
+Cargo.lock
